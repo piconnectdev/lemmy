@@ -12,12 +12,12 @@ alter table community_aggregates add column users_active_month bigint not null d
 alter table community_aggregates add column users_active_half_year bigint not null default 0;
 
 create or replace function site_aggregates_activity(i text)
-returns int
+returns bigint
 language plpgsql
 as
 $$
 declare
-   count_ integer;
+   count_ bigint;
 begin
   select count(*) 
   into count_
@@ -49,7 +49,7 @@ update site_aggregates
 set users_active_half_year = (select * from site_aggregates_activity('6 months'));
 
 create or replace function community_aggregates_activity(i text)
-returns table(count_ bigint, community_id_ integer)
+returns table(count_ bigint, community_id_ bigint)
 language plpgsql
 as
 $$

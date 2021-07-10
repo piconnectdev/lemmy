@@ -112,7 +112,11 @@ pub trait Reportable<Form, IdType> {
   fn resolve(conn: &PgConnection, report_id: IdType, resolver_id: PersonId) -> Result<usize, Error>
   where
     Self: Sized;
-  fn unresolve(conn: &PgConnection, report_id: IdType, resolver_id: PersonId) -> Result<usize, Error>
+  fn unresolve(
+    conn: &PgConnection,
+    report_id: IdType,
+    resolver_id: PersonId,
+  ) -> Result<usize, Error>
   where
     Self: Sized;
 }

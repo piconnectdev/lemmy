@@ -44,8 +44,8 @@ select
 ac.*,
 u.id as user_id,
 coalesce(cl.score, 0) as my_vote,
-(select cf.id::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
-(select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
+(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
+(select cs.id::integer::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
 from user_ u
 cross join all_comment ac
 left join comment_like cl on u.id = cl.user_id and ac.id = cl.comment_id
@@ -73,8 +73,8 @@ select
 ac.*,
 u.id as user_id,
 coalesce(cl.score, 0) as my_vote,
-(select cf.id::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
-(select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
+(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
+(select cs.id::integer::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
 from user_ u
 cross join all_comment ac
 left join comment_like cl on u.id = cl.user_id and ac.id = cl.comment_id

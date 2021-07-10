@@ -51,7 +51,7 @@ with all_community as
 select
 ac.*,
 u.id as user_id,
-(select cf.id::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
+(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
 from user_ u
 cross join all_community ac
 
@@ -75,7 +75,7 @@ with all_community as
 select
 ac.*,
 u.id as user_id,
-(select cf.id::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
+(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
 from user_ u
 cross join all_community ac
 
@@ -172,9 +172,9 @@ select
 ap.*,
 u.id as user_id,
 coalesce(pl.score, 0) as my_vote,
-(select cf.id::bool from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id) as subscribed,
-(select pr.id::bool from post_read pr where u.id = pr.user_id and pr.post_id = ap.id) as read,
-(select ps.id::bool from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id) as saved
+(select cf.id::integer from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id)::bool as subscribed,
+(select pr.id::integer from post_read pr where u.id = pr.user_id and pr.post_id = ap.id)::bool as read,
+(select ps.id::integer from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id)::bool as saved
 from user_ u
 cross join all_post ap
 left join post_like pl on u.id = pl.user_id and ap.id = pl.post_id
@@ -201,9 +201,9 @@ select
 ap.*,
 u.id as user_id,
 coalesce(pl.score, 0) as my_vote,
-(select cf.id::bool from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id) as subscribed,
-(select pr.id::bool from post_read pr where u.id = pr.user_id and pr.post_id = ap.id) as read,
-(select ps.id::bool from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id) as saved
+(select cf.id::integer from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id)::bool as subscribed,
+(select pr.id::integer from post_read pr where u.id = pr.user_id and pr.post_id = ap.id)::bool as read,
+(select ps.id::integer from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id)::bool as saved
 from user_ u
 cross join all_post ap
 left join post_like pl on u.id = pl.user_id and ap.id = pl.post_id
@@ -264,8 +264,8 @@ select
 ac.*,
 u.id as user_id,
 coalesce(cl.score, 0) as my_vote,
-(select cf.id::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
-(select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
+(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
+(select cs.id::integer::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
 from user_ u
 cross join all_comment ac
 left join comment_like cl on u.id = cl.user_id and ac.id = cl.comment_id
@@ -293,8 +293,8 @@ select
 ac.*,
 u.id as user_id,
 coalesce(cl.score, 0) as my_vote,
-(select cf.id::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
-(select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
+(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
+(select cs.id::integer::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
 from user_ u
 cross join all_comment ac
 left join comment_like cl on u.id = cl.user_id and ac.id = cl.comment_id

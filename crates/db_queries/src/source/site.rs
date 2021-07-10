@@ -1,6 +1,6 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_schema::{naive_now, source::site::*, PersonId, };
+use lemmy_db_schema::{naive_now, source::site::*, PersonId};
 
 impl Crud<SiteForm, i64> for Site {
   fn read(conn: &PgConnection, _site_id: i64) -> Result<Self, Error> {

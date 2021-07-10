@@ -55,8 +55,8 @@ cross join lateral (
 	select
 		u.id as user_id,
 		coalesce(cl.score, 0) as my_vote,
-    coalesce(cf.id, 0) as is_subbed,
-    coalesce(cs.id, 0) as is_saved
+    coalesce(cf.id::integer, 0) as is_subbed,
+    coalesce(cs.id::integer, 0) as is_saved
 	from user_ u
 	left join comment_like cl on u.id = cl.user_id and cav.id = cl.comment_id
 	left join comment_saved cs on u.id = cs.user_id and cs.comment_id = cav.id
@@ -89,8 +89,8 @@ cross join lateral (
 	select
 		u.id as user_id,
 		coalesce(cl.score, 0) as my_vote,
-    coalesce(cf.id, 0) as is_subbed,
-    coalesce(cs.id, 0) as is_saved
+    coalesce(cf.id::integer, 0) as is_subbed,
+    coalesce(cs.id::integer, 0) as is_saved
 	from user_ u
 	left join comment_like cl on u.id = cl.user_id and cav.id = cl.comment_id
 	left join comment_saved cs on u.id = cs.user_id and cs.comment_id = cav.id

@@ -61,7 +61,7 @@ from community_aggregates_view cv
 cross join lateral (
 	select
 		u.id as user,
-		coalesce(cf.community_id, 0) as is_subbed
+		coalesce(cf.community_id::integer, 0) as is_subbed
 	from user_ u
 	left join community_follower cf on u.id = cf.user_id and cf.community_id = cv.id
 ) as us
@@ -83,7 +83,7 @@ create view community_fast_view as
 select
 ac.*,
 u.id as user_id,
-(select cf.id::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
+(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
 from user_ u
 cross join (
   select

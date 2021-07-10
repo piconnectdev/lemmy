@@ -348,7 +348,7 @@ alter table mod_sticky_post rename constraint mod_sticky_post_mod_user_id_fkey t
 -- password_reset_request
 delete from password_reset_request;
 alter table password_reset_request drop column user_id;
-alter table password_reset_request add column local_user_id integer not null references local_user(id) on update cascade on delete cascade;
+alter table password_reset_request add column local_user_id bigint not null references local_user(id) on update cascade on delete cascade;
 
 -- post_like
 alter table post_like rename column user_id to person_id;
@@ -367,11 +367,11 @@ alter table post_saved rename constraint post_saved_post_id_user_id_key to post_
 alter table post_saved rename constraint post_saved_user_id_fkey to post_saved_person_id_fkey;
 
 -- redo site aggregates trigger
-create or replace function site_aggregates_activity(i text) returns integer
+create or replace function site_aggregates_activity(i text) returns bigint
     language plpgsql
     as $$
 declare
-   count_ integer;
+   count_ bigint;
 begin
   select count(*)
   into count_

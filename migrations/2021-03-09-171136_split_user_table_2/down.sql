@@ -17,7 +17,7 @@ alter table post_like rename constraint post_like_person_id_fkey to post_like_us
 -- password_reset_request
 delete from password_reset_request;
 alter table password_reset_request drop column local_user_id;
-alter table password_reset_request add column user_id integer not null references person(id) on update cascade on delete cascade;
+alter table password_reset_request add column user_id bigint not null references person(id) on update cascade on delete cascade;
 
 -- mod_sticky_post
 alter table mod_sticky_post rename column mod_person_id to mod_user_id; 
@@ -335,11 +335,11 @@ for each row
 execute procedure user_aggregates_comment_score();
 
 -- redo site aggregates trigger
-create or replace function site_aggregates_activity(i text) returns integer
+create or replace function site_aggregates_activity(i text) returns bigint
     language plpgsql
     as $$
 declare
-   count_ integer;
+   count_ bigint;
 begin
   select count(*)
   into count_

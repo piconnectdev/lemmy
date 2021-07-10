@@ -65,7 +65,7 @@ table! {
 
 table! {
     comment_saved (id) {
-        id -> BigInt,
+        id -> Int4,
         comment_id -> Int8,
         person_id -> Int8,
         published -> Timestamp,
@@ -132,7 +132,7 @@ table! {
 
 table! {
     community_person_ban (id) {
-        id -> BigInt,
+        id -> Int4,
         community_id -> Int8,
         person_id -> Int8,
         published -> Timestamp,
@@ -306,7 +306,7 @@ table! {
 
 table! {
     person_ban (id) {
-        id -> BigInt,
+        id -> Int4,
         person_id -> Int8,
         published -> Timestamp,
     }
@@ -398,7 +398,7 @@ table! {
 
 table! {
     post_saved (id) {
-        id -> BigInt,
+        id -> Int4,
         post_id -> Int8,
         person_id -> Int8,
         published -> Timestamp,
@@ -541,7 +541,7 @@ table! {
         user_cancelled -> Bool,
         tx_verified: bool,
         tx_link -> Text,
-        tx_id -> Nullable<Text>,                
+        tx_id -> Nullable<Text>,
         payment_dto -> Jsonb,
     }
 }
@@ -640,5 +640,5 @@ allow_tables_to_appear_in_same_query!(
   site_aggregates,
   comment_alias_1,
   person_alias_1,
-  person_alias_2,  
+  person_alias_2,
 );

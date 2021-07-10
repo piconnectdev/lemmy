@@ -54,8 +54,8 @@ cross join lateral (
 	select
 		u.id as user_id,
 		coalesce(cl.score, 0) as my_vote,
-    coalesce(cf.id, 0) as is_subbed,
-    coalesce(cs.id, 0) as is_saved
+    coalesce(cf.id::integer, 0) as is_subbed,
+    coalesce(cs.id::integer, 0) as is_saved
 	from user_ u
 	left join comment_like cl on u.id = cl.user_id and cav.id = cl.comment_id
 	left join comment_saved cs on u.id = cs.user_id and cs.comment_id = cav.id
@@ -88,8 +88,8 @@ cross join lateral (
 	select
 		u.id as user_id,
 		coalesce(cl.score, 0) as my_vote,
-    coalesce(cf.id, 0) as is_subbed,
-    coalesce(cs.id, 0) as is_saved
+    coalesce(cf.id::integer, 0) as is_subbed,
+    coalesce(cs.id::integer, 0) as is_saved
 	from user_ u
 	left join comment_like cl on u.id = cl.user_id and cav.id = cl.comment_id
 	left join comment_saved cs on u.id = cs.user_id and cs.comment_id = cav.id
@@ -326,9 +326,9 @@ from post_aggregates_view pav
 cross join lateral (
 	select
 		u.id,
-		coalesce(cf.community_id, 0) as is_subbed,
-		coalesce(pr.post_id, 0) as is_read,
-		coalesce(ps.post_id, 0) as is_saved,
+		coalesce(cf.community_id::integer, 0) as is_subbed,
+		coalesce(pr.post_id::integer, 0) as is_read,
+		coalesce(ps.post_id::integer, 0) as is_saved,
 		coalesce(pl.score, 0) as user_vote
 	from user_ u
 	left join community_user_ban cb on u.id = cb.user_id and cb.community_id = pav.community_id
@@ -364,9 +364,9 @@ from post_aggregates_fast pav
 cross join lateral (
 	select
 		u.id,
-		coalesce(cf.community_id, 0) as is_subbed,
-		coalesce(pr.post_id, 0) as is_read,
-		coalesce(ps.post_id, 0) as is_saved,
+		coalesce(cf.community_id::integer, 0) as is_subbed,
+		coalesce(pr.post_id::integer, 0) as is_read,
+		coalesce(ps.post_id::integer, 0) as is_saved,
 		coalesce(pl.score, 0) as user_vote
 	from user_ u
 	left join community_user_ban cb on u.id = cb.user_id and cb.community_id = pav.community_id

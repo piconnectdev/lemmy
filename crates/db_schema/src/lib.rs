@@ -87,7 +87,7 @@ impl fmt::Display for PostLikeId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PostSaveId(i64);
+pub struct PostSaveId(i32);
 
 impl fmt::Display for PostSaveId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -132,7 +132,7 @@ impl fmt::Display for CommentLikeId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommentSavedId(i64);
+pub struct CommentSavedId(i32);
 
 impl fmt::Display for CommentSavedId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -169,7 +169,7 @@ impl fmt::Display for CommunityModeratorId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommunityPersonBanId(i64);
+pub struct CommunityPersonBanId(i32);
 
 impl fmt::Display for CommunityPersonBanId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
