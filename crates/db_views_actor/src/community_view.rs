@@ -158,7 +158,7 @@ impl<'a> CommunityQueryBuilder<'a> {
 
   pub fn list(self) -> Result<Vec<CommunityView>, Error> {
     // The left join below will return None in this case
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = self.my_person_id.unwrap();
 
     let mut query = community::table
       .inner_join(community_aggregates::table)
