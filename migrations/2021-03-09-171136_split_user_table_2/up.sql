@@ -4,12 +4,12 @@ drop view user_alias_1, user_alias_2;
 
 -- rename the user_ table to person
 alter table user_ rename to person;
-alter sequence user__id_seq rename to person_id_seq;
+-- alter sequence user__id_seq rename to person_id_seq;
 
 -- create a new table local_user
 create table local_user (
-  id bigserial primary key,
-  person_id bigint references person on update cascade on delete cascade not null,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
+  person_id uuid references person on update cascade on delete cascade not null,
   password_encrypted text not null,
   email text unique,
   admin boolean default false not null,
@@ -348,7 +348,7 @@ alter table mod_sticky_post rename constraint mod_sticky_post_mod_user_id_fkey t
 -- password_reset_request
 delete from password_reset_request;
 alter table password_reset_request drop column user_id;
-alter table password_reset_request add column local_user_id bigint not null references local_user(id) on update cascade on delete cascade;
+alter table password_reset_request add column local_user_id uuid not null references local_user(id) on update cascade on delete cascade;
 
 -- post_like
 alter table post_like rename column user_id to person_id;

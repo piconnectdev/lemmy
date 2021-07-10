@@ -8,6 +8,7 @@ use lemmy_db_schema::{source::comment::Comment, CommentId};
 use lemmy_utils::LemmyError;
 use lemmy_websocket::LemmyContext;
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub(crate) struct CommentQuery {
@@ -19,7 +20,7 @@ pub(crate) async fn get_apub_comment(
   info: Path<CommentQuery>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse<Body>, LemmyError> {
-  let id = CommentId(info.comment_id.parse::<i64>()?);
+  let id = CommentId(info.comment_id.parse::<Uuid>()?);
   let comment = blocking(context.pool(), move |conn| Comment::read(conn, id)).await??;
   if !comment.local {
     return Err(NotFound.into());

@@ -1,9 +1,7 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, PgConnection, *};
 use lemmy_db_schema::{
-  schema::password_reset_request::dsl::*,
-  source::password_reset_request::*,
-  LocalUserId,
+  schema::password_reset_request::dsl::*, source::password_reset_request::*, LocalUserId,
 };
 use sha2::{Digest, Sha256};
 
@@ -77,9 +75,7 @@ fn bytes_to_hex(bytes: Vec<u8>) -> String {
 #[cfg(test)]
 mod tests {
   use crate::{
-    establish_unpooled_connection,
-    source::password_reset_request::PasswordResetRequest_,
-    Crud,
+    establish_unpooled_connection, source::password_reset_request::PasswordResetRequest_, Crud,
   };
   use lemmy_db_schema::source::{
     local_user::{LocalUser, LocalUserForm},

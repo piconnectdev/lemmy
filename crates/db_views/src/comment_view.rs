@@ -36,6 +36,7 @@ use lemmy_db_schema::{
   PostId,
 };
 use serde::Serialize;
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Serialize, Clone)]
 pub struct CommentView {
@@ -72,7 +73,7 @@ impl CommentView {
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
     // The left join below will return None in this case
-    let person_id_join = my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = my_person_id.unwrap_or(PersonId(Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()));
 
     let (
       comment,
@@ -283,7 +284,7 @@ impl<'a> CommentQueryBuilder<'a> {
     use diesel::dsl::*;
 
     // The left join below will return None in this case
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = self.my_person_id.unwrap_or(PersonId(Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()));
 
     let mut query = comment::table
       .inner_join(person::table)

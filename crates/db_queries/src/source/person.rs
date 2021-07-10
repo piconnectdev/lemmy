@@ -4,8 +4,7 @@ use lemmy_db_schema::{
   naive_now,
   schema::person::dsl::*,
   source::person::{Person, PersonForm},
-  DbUrl,
-  PersonId,
+  DbUrl, PersonId,
 };
 
 mod safe_type {

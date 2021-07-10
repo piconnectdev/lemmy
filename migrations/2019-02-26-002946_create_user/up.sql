@@ -1,5 +1,5 @@
 create table user_ (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   name varchar(20) not null,
   fedi_name varchar(40) not null,
   preferred_username varchar(20),
@@ -15,9 +15,9 @@ create table user_ (
 
 create table user_ban (
   id bigserial primary key,
-  user_id bigint references user_ on update cascade on delete cascade not null,
+  user_id uuid references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
   unique (user_id)
 );
 
-insert into user_ (name, fedi_name, password_encrypted) values ('admin', 'TBD', 'TBD');
+insert into user_ (id, name, fedi_name, password_encrypted) values ('00000000-0000-0000-0000-000000000001', 'admin', 'TBD', 'TBD');

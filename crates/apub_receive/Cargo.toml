@@ -42,4 +42,4 @@ async-trait = "0.1.50"
 anyhow = "1.0.41"
 thiserror = "1.0.26"
 backtrace = "0.3.60"
-
+uuid = { version = "0.8.2", features = ["serde", "v4"] }

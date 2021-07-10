@@ -11,3 +11,4 @@ lemmy_db_queries = { path = "../db_queries" }
 lemmy_db_schema = { path = "../db_schema" }
 diesel = { version = "1.4.7", features = ["postgres","chrono","r2d2","serde_json"] }
 serde = { version = "1.0.126", features = ["derive"] }
+uuid = { version = "0.8.2", features = ["serde", "v4"] }

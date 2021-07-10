@@ -1,26 +1,12 @@
 use diesel::{result::Error, *};
 use lemmy_db_queries::{
-  aggregates::comment_aggregates::CommentAggregates,
-  functions::hot_rank,
-  limit_and_offset,
-  MaybeOptional,
-  SortType,
-  ToSafe,
-  ViewToVec,
+  aggregates::comment_aggregates::CommentAggregates, functions::hot_rank, limit_and_offset,
+  MaybeOptional, SortType, ToSafe, ViewToVec,
 };
 use lemmy_db_schema::{
   schema::{
-    comment,
-    comment_aggregates,
-    comment_like,
-    comment_saved,
-    community,
-    community_follower,
-    community_person_ban,
-    person,
-    person_alias_1,
-    person_mention,
-    post,
+    comment, comment_aggregates, comment_like, comment_saved, community, community_follower,
+    community_person_ban, person, person_alias_1, person_mention, post,
   },
   source::{
     comment::{Comment, CommentSaved},
@@ -29,10 +15,10 @@ use lemmy_db_schema::{
     person_mention::PersonMention,
     post::Post,
   },
-  PersonId,
-  PersonMentionId,
+  PersonId, PersonMentionId,
 };
 use serde::Serialize;
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Serialize, Clone)]
 pub struct PersonMentionView {
@@ -70,7 +56,9 @@ impl PersonMentionView {
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
     // The left join below will return None in this case
-    let person_id_join = my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = my_person_id.unwrap_or(PersonId(
+      Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+    ));
 
     let (
       person_mention,
@@ -208,7 +196,9 @@ impl<'a> PersonMentionQueryBuilder<'a> {
     use diesel::dsl::*;
 
     // The left join below will return None in this case
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = self.my_person_id.unwrap_or(PersonId(
+      Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+    ));
 
     let mut query = person_mention::table
       .inner_join(comment::table)

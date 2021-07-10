@@ -7,7 +7,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-diesel = { version = "1.4.7", features = ["postgres","chrono","r2d2","serde_json"] }
+diesel = { version = "1.4.7", features = ["postgres","chrono","r2d2","serde_json","uuidv07"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 serde = { version = "1.0.126", features = ["derive"] }
 serde_json = { version = "1.0.64", features = ["preserve_order"] }

@@ -3,18 +3,10 @@ use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{
   naive_now,
   source::community::{
-    Community,
-    CommunityFollower,
-    CommunityFollowerForm,
-    CommunityForm,
-    CommunityModerator,
-    CommunityModeratorForm,
-    CommunityPersonBan,
-    CommunityPersonBanForm,
+    Community, CommunityFollower, CommunityFollowerForm, CommunityForm, CommunityModerator,
+    CommunityModeratorForm, CommunityPersonBan, CommunityPersonBanForm,
   },
-  CommunityId,
-  DbUrl,
-  PersonId,
+  CommunityId, DbUrl, PersonId,
 };
 
 mod safe_type {

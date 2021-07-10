@@ -1,7 +1,7 @@
 -- Add user aggregates
 create table user_aggregates (
   id bigserial primary key,
-  user_id bigint references user_ on update cascade on delete cascade not null,
+  user_id uuid references user_ on update cascade on delete cascade not null,
   post_count bigint not null default 0,
   post_score bigint not null default 0,
   comment_count bigint not null default 0,

@@ -3,19 +3,9 @@ use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{
   naive_now,
   source::post::{
-    Post,
-    PostForm,
-    PostLike,
-    PostLikeForm,
-    PostRead,
-    PostReadForm,
-    PostSaved,
-    PostSavedForm,
+    Post, PostForm, PostLike, PostLikeForm, PostRead, PostReadForm, PostSaved, PostSavedForm,
   },
-  CommunityId,
-  DbUrl,
-  PersonId,
-  PostId,
+  CommunityId, DbUrl, PersonId, PostId,
 };
 
 impl Crud<PostForm, PostId> for Post {

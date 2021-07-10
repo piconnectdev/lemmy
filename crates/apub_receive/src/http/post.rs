@@ -8,6 +8,7 @@ use lemmy_db_schema::{source::post::Post, PostId};
 use lemmy_utils::LemmyError;
 use lemmy_websocket::LemmyContext;
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub(crate) struct PostQuery {
@@ -19,7 +20,7 @@ pub(crate) async fn get_apub_post(
   info: web::Path<PostQuery>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse<Body>, LemmyError> {
-  let id = PostId(info.post_id.parse::<i64>()?);
+  let id = PostId(info.post_id.parse::<Uuid>()?);
   let post = blocking(context.pool(), move |conn| Post::read(conn, id)).await??;
   if !post.local {
     return Err(NotFound.into());

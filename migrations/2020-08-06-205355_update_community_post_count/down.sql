@@ -56,12 +56,12 @@ create view community_view as
 select
     cv.*,
     us.user as user_id,
-    us.is_subbed::bool as subscribed
+    us.is_subbed is null as subscribed
 from community_aggregates_view cv
 cross join lateral (
 	select
 		u.id as user,
-		coalesce(cf.community_id::integer, 0) as is_subbed
+		coalesce(cf.community_id, null) as is_subbed
 	from user_ u
 	left join community_follower cf on u.id = cf.user_id and cf.community_id = cv.id
 ) as us

@@ -28,3 +28,4 @@ strum_macros = "0.21.1"
 chrono = { version = "0.4.19", features = ["serde"] }
 actix-web = { version = "4.0.0-beta.8", default-features = false, features = ["rustls"] }
 actix-web-actors = { version = "4.0.0-beta.6", default-features = false }
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
