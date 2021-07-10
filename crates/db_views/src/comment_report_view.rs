@@ -10,6 +10,7 @@ use lemmy_db_schema::{
     post::Post,
   },
   CommunityId,
+  CommentReportId,
 };
 use serde::Serialize;
 
@@ -38,7 +39,7 @@ impl CommentReportView {
   /// returns the CommentReportView for the provided report_id
   ///
   /// * `report_id` - the report id to obtain
-  pub fn read(conn: &PgConnection, report_id: i32) -> Result<Self, Error> {
+  pub fn read(conn: &PgConnection, report_id: CommentReportId) -> Result<Self, Error> {
     let (comment_report, comment, post, community, creator, comment_creator, resolver) =
       comment_report::table
         .find(report_id)
@@ -74,7 +75,7 @@ impl CommentReportView {
 
   /// returns the current unresolved post report count for the supplied community ids
   ///
-  /// * `community_ids` - a Vec<i32> of community_ids to get a count for
+  /// * `community_ids` - a Vec<i64> of community_ids to get a count for
   /// TODO this eq_any is a bad way to do this, would be better to join to communitymoderator
   /// for a person id
   pub fn get_report_count(

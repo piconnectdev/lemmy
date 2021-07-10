@@ -1,5 +1,5 @@
 create table category (
-  id serial primary key,
+  id bigserial primary key,
   name varchar(100) not null unique
 );
 

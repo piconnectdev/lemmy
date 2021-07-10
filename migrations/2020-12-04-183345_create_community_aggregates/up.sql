@@ -1,7 +1,7 @@
 -- Add community aggregates
 create table community_aggregates (
-  id serial primary key,
-  community_id int references community on update cascade on delete cascade not null,
+  id bigserial primary key,
+  community_id bigint references community on update cascade on delete cascade not null,
   subscribers bigint not null default 0,
   posts bigint not null default 0,
   comments bigint not null default 0,

@@ -9,6 +9,7 @@ use lemmy_db_schema::{
     post_report::PostReport,
   },
   CommunityId,
+  PostReportId,
 };
 use serde::Serialize;
 
@@ -35,7 +36,7 @@ impl PostReportView {
   /// returns the PostReportView for the provided report_id
   ///
   /// * `report_id` - the report id to obtain
-  pub fn read(conn: &PgConnection, report_id: i32) -> Result<Self, Error> {
+  pub fn read(conn: &PgConnection, report_id: PostReportId) -> Result<Self, Error> {
     let (post_report, post, community, creator, post_creator, resolver) = post_report::table
       .find(report_id)
       .inner_join(post::table)

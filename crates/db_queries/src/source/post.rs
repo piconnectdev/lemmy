@@ -43,7 +43,7 @@ impl Crud<PostForm, PostId> for Post {
 }
 
 pub trait Post_ {
-  //fn read(conn: &PgConnection, post_id: i32) -> Result<Post, Error>;
+  //fn read(conn: &PgConnection, post_id: CommonId) -> Result<Post, Error>;
   fn list_for_community(
     conn: &PgConnection,
     the_community_id: CommunityId,

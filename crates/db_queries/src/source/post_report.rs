@@ -1,8 +1,8 @@
 use crate::Reportable;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_schema::{naive_now, source::post_report::*, PersonId};
+use lemmy_db_schema::{naive_now, source::post_report::*, PersonId, PostReportId};
 
-impl Reportable<PostReportForm> for PostReport {
+impl Reportable<PostReportForm, PostReportId> for PostReport {
   /// creates a post report and returns it
   ///
   /// * `conn` - the postgres connection
@@ -21,7 +21,7 @@ impl Reportable<PostReportForm> for PostReport {
   /// * `by_resolver_id` - the id of the user resolving the report
   fn resolve(
     conn: &PgConnection,
-    report_id: i32,
+    report_id: PostReportId,
     by_resolver_id: PersonId,
   ) -> Result<usize, Error> {
     use lemmy_db_schema::schema::post_report::dsl::*;
@@ -41,7 +41,7 @@ impl Reportable<PostReportForm> for PostReport {
   /// * `by_resolver_id` - the id of the user unresolving the report
   fn unresolve(
     conn: &PgConnection,
-    report_id: i32,
+    report_id: PostReportId,
     by_resolver_id: PersonId,
   ) -> Result<usize, Error> {
     use lemmy_db_schema::schema::post_report::dsl::*;

@@ -1,9 +1,9 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_schema::{naive_now, source::site::*, PersonId};
+use lemmy_db_schema::{naive_now, source::site::*, PersonId, };
 
-impl Crud<SiteForm, i32> for Site {
-  fn read(conn: &PgConnection, _site_id: i32) -> Result<Self, Error> {
+impl Crud<SiteForm, i64> for Site {
+  fn read(conn: &PgConnection, _site_id: i64) -> Result<Self, Error> {
     use lemmy_db_schema::schema::site::dsl::*;
     site.first::<Self>(conn)
   }
@@ -13,13 +13,13 @@ impl Crud<SiteForm, i32> for Site {
     insert_into(site).values(new_site).get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, site_id: i32, new_site: &SiteForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, site_id: i64, new_site: &SiteForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::site::dsl::*;
     diesel::update(site.find(site_id))
       .set(new_site)
       .get_result::<Self>(conn)
   }
-  fn delete(conn: &PgConnection, site_id: i32) -> Result<usize, Error> {
+  fn delete(conn: &PgConnection, site_id: i64) -> Result<usize, Error> {
     use lemmy_db_schema::schema::site::dsl::*;
     diesel::delete(site.find(site_id)).execute(conn)
   }

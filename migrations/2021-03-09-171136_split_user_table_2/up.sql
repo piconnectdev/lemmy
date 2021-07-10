@@ -8,8 +8,8 @@ alter sequence user__id_seq rename to person_id_seq;
 
 -- create a new table local_user
 create table local_user (
-  id serial primary key,
-  person_id int references person on update cascade on delete cascade not null,
+  id bigserial primary key,
+  person_id bigint references person on update cascade on delete cascade not null,
   password_encrypted text not null,
   email text unique,
   admin boolean default false not null,

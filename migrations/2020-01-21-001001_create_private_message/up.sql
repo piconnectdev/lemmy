@@ -1,8 +1,8 @@
 -- Creating private message
 create table private_message (
-  id serial primary key,
-  creator_id int references user_ on update cascade on delete cascade not null,
-  recipient_id int references user_ on update cascade on delete cascade not null,
+  id bigserial primary key,
+  creator_id bigint references user_ on update cascade on delete cascade not null,
+  recipient_id bigint references user_ on update cascade on delete cascade not null,
   content text not null,
   deleted boolean default false not null,
   read boolean default false not null,
@@ -73,7 +73,7 @@ create unique index idx_user_mview_id on user_mview (id);
 -- 
 -- create table private_message (
 --   id serial primary key,
---   creator_id int references user_ on update cascade on delete cascade not null,
+--   creator_id bigint references user_ on update cascade on delete cascade not null,
 --   content text not null,
 --   deleted boolean default false not null,
 --   published timestamp not null default now(),
@@ -82,8 +82,8 @@ create unique index idx_user_mview_id on user_mview (id);
 -- 
 -- create table private_message_recipient (
 --   id serial primary key,
---   private_message_id int references private_message on update cascade on delete cascade not null,
---   recipient_id int references user_ on update cascade on delete cascade not null,
+--   private_message_id bigint references private_message on update cascade on delete cascade not null,
+--   recipient_id bigint references user_ on update cascade on delete cascade not null,
 --   read boolean default false not null,
 --   published timestamp not null default now(),
 --   unique(private_message_id, recipient_id)

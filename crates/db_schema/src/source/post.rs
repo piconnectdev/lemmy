@@ -4,6 +4,9 @@ use crate::{
   DbUrl,
   PersonId,
   PostId,
+  PostLikeId,
+  PostSaveId,
+  PostReadId,
 };
 use serde::Serialize;
 
@@ -58,7 +61,7 @@ pub struct PostForm {
 #[belongs_to(Post)]
 #[table_name = "post_like"]
 pub struct PostLike {
-  pub id: i32,
+  pub id: PostLikeId,
   pub post_id: PostId,
   pub person_id: PersonId,
   pub score: i16,
@@ -77,7 +80,7 @@ pub struct PostLikeForm {
 #[belongs_to(Post)]
 #[table_name = "post_saved"]
 pub struct PostSaved {
-  pub id: i32,
+  pub id: PostSaveId,
   pub post_id: PostId,
   pub person_id: PersonId,
   pub published: chrono::NaiveDateTime,
@@ -94,7 +97,7 @@ pub struct PostSavedForm {
 #[belongs_to(Post)]
 #[table_name = "post_read"]
 pub struct PostRead {
-  pub id: i32,
+  pub id: PostReadId,
   pub post_id: PostId,
   pub person_id: PersonId,
   pub published: chrono::NaiveDateTime,

@@ -1944,6 +1944,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "url",
+ "uuid",
 ]
 
 [[package]]
@@ -1957,6 +1958,7 @@ dependencies = [
  "serde",
  "serde_json",
  "url",
+ "uuid",
 ]
 
 [[package]]

@@ -14,13 +14,22 @@ use crate::{
   CommunityId,
   PersonId,
   PostId,
+  ModRemovePostId,
+  ModLockPostId,
+  ModStickyPostId,
+  ModRemoveCommentId,
+  ModRemoveCommunityId,
+  ModBanFromCommunityId,
+  ModAddCommunityId,
+  ModBanId,
+  ModAddId,
 };
 use serde::Serialize;
 
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_remove_post"]
 pub struct ModRemovePost {
-  pub id: i32,
+  pub id: ModRemovePostId,
   pub mod_person_id: PersonId,
   pub post_id: PostId,
   pub reason: Option<String>,
@@ -40,7 +49,7 @@ pub struct ModRemovePostForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_lock_post"]
 pub struct ModLockPost {
-  pub id: i32,
+  pub id: ModLockPostId,
   pub mod_person_id: PersonId,
   pub post_id: PostId,
   pub locked: Option<bool>,
@@ -58,7 +67,7 @@ pub struct ModLockPostForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_sticky_post"]
 pub struct ModStickyPost {
-  pub id: i32,
+  pub id: ModStickyPostId,
   pub mod_person_id: PersonId,
   pub post_id: PostId,
   pub stickied: Option<bool>,
@@ -76,7 +85,7 @@ pub struct ModStickyPostForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_remove_comment"]
 pub struct ModRemoveComment {
-  pub id: i32,
+  pub id: ModRemoveCommentId,
   pub mod_person_id: PersonId,
   pub comment_id: CommentId,
   pub reason: Option<String>,
@@ -96,7 +105,7 @@ pub struct ModRemoveCommentForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_remove_community"]
 pub struct ModRemoveCommunity {
-  pub id: i32,
+  pub id: ModRemoveCommunityId,
   pub mod_person_id: PersonId,
   pub community_id: CommunityId,
   pub reason: Option<String>,
@@ -118,7 +127,7 @@ pub struct ModRemoveCommunityForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_ban_from_community"]
 pub struct ModBanFromCommunity {
-  pub id: i32,
+  pub id: ModBanFromCommunityId,
   pub mod_person_id: PersonId,
   pub other_person_id: PersonId,
   pub community_id: CommunityId,
@@ -142,7 +151,7 @@ pub struct ModBanFromCommunityForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_ban"]
 pub struct ModBan {
-  pub id: i32,
+  pub id: ModBanId,
   pub mod_person_id: PersonId,
   pub other_person_id: PersonId,
   pub reason: Option<String>,
@@ -164,7 +173,7 @@ pub struct ModBanForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_add_community"]
 pub struct ModAddCommunity {
-  pub id: i32,
+  pub id: ModAddCommunityId,
   pub mod_person_id: PersonId,
   pub other_person_id: PersonId,
   pub community_id: CommunityId,
@@ -184,7 +193,7 @@ pub struct ModAddCommunityForm {
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "mod_add"]
 pub struct ModAdd {
-  pub id: i32,
+  pub id: ModAddId,
   pub mod_person_id: PersonId,
   pub other_person_id: PersonId,
   pub removed: Option<bool>,

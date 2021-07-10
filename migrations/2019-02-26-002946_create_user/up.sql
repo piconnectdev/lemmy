@@ -1,5 +1,5 @@
 create table user_ (
-  id serial primary key,
+  id bigserial primary key,
   name varchar(20) not null,
   fedi_name varchar(40) not null,
   preferred_username varchar(20),
@@ -14,8 +14,8 @@ create table user_ (
 );
 
 create table user_ban (
-  id serial primary key,
-  user_id int references user_ on update cascade on delete cascade not null,
+  id bigserial primary key,
+  user_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
   unique (user_id)
 );

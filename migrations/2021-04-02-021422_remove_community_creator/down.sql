@@ -1,6 +1,6 @@
 
 --  Add the column back
-alter table community add column creator_id int references person on update cascade on delete cascade;
+alter table community add column creator_id bigint references person on update cascade on delete cascade;
 
 -- Recreate the index
 create index idx_community_creator on community (creator_id);

@@ -8,7 +8,7 @@ type Jwt = String;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
   /// local_user_id, standard claim by RFC 7519.
-  pub sub: i32,
+  pub sub: i64,
   pub iss: String,
   /// Time when this token was issued as UNIX-timestamp in seconds
   pub iat: i64,
@@ -27,7 +27,7 @@ impl Claims {
     )
   }
 
-  pub fn jwt(local_user_id: i32) -> Result<Jwt, jsonwebtoken::errors::Error> {
+  pub fn jwt(local_user_id: i64) -> Result<Jwt, jsonwebtoken::errors::Error> {
     let my_claims = Claims {
       sub: local_user_id,
       iss: Settings::get().hostname(),

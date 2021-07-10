@@ -1,26 +1,26 @@
 create table comment_report (
-  id            serial    primary key,
-  creator_id    int       references user_ on update cascade on delete cascade not null,   -- user reporting comment
-  comment_id    int       references comment on update cascade on delete cascade not null, -- comment being reported
+  id            bigserial    primary key,
+  creator_id    bigint       references user_ on update cascade on delete cascade not null,   -- user reporting comment
+  comment_id    bigint       references comment on update cascade on delete cascade not null, -- comment being reported
   original_comment_text  text      not null,
   reason        text      not null,
   resolved      bool      not null default false,
-  resolver_id   int       references user_ on update cascade on delete cascade,   -- user resolving report
+  resolver_id   bigint       references user_ on update cascade on delete cascade,   -- user resolving report
   published     timestamp not null default now(),
   updated       timestamp null,
   unique(comment_id, creator_id) -- users should only be able to report a comment once
 );
 
 create table post_report (
-  id            serial    primary key,
-  creator_id    int       references user_ on update cascade on delete cascade not null, -- user reporting post
-  post_id       int       references post on update cascade on delete cascade not null,  -- post being reported
+  id            bigserial    primary key,
+  creator_id    bigint       references user_ on update cascade on delete cascade not null, -- user reporting post
+  post_id       bigint       references post on update cascade on delete cascade not null,  -- post being reported
   original_post_name	  varchar(100) not null,
   original_post_url       text,
   original_post_body      text,
   reason        text      not null,
   resolved      bool      not null default false,
-  resolver_id   int       references user_ on update cascade on delete cascade,   -- user resolving report
+  resolver_id   bigint       references user_ on update cascade on delete cascade,   -- user resolving report
   published     timestamp not null default now(),
   updated       timestamp null,
   unique(post_id, creator_id) -- users should only be able to report a post once

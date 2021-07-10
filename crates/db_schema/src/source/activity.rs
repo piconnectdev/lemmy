@@ -1,11 +1,11 @@
-use crate::{schema::activity, DbUrl};
+use crate::{schema::activity, DbUrl, ActivityId};
 use serde_json::Value;
 use std::fmt::Debug;
 
 #[derive(Queryable, Identifiable, PartialEq, Debug)]
 #[table_name = "activity"]
 pub struct Activity {
-  pub id: i32,
+  pub id: ActivityId,
   pub data: Value,
   pub local: bool,
   pub published: chrono::NaiveDateTime,

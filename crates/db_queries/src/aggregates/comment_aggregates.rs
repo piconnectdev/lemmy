@@ -1,11 +1,11 @@
 use diesel::{result::Error, *};
-use lemmy_db_schema::{schema::comment_aggregates, CommentId};
+use lemmy_db_schema::{schema::comment_aggregates, CommentId, CommentAggregatesId};
 use serde::Serialize;
 
 #[derive(Queryable, Associations, Identifiable, PartialEq, Debug, Serialize, Clone)]
 #[table_name = "comment_aggregates"]
 pub struct CommentAggregates {
-  pub id: i32,
+  pub id: CommentAggregatesId,
   pub comment_id: CommentId,
   pub score: i64,
   pub upvotes: i64,

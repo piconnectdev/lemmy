@@ -3,6 +3,10 @@ use crate::{
   CommunityId,
   DbUrl,
   PersonId,
+  CommunityFollowerId,
+  CommunityModeratorId,
+  CommunityPersonBanId,
+
 };
 use serde::Serialize;
 
@@ -76,7 +80,7 @@ pub struct CommunityForm {
 #[belongs_to(Community)]
 #[table_name = "community_moderator"]
 pub struct CommunityModerator {
-  pub id: i32,
+  pub id: CommunityModeratorId,
   pub community_id: CommunityId,
   pub person_id: PersonId,
   pub published: chrono::NaiveDateTime,
@@ -93,7 +97,7 @@ pub struct CommunityModeratorForm {
 #[belongs_to(Community)]
 #[table_name = "community_person_ban"]
 pub struct CommunityPersonBan {
-  pub id: i32,
+  pub id: CommunityPersonBanId,
   pub community_id: CommunityId,
   pub person_id: PersonId,
   pub published: chrono::NaiveDateTime,
@@ -110,7 +114,7 @@ pub struct CommunityPersonBanForm {
 #[belongs_to(Community)]
 #[table_name = "community_follower"]
 pub struct CommunityFollower {
-  pub id: i32,
+  pub id: CommunityFollowerId,
   pub community_id: CommunityId,
   pub person_id: PersonId,
   pub published: chrono::NaiveDateTime,

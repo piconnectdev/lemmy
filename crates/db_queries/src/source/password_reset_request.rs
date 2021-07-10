@@ -7,8 +7,8 @@ use lemmy_db_schema::{
 };
 use sha2::{Digest, Sha256};
 
-impl Crud<PasswordResetRequestForm, i32> for PasswordResetRequest {
-  fn read(conn: &PgConnection, password_reset_request_id: i32) -> Result<Self, Error> {
+impl Crud<PasswordResetRequestForm, i64> for PasswordResetRequest {
+  fn read(conn: &PgConnection, password_reset_request_id: i64) -> Result<Self, Error> {
     password_reset_request
       .find(password_reset_request_id)
       .first::<Self>(conn)
@@ -20,7 +20,7 @@ impl Crud<PasswordResetRequestForm, i32> for PasswordResetRequest {
   }
   fn update(
     conn: &PgConnection,
-    password_reset_request_id: i32,
+    password_reset_request_id: i64,
     form: &PasswordResetRequestForm,
   ) -> Result<Self, Error> {
     diesel::update(password_reset_request.find(password_reset_request_id))

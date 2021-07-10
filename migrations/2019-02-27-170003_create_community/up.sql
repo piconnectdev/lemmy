@@ -32,37 +32,37 @@ insert into category (name) values
 ('Other');
 
 create table community (
-  id serial primary key,
+  id bigserial primary key,
   name varchar(20) not null unique,
   title varchar(100) not null,
   description text,
   category_id int references category on update cascade on delete cascade not null,
-  creator_id int references user_ on update cascade on delete cascade not null,
+  creator_id bigint references user_ on update cascade on delete cascade not null,
   removed boolean default false not null,
   published timestamp not null default now(),
   updated timestamp
 );
 
 create table community_moderator (
-  id serial primary key,
-  community_id int references community on update cascade on delete cascade not null,
-  user_id int references user_ on update cascade on delete cascade not null,
+  id bigserial primary key,
+  community_id bigint references community on update cascade on delete cascade not null,
+  user_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
   unique (community_id, user_id)
 );
 
 create table community_follower (
-  id serial primary key,
-  community_id int references community on update cascade on delete cascade not null,
-  user_id int references user_ on update cascade on delete cascade not null,
+  id bigserial primary key,
+  community_id bigint references community on update cascade on delete cascade not null,
+  user_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
   unique (community_id, user_id)
 );
 
 create table community_user_ban (
-  id serial primary key,
-  community_id int references community on update cascade on delete cascade not null,
-  user_id int references user_ on update cascade on delete cascade not null,
+  id bigserial primary key,
+  community_id bigint references community on update cascade on delete cascade not null,
+  user_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
   unique (community_id, user_id)
 );
@@ -73,7 +73,7 @@ create table site (
   id serial primary key,
   name varchar(20) not null unique,
   description text,
-  creator_id int references user_ on update cascade on delete cascade not null,
+  creator_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
   updated timestamp
 );

@@ -1,9 +1,19 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_schema::source::moderator::*;
+use lemmy_db_schema::{source::moderator::*,
+  ModRemovePostId,
+  ModLockPostId,
+  ModStickyPostId,
+  ModRemoveCommentId,
+  ModRemoveCommunityId,
+  ModBanFromCommunityId,
+  ModAddCommunityId,
+  ModBanId,
+  ModAddId,  
+};
 
-impl Crud<ModRemovePostForm, i32> for ModRemovePost {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModRemovePostForm, ModRemovePostId> for ModRemovePost {
+  fn read(conn: &PgConnection, from_id: ModRemovePostId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_post::dsl::*;
     mod_remove_post.find(from_id).first::<Self>(conn)
   }
@@ -15,7 +25,7 @@ impl Crud<ModRemovePostForm, i32> for ModRemovePost {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModRemovePostForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: ModRemovePostId, form: &ModRemovePostForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_post::dsl::*;
     diesel::update(mod_remove_post.find(from_id))
       .set(form)
@@ -23,8 +33,8 @@ impl Crud<ModRemovePostForm, i32> for ModRemovePost {
   }
 }
 
-impl Crud<ModLockPostForm, i32> for ModLockPost {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModLockPostForm, ModLockPostId> for ModLockPost {
+  fn read(conn: &PgConnection, from_id: ModLockPostId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_lock_post::dsl::*;
     mod_lock_post.find(from_id).first::<Self>(conn)
   }
@@ -36,7 +46,7 @@ impl Crud<ModLockPostForm, i32> for ModLockPost {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModLockPostForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: ModLockPostId, form: &ModLockPostForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_lock_post::dsl::*;
     diesel::update(mod_lock_post.find(from_id))
       .set(form)
@@ -44,8 +54,8 @@ impl Crud<ModLockPostForm, i32> for ModLockPost {
   }
 }
 
-impl Crud<ModStickyPostForm, i32> for ModStickyPost {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModStickyPostForm, ModStickyPostId> for ModStickyPost {
+  fn read(conn: &PgConnection, from_id: ModStickyPostId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_sticky_post::dsl::*;
     mod_sticky_post.find(from_id).first::<Self>(conn)
   }
@@ -57,7 +67,7 @@ impl Crud<ModStickyPostForm, i32> for ModStickyPost {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModStickyPostForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: ModStickyPostId, form: &ModStickyPostForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_sticky_post::dsl::*;
     diesel::update(mod_sticky_post.find(from_id))
       .set(form)
@@ -65,8 +75,8 @@ impl Crud<ModStickyPostForm, i32> for ModStickyPost {
   }
 }
 
-impl Crud<ModRemoveCommentForm, i32> for ModRemoveComment {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModRemoveCommentForm, ModRemoveCommentId> for ModRemoveComment {
+  fn read(conn: &PgConnection, from_id: ModRemoveCommentId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_comment::dsl::*;
     mod_remove_comment.find(from_id).first::<Self>(conn)
   }
@@ -78,7 +88,7 @@ impl Crud<ModRemoveCommentForm, i32> for ModRemoveComment {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModRemoveCommentForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: ModRemoveCommentId, form: &ModRemoveCommentForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_comment::dsl::*;
     diesel::update(mod_remove_comment.find(from_id))
       .set(form)
@@ -86,8 +96,8 @@ impl Crud<ModRemoveCommentForm, i32> for ModRemoveComment {
   }
 }
 
-impl Crud<ModRemoveCommunityForm, i32> for ModRemoveCommunity {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModRemoveCommunityForm, ModRemoveCommunityId> for ModRemoveCommunity {
+  fn read(conn: &PgConnection, from_id: ModRemoveCommunityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_community::dsl::*;
     mod_remove_community.find(from_id).first::<Self>(conn)
   }
@@ -101,7 +111,7 @@ impl Crud<ModRemoveCommunityForm, i32> for ModRemoveCommunity {
 
   fn update(
     conn: &PgConnection,
-    from_id: i32,
+    from_id: ModRemoveCommunityId,
     form: &ModRemoveCommunityForm,
   ) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_community::dsl::*;
@@ -111,8 +121,8 @@ impl Crud<ModRemoveCommunityForm, i32> for ModRemoveCommunity {
   }
 }
 
-impl Crud<ModBanFromCommunityForm, i32> for ModBanFromCommunity {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModBanFromCommunityForm, ModBanFromCommunityId> for ModBanFromCommunity {
+  fn read(conn: &PgConnection, from_id: ModBanFromCommunityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_ban_from_community::dsl::*;
     mod_ban_from_community.find(from_id).first::<Self>(conn)
   }
@@ -126,7 +136,7 @@ impl Crud<ModBanFromCommunityForm, i32> for ModBanFromCommunity {
 
   fn update(
     conn: &PgConnection,
-    from_id: i32,
+    from_id: ModBanFromCommunityId,
     form: &ModBanFromCommunityForm,
   ) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_ban_from_community::dsl::*;
@@ -136,8 +146,8 @@ impl Crud<ModBanFromCommunityForm, i32> for ModBanFromCommunity {
   }
 }
 
-impl Crud<ModBanForm, i32> for ModBan {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModBanForm, ModBanId> for ModBan {
+  fn read(conn: &PgConnection, from_id: ModBanId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_ban::dsl::*;
     mod_ban.find(from_id).first::<Self>(conn)
   }
@@ -147,7 +157,7 @@ impl Crud<ModBanForm, i32> for ModBan {
     insert_into(mod_ban).values(form).get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModBanForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: ModBanId, form: &ModBanForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_ban::dsl::*;
     diesel::update(mod_ban.find(from_id))
       .set(form)
@@ -155,8 +165,8 @@ impl Crud<ModBanForm, i32> for ModBan {
   }
 }
 
-impl Crud<ModAddCommunityForm, i32> for ModAddCommunity {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModAddCommunityForm, ModAddCommunityId> for ModAddCommunity {
+  fn read(conn: &PgConnection, from_id: ModAddCommunityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_add_community::dsl::*;
     mod_add_community.find(from_id).first::<Self>(conn)
   }
@@ -168,7 +178,7 @@ impl Crud<ModAddCommunityForm, i32> for ModAddCommunity {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModAddCommunityForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: ModAddCommunityId, form: &ModAddCommunityForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_add_community::dsl::*;
     diesel::update(mod_add_community.find(from_id))
       .set(form)
@@ -176,8 +186,8 @@ impl Crud<ModAddCommunityForm, i32> for ModAddCommunity {
   }
 }
 
-impl Crud<ModAddForm, i32> for ModAdd {
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+impl Crud<ModAddForm, ModAddId> for ModAdd {
+  fn read(conn: &PgConnection, from_id: ModAddId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_add::dsl::*;
     mod_add.find(from_id).first::<Self>(conn)
   }
@@ -187,7 +197,7 @@ impl Crud<ModAddForm, i32> for ModAdd {
     insert_into(mod_add).values(form).get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModAddForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: ModAddId, form: &ModAddForm) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_add::dsl::*;
     diesel::update(mod_add.find(from_id))
       .set(form)

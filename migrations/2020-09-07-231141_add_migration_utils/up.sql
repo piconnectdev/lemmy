@@ -2,7 +2,7 @@ create schema utils;
 
 create table utils.deps_saved_ddl
 (
-  id serial NOT NULL,
+  id bigserial NOT NULL,
   view_schema character varying(255),
   view_name character varying(255),
   ddl_to_run text,

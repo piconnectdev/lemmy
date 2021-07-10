@@ -5,6 +5,8 @@ use crate::{
   DbUrl,
   PersonId,
   PostId,
+  CommentLikeId,
+  CommentSavedId,
 };
 use serde::Serialize;
 
@@ -71,7 +73,7 @@ pub struct CommentForm {
 #[belongs_to(Comment)]
 #[table_name = "comment_like"]
 pub struct CommentLike {
-  pub id: i32,
+  pub id: CommentLikeId,
   pub person_id: PersonId,
   pub comment_id: CommentId,
   pub post_id: PostId, // TODO this is redundant
@@ -92,7 +94,7 @@ pub struct CommentLikeForm {
 #[belongs_to(Comment)]
 #[table_name = "comment_saved"]
 pub struct CommentSaved {
-  pub id: i32,
+  pub id: CommentSavedId,
   pub comment_id: CommentId,
   pub person_id: PersonId,
   pub published: chrono::NaiveDateTime,

@@ -19,7 +19,7 @@ pub(crate) async fn get_apub_comment(
   info: Path<CommentQuery>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse<Body>, LemmyError> {
-  let id = CommentId(info.comment_id.parse::<i32>()?);
+  let id = CommentId(info.comment_id.parse::<i64>()?);
   let comment = blocking(context.pool(), move |conn| Comment::read(conn, id)).await??;
   if !comment.local {
     return Err(NotFound.into());

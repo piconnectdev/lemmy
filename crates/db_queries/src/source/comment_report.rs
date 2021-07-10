@@ -4,9 +4,10 @@ use lemmy_db_schema::{
   naive_now,
   source::comment_report::{CommentReport, CommentReportForm},
   PersonId,
+  CommentReportId,
 };
 
-impl Reportable<CommentReportForm> for CommentReport {
+impl Reportable<CommentReportForm, CommentReportId> for CommentReport {
   /// creates a comment report and returns it
   ///
   /// * `conn` - the postgres connection
@@ -25,7 +26,7 @@ impl Reportable<CommentReportForm> for CommentReport {
   /// * `by_resolver_id` - the id of the user resolving the report
   fn resolve(
     conn: &PgConnection,
-    report_id: i32,
+    report_id: CommentReportId,
     by_resolver_id: PersonId,
   ) -> Result<usize, Error> {
     use lemmy_db_schema::schema::comment_report::dsl::*;
@@ -45,7 +46,7 @@ impl Reportable<CommentReportForm> for CommentReport {
   /// * `by_resolver_id` - the id of the user unresolving the report
   fn unresolve(
     conn: &PgConnection,
-    report_id: i32,
+    report_id: CommentReportId,
     by_resolver_id: PersonId,
   ) -> Result<usize, Error> {
     use lemmy_db_schema::schema::comment_report::dsl::*;

@@ -4,7 +4,7 @@ use serde::Serialize;
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone, Serialize)]
 #[table_name = "site"]
 pub struct Site {
-  pub id: i32,
+  pub id: i64,
   pub name: String,
   pub sidebar: Option<String>,
   pub creator_id: PersonId,

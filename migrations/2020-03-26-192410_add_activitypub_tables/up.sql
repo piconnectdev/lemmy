@@ -1,8 +1,8 @@
 -- The Activitypub activity table
 -- All user actions must create a row here.
 create table activity (
-  id serial primary key,
-  user_id int references user_ on update cascade on delete cascade not null, -- Ensures that the user is set up here.
+  id bigserial primary key,
+  user_id bigint references user_ on update cascade on delete cascade not null, -- Ensures that the user is set up here.
   data jsonb not null,
   local boolean not null default true,
   published timestamp not null default now(),

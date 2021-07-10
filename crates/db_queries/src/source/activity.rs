@@ -1,6 +1,6 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, sql_types::Text, *};
-use lemmy_db_schema::{source::activity::*, DbUrl};
+use lemmy_db_schema::{source::activity::*, DbUrl, ActivityId};
 use log::debug;
 use serde::Serialize;
 use serde_json::Value;
@@ -9,8 +9,8 @@ use std::{
   io::{Error as IoError, ErrorKind},
 };
 
-impl Crud<ActivityForm, i32> for Activity {
-  fn read(conn: &PgConnection, activity_id: i32) -> Result<Self, Error> {
+impl Crud<ActivityForm, ActivityId> for Activity {
+  fn read(conn: &PgConnection, activity_id: ActivityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::activity::dsl::*;
     activity.find(activity_id).first::<Self>(conn)
   }
@@ -24,7 +24,7 @@ impl Crud<ActivityForm, i32> for Activity {
 
   fn update(
     conn: &PgConnection,
-    activity_id: i32,
+    activity_id: ActivityId,
     new_activity: &ActivityForm,
   ) -> Result<Self, Error> {
     use lemmy_db_schema::schema::activity::dsl::*;
@@ -32,7 +32,7 @@ impl Crud<ActivityForm, i32> for Activity {
       .set(new_activity)
       .get_result::<Self>(conn)
   }
-  fn delete(conn: &PgConnection, activity_id: i32) -> Result<usize, Error> {
+  fn delete(conn: &PgConnection, activity_id: ActivityId) -> Result<usize, Error> {
     use lemmy_db_schema::schema::activity::dsl::*;
     diesel::delete(activity.find(activity_id)).execute(conn)
   }

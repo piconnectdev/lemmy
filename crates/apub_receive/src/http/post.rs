@@ -19,7 +19,7 @@ pub(crate) async fn get_apub_post(
   info: web::Path<PostQuery>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse<Body>, LemmyError> {
-  let id = PostId(info.post_id.parse::<i32>()?);
+  let id = PostId(info.post_id.parse::<i64>()?);
   let post = blocking(context.pool(), move |conn| Post::read(conn, id)).await??;
   if !post.local {
     return Err(NotFound.into());
