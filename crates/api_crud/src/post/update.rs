@@ -7,7 +7,7 @@ use lemmy_db_schema::{naive_now, source::post::*};
 use lemmy_db_views::post_view::PostView;
 use lemmy_utils::{
   request::fetch_iframely_and_pictrs_data,
-  utils::{check_slurs_opt, is_valid_post_title},
+  utils::{check_slurs_opt, clean_url_params, is_valid_post_title},
   ApiError,
   ConnectionId,
   LemmyError,
@@ -23,7 +23,7 @@ impl PerformCrud for EditPost {
     context: &Data<LemmyContext>,
     websocket_id: Option<ConnectionId>,
   ) -> Result<PostResponse, LemmyError> {
-    let data: &EditPost = &self;
+    let data: &EditPost = self;
     let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
     check_slurs_opt(&data.name)?;
@@ -59,7 +59,7 @@ impl PerformCrud for EditPost {
       creator_id: orig_post.creator_id.to_owned(),
       community_id: orig_post.community_id,
       name: data.name.to_owned().unwrap_or(orig_post.name),
-      url: data_url.map(|u| u.to_owned().into()),
+      url: data_url.map(|u| clean_url_params(u.to_owned()).into()),
       body: data.body.to_owned(),
       nsfw: data.nsfw,
       updated: Some(naive_now()),

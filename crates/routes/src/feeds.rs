@@ -88,10 +88,10 @@ async fn get_feed_data(
   listing_type: ListingType,
   sort_type: SortType,
 ) -> Result<HttpResponse, LemmyError> {
-  let site_view = blocking(context.pool(), move |conn| SiteView::read(&conn)).await??;
+  let site_view = blocking(context.pool(), move |conn| SiteView::read(conn)).await??;
 
   let posts = blocking(context.pool(), move |conn| {
-    PostQueryBuilder::create(&conn)
+    PostQueryBuilder::create(conn)
       .listing_type(listing_type)
       .sort(sort_type)
       .list()
@@ -124,11 +124,14 @@ async fn get_feed_data(
 }
 
 async fn get_feed(
-  web::Path((req_type, param)): web::Path<(String, String)>,
+  req: HttpRequest,
   info: web::Query<Params>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error> {
   let sort_type = get_sort_type(info).map_err(ErrorBadRequest)?;
+
+  let req_type: String = req.match_info().get("type").unwrap_or("none").parse()?;
+  let param: String = req.match_info().get("name").unwrap_or("none").parse()?;
 
   let request_type = match req_type.as_str() {
     "u" => RequestType::User,
@@ -169,10 +172,10 @@ fn get_feed_user(
   sort_type: &SortType,
   user_name: String,
 ) -> Result<ChannelBuilder, LemmyError> {
-  let site_view = SiteView::read(&conn)?;
-  let person = Person::find_by_name(&conn, &user_name)?;
+  let site_view = SiteView::read(conn)?;
+  let person = Person::find_by_name(conn, &user_name)?;
 
-  let posts = PostQueryBuilder::create(&conn)
+  let posts = PostQueryBuilder::create(conn)
     .listing_type(ListingType::All)
     .sort(*sort_type)
     .creator_id(person.id)
@@ -195,10 +198,10 @@ fn get_feed_community(
   sort_type: &SortType,
   community_name: String,
 ) -> Result<ChannelBuilder, LemmyError> {
-  let site_view = SiteView::read(&conn)?;
-  let community = Community::read_from_name(&conn, &community_name)?;
+  let site_view = SiteView::read(conn)?;
+  let community = Community::read_from_name(conn, &community_name)?;
 
-  let posts = PostQueryBuilder::create(&conn)
+  let posts = PostQueryBuilder::create(conn)
     .listing_type(ListingType::All)
     .sort(*sort_type)
     .community_id(community.id)
@@ -225,14 +228,14 @@ fn get_feed_front(
   sort_type: &SortType,
   jwt: String,
 ) -> Result<ChannelBuilder, LemmyError> {
-  let site_view = SiteView::read(&conn)?;
+  let site_view = SiteView::read(conn)?;
   let local_user_id = LocalUserId(Claims::decode(&jwt)?.claims.sub);
-  let local_user = LocalUser::read(&conn, local_user_id)?;
+  let local_user = LocalUser::read(conn, local_user_id)?;
   let person_id = local_user.person_id;
   let show_bot_accounts = local_user.show_bot_accounts;
   let show_read_posts = local_user.show_read_posts;
 
-  let posts = PostQueryBuilder::create(&conn)
+  let posts = PostQueryBuilder::create(conn)
     .listing_type(ListingType::Subscribed)
     .my_person_id(person_id)
     .show_bot_accounts(show_bot_accounts)
@@ -257,22 +260,22 @@ fn get_feed_front(
 }
 
 fn get_feed_inbox(conn: &PgConnection, jwt: String) -> Result<ChannelBuilder, LemmyError> {
-  let site_view = SiteView::read(&conn)?;
+  let site_view = SiteView::read(conn)?;
   let local_user_id = LocalUserId(Claims::decode(&jwt)?.claims.sub);
-  let local_user = LocalUser::read(&conn, local_user_id)?;
+  let local_user = LocalUser::read(conn, local_user_id)?;
   let person_id = local_user.person_id;
   let show_bot_accounts = local_user.show_bot_accounts;
 
   let sort = SortType::New;
 
-  let replies = CommentQueryBuilder::create(&conn)
+  let replies = CommentQueryBuilder::create(conn)
     .recipient_id(person_id)
     .my_person_id(person_id)
     .show_bot_accounts(show_bot_accounts)
     .sort(sort)
     .list()?;
 
-  let mentions = PersonMentionQueryBuilder::create(&conn)
+  let mentions = PersonMentionQueryBuilder::create(conn)
     .recipient_id(person_id)
     .my_person_id(person_id)
     .sort(sort)
