@@ -66,7 +66,7 @@ impl PostView {
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
     // The left join below will return None in this case
-    let person_id_join = my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = my_person_id.unwrap();
 
     let (
       post,
@@ -266,7 +266,7 @@ impl<'a> PostQueryBuilder<'a> {
     use diesel::dsl::*;
 
     // The left join below will return None in this case
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = self.my_person_id.unwrap();
 
     let mut query = post::table
       .inner_join(person::table)

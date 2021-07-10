@@ -70,7 +70,7 @@ impl PersonMentionView {
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
     // The left join below will return None in this case
-    let person_id_join = my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = my_person_id.unwrap();
 
     let (
       person_mention,
@@ -208,7 +208,7 @@ impl<'a> PersonMentionQueryBuilder<'a> {
     use diesel::dsl::*;
 
     // The left join below will return None in this case
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = self.my_person_id.unwrap();
 
     let mut query = person_mention::table
       .inner_join(comment::table)

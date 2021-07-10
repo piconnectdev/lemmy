@@ -49,7 +49,7 @@ update site_aggregates
 set users_active_half_year = (select * from site_aggregates_activity('6 months'));
 
 create or replace function community_aggregates_activity(i text)
-returns table(count_ bigint, community_id_ bigint)
+returns table(count_ bigint, community_id_ uuid)
 language plpgsql
 as
 $$

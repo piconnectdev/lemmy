@@ -1,7 +1,7 @@
 -- Add post aggregates
 create table post_aggregates (
   id bigserial primary key,
-  post_id bigint references post on update cascade on delete cascade not null,
+  post_id uuid references post on update cascade on delete cascade not null,
   comments bigint not null default 0,
   score bigint not null default 0,
   upvotes bigint not null default 0,

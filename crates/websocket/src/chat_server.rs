@@ -32,6 +32,7 @@ use std::{
   str::FromStr,
 };
 use tokio::macros::support::Pin;
+use uuid::Uuid;
 
 type MessageHandlerType = fn(
   context: LemmyContext,
@@ -375,7 +376,7 @@ impl ChatServer {
     self.send_community_room_message(
       user_operation,
       &comment_post_sent,
-      CommunityId(0),
+      CommunityId(Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()),
       websocket_id,
     )?;
     self.send_community_room_message(
@@ -414,7 +415,7 @@ impl ChatServer {
     post_sent.post_view.my_vote = None;
 
     // Send it to /c/all and that community
-    self.send_community_room_message(user_operation, &post_sent, CommunityId(0), websocket_id)?;
+    self.send_community_room_message(user_operation, &post_sent, CommunityId(Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()), websocket_id)?;
     self.send_community_room_message(user_operation, &post_sent, community_id, websocket_id)?;
 
     // Send it to the post room

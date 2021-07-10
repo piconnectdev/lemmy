@@ -4,8 +4,8 @@ alter table post add column stickied boolean default false not null;
 -- Add the mod table
 create table mod_sticky_post (
   id bigserial primary key,
-  mod_user_id bigint references user_ on update cascade on delete cascade not null,
-  post_id bigint references post on update cascade on delete cascade not null,
+  mod_user_id uuid references user_ on update cascade on delete cascade not null,
+  post_id uuid references post on update cascade on delete cascade not null,
   stickied boolean default true,
   when_ timestamp not null default now()
 );

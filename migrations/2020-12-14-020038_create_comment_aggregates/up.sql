@@ -1,7 +1,7 @@
 -- Add comment aggregates
 create table comment_aggregates (
   id bigserial primary key,
-  comment_id bigint references comment on update cascade on delete cascade not null,
+  comment_id uuid references comment on update cascade on delete cascade not null,
   score bigint not null default 0,
   upvotes bigint not null default 0,
   downvotes bigint not null default 0,

@@ -72,7 +72,7 @@ impl CommentView {
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
     // The left join below will return None in this case
-    let person_id_join = my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = my_person_id.unwrap();
 
     let (
       comment,
@@ -283,7 +283,7 @@ impl<'a> CommentQueryBuilder<'a> {
     use diesel::dsl::*;
 
     // The left join below will return None in this case
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = self.my_person_id.unwrap();
 
     let mut query = comment::table
       .inner_join(person::table)

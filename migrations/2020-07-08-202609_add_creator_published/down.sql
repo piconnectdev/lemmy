@@ -319,16 +319,16 @@ select
 	pav.*,
 	us.id as user_id,
 	us.user_vote as my_vote,
-	us.is_subbed::bool as subscribed,
-	us.is_read::bool as read,
-	us.is_saved::bool as saved
+	us.is_subbed is null as subscribed,
+	us.is_read is null as read,
+	us.is_saved is null as saved
 from post_aggregates_view pav
 cross join lateral (
 	select
 		u.id,
-		coalesce(cf.community_id::integer, 0) as is_subbed,
-		coalesce(pr.post_id::integer, 0) as is_read,
-		coalesce(ps.post_id::integer, 0) as is_saved,
+		coalesce(cf.community_id, null) as is_subbed,
+		coalesce(pr.post_id, null) as is_read,
+		coalesce(ps.post_id, null) as is_saved,
 		coalesce(pl.score, 0) as user_vote
 	from user_ u
 	left join community_user_ban cb on u.id = cb.user_id and cb.community_id = pav.community_id
@@ -357,16 +357,16 @@ select
 	pav.*,
 	us.id as user_id,
 	us.user_vote as my_vote,
-	us.is_subbed::bool as subscribed,
-	us.is_read::bool as read,
-	us.is_saved::bool as saved
+	us.is_subbed is null as subscribed,
+	us.is_read is null as read,
+	us.is_saved is null as saved
 from post_aggregates_fast pav
 cross join lateral (
 	select
 		u.id,
-		coalesce(cf.community_id::integer, 0) as is_subbed,
-		coalesce(pr.post_id::integer, 0) as is_read,
-		coalesce(ps.post_id::integer, 0) as is_saved,
+		coalesce(cf.community_id, null) as is_subbed,
+		coalesce(pr.post_id, null) as is_read,
+		coalesce(ps.post_id, null) as is_saved,
 		coalesce(pl.score, 0) as user_vote
 	from user_ u
 	left join community_user_ban cb on u.id = cb.user_id and cb.community_id = pav.community_id

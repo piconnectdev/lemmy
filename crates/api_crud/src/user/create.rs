@@ -36,6 +36,7 @@ use lemmy_utils::{
   LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
+use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for Register {
@@ -163,7 +164,7 @@ impl PerformCrud for Register {
 
     // Create the main community if it doesn't exist
     let main_community = match blocking(context.pool(), move |conn| {
-      Community::read(conn, CommunityId(2))
+      Community::read(conn, CommunityId(Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()))
     })
     .await?
     {

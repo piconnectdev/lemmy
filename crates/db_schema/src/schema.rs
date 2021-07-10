@@ -1,6 +1,6 @@
 table! {
     activity (id) {
-        id -> BigInt,
+        id -> Uuid,
         data -> Jsonb,
         local -> Bool,
         published -> Timestamp,
@@ -12,10 +12,10 @@ table! {
 
 table! {
     comment (id) {
-        id -> BigInt,
-        creator_id -> Int8,
-        post_id -> Int8,
-        parent_id -> Nullable<Int8>,
+        id -> Uuid,
+        creator_id -> Uuid,
+        post_id -> Uuid,
+        parent_id -> Nullable<Uuid>,
         content -> Text,
         removed -> Bool,
         read -> Bool,
@@ -30,7 +30,7 @@ table! {
 table! {
     comment_aggregates (id) {
         id -> BigInt,
-        comment_id -> Int8,
+        comment_id -> Uuid,
         score -> Int8,
         upvotes -> Int8,
         downvotes -> Int8,
@@ -41,9 +41,9 @@ table! {
 table! {
     comment_like (id) {
         id -> BigInt,
-        person_id -> Int8,
-        comment_id -> Int8,
-        post_id -> Int8,
+        person_id -> Uuid,
+        comment_id -> Uuid,
+        post_id -> Uuid,
         score -> Int2,
         published -> Timestamp,
     }
@@ -52,12 +52,12 @@ table! {
 table! {
     comment_report (id) {
         id -> BigInt,
-        creator_id -> Int8,
-        comment_id -> Int8,
+        creator_id -> Uuid,
+        comment_id -> Uuid,
         original_comment_text -> Text,
         reason -> Text,
         resolved -> Bool,
-        resolver_id -> Nullable<Int8>,
+        resolver_id -> Nullable<Uuid>,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
     }
@@ -66,15 +66,15 @@ table! {
 table! {
     comment_saved (id) {
         id -> Int4,
-        comment_id -> Int8,
-        person_id -> Int8,
+        comment_id -> Uuid,
+        person_id -> Uuid,
         published -> Timestamp,
     }
 }
 
 table! {
     community (id) {
-        id -> BigInt,
+        id -> Uuid,
         name -> Varchar,
         title -> Varchar,
         description -> Nullable<Text>,
@@ -99,7 +99,7 @@ table! {
 table! {
     community_aggregates (id) {
         id -> BigInt,
-        community_id -> Int8,
+        community_id -> Uuid,
         subscribers -> Int8,
         posts -> Int8,
         comments -> Int8,
@@ -114,8 +114,8 @@ table! {
 table! {
     community_follower (id) {
         id -> BigInt,
-        community_id -> Int8,
-        person_id -> Int8,
+        community_id -> Uuid,
+        person_id -> Uuid,
         published -> Timestamp,
         pending -> Nullable<Bool>,
     }
@@ -123,9 +123,9 @@ table! {
 
 table! {
     community_moderator (id) {
-        id -> BigInt,
-        community_id -> Int8,
-        person_id -> Int8,
+        id -> Uuid,
+        community_id -> Uuid,
+        person_id -> Uuid,
         published -> Timestamp,
     }
 }
@@ -133,16 +133,16 @@ table! {
 table! {
     community_person_ban (id) {
         id -> Int4,
-        community_id -> Int8,
-        person_id -> Int8,
+        community_id -> Uuid,
+        person_id -> Uuid,
         published -> Timestamp,
     }
 }
 
 table! {
     local_user (id) {
-        id -> BigInt,
-        person_id -> Int8,
+        id -> Uuid,
+        person_id -> Uuid,
         password_encrypted -> Text,
         email -> Nullable<Text>,
         show_nsfw -> Bool,
@@ -162,8 +162,8 @@ table! {
 table! {
     mod_add (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        other_person_id -> Int8,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
         removed -> Nullable<Bool>,
         when_ -> Timestamp,
     }
@@ -172,9 +172,9 @@ table! {
 table! {
     mod_add_community (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        other_person_id -> Int8,
-        community_id -> Int8,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        community_id -> Uuid,
         removed -> Nullable<Bool>,
         when_ -> Timestamp,
     }
@@ -183,8 +183,8 @@ table! {
 table! {
     mod_ban (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        other_person_id -> Int8,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
         reason -> Nullable<Text>,
         banned -> Nullable<Bool>,
         expires -> Nullable<Timestamp>,
@@ -195,9 +195,9 @@ table! {
 table! {
     mod_ban_from_community (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        other_person_id -> Int8,
-        community_id -> Int8,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        community_id -> Uuid,
         reason -> Nullable<Text>,
         banned -> Nullable<Bool>,
         expires -> Nullable<Timestamp>,
@@ -208,8 +208,8 @@ table! {
 table! {
     mod_lock_post (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        post_id -> Int8,
+        mod_person_id -> Uuid,
+        post_id -> Uuid,
         locked -> Nullable<Bool>,
         when_ -> Timestamp,
     }
@@ -218,8 +218,8 @@ table! {
 table! {
     mod_remove_comment (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        comment_id -> Int8,
+        mod_person_id -> Uuid,
+        comment_id -> Uuid,
         reason -> Nullable<Text>,
         removed -> Nullable<Bool>,
         when_ -> Timestamp,
@@ -229,8 +229,8 @@ table! {
 table! {
     mod_remove_community (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        community_id -> Int8,
+        mod_person_id -> Uuid,
+        community_id -> Uuid,
         reason -> Nullable<Text>,
         removed -> Nullable<Bool>,
         expires -> Nullable<Timestamp>,
@@ -241,8 +241,8 @@ table! {
 table! {
     mod_remove_post (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        post_id -> Int8,
+        mod_person_id -> Uuid,
+        post_id -> Uuid,
         reason -> Nullable<Text>,
         removed -> Nullable<Bool>,
         when_ -> Timestamp,
@@ -252,8 +252,8 @@ table! {
 table! {
     mod_sticky_post (id) {
         id -> BigInt,
-        mod_person_id -> Int8,
-        post_id -> Int8,
+        mod_person_id -> Uuid,
+        post_id -> Uuid,
         stickied -> Nullable<Bool>,
         when_ -> Timestamp,
     }
@@ -264,13 +264,13 @@ table! {
         id -> BigInt,
         token_encrypted -> Text,
         published -> Timestamp,
-        local_user_id -> Int8,
+        local_user_id -> Uuid,
     }
 }
 
 table! {
     person (id) {
-        id -> BigInt,
+        id -> Uuid,
         name -> Varchar,
         display_name -> Nullable<Varchar>,
         avatar -> Nullable<Varchar>,
@@ -296,7 +296,7 @@ table! {
 table! {
     person_aggregates (id) {
         id -> BigInt,
-        person_id -> Int8,
+        person_id -> Uuid,
         post_count -> Int8,
         post_score -> Int8,
         comment_count -> Int8,
@@ -307,7 +307,7 @@ table! {
 table! {
     person_ban (id) {
         id -> Int4,
-        person_id -> Int8,
+        person_id -> Uuid,
         published -> Timestamp,
     }
 }
@@ -315,8 +315,8 @@ table! {
 table! {
     person_mention (id) {
         id -> BigInt,
-        recipient_id -> Int8,
-        comment_id -> Int8,
+        recipient_id -> Uuid,
+        comment_id -> Uuid,
         read -> Bool,
         published -> Timestamp,
     }
@@ -324,12 +324,12 @@ table! {
 
 table! {
     post (id) {
-        id -> BigInt,
+        id -> Uuid,
         name -> Varchar,
         url -> Nullable<Varchar>,
         body -> Nullable<Text>,
-        creator_id -> Int8,
-        community_id -> Int8,
+        creator_id -> Uuid,
+        community_id -> Uuid,
         removed -> Bool,
         locked -> Bool,
         published -> Timestamp,
@@ -349,7 +349,7 @@ table! {
 table! {
     post_aggregates (id) {
         id -> BigInt,
-        post_id -> Int8,
+        post_id -> Uuid,
         comments -> Int8,
         score -> Int8,
         upvotes -> Int8,
@@ -364,8 +364,8 @@ table! {
 table! {
     post_like (id) {
         id -> BigInt,
-        post_id -> Int8,
-        person_id -> Int8,
+        post_id -> Uuid,
+        person_id -> Uuid,
         score -> Int2,
         published -> Timestamp,
     }
@@ -374,8 +374,8 @@ table! {
 table! {
     post_read (id) {
         id -> BigInt,
-        post_id -> Int8,
-        person_id -> Int8,
+        post_id -> Uuid,
+        person_id -> Uuid,
         published -> Timestamp,
     }
 }
@@ -383,14 +383,14 @@ table! {
 table! {
     post_report (id) {
         id -> BigInt,
-        creator_id -> Int8,
-        post_id -> Int8,
+        creator_id -> Uuid,
+        post_id -> Uuid,
         original_post_name -> Varchar,
         original_post_url -> Nullable<Text>,
         original_post_body -> Nullable<Text>,
         reason -> Text,
         resolved -> Bool,
-        resolver_id -> Nullable<Int8>,
+        resolver_id -> Nullable<Uuid>,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
     }
@@ -399,17 +399,17 @@ table! {
 table! {
     post_saved (id) {
         id -> Int4,
-        post_id -> Int8,
-        person_id -> Int8,
+        post_id -> Uuid,
+        person_id -> Uuid,
         published -> Timestamp,
     }
 }
 
 table! {
     private_message (id) {
-        id -> BigInt,
-        creator_id -> Int8,
-        recipient_id -> Int8,
+        id -> Uuid,
+        creator_id -> Uuid,
+        recipient_id -> Uuid,
         content -> Text,
         deleted -> Bool,
         read -> Bool,
@@ -425,7 +425,7 @@ table! {
         id -> BigInt,
         name -> Varchar,
         sidebar -> Nullable<Text>,
-        creator_id -> Int8,
+        creator_id -> Uuid,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
         enable_downvotes -> Bool,
@@ -456,10 +456,10 @@ table! {
 // These are necessary since diesel doesn't have self joins / aliases
 table! {
     comment_alias_1 (id) {
-        id -> BigInt,
-        creator_id -> Int8,
-        post_id -> Int8,
-        parent_id -> Nullable<Int8>,
+        id -> Uuid,
+        creator_id -> Uuid,
+        post_id -> Uuid,
+        parent_id -> Nullable<Uuid>,
         content -> Text,
         removed -> Bool,
         read -> Bool,
@@ -473,7 +473,7 @@ table! {
 
 table! {
     person_alias_1 (id) {
-        id -> BigInt,
+        id -> Uuid,
         name -> Varchar,
         display_name -> Nullable<Varchar>,
         avatar -> Nullable<Varchar>,
@@ -498,7 +498,7 @@ table! {
 
 table! {
     person_alias_2 (id) {
-        id -> BigInt,
+        id -> Uuid,
         name -> Varchar,
         display_name -> Nullable<Varchar>,
         avatar -> Nullable<Varchar>,
