@@ -19,7 +19,6 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{env, env::VarError};
 use url::Url;
-use uuid::Uuid;
 
 pub mod aggregates;
 pub mod source;

@@ -1,21 +1,13 @@
 use crate::{community_moderator_view::CommunityModeratorView, person_view::PersonViewSafe};
 use diesel::{result::Error, *};
 use lemmy_db_queries::{
-  aggregates::community_aggregates::CommunityAggregates,
-  functions::hot_rank,
-  fuzzy_search,
-  limit_and_offset,
-  ListingType,
-  MaybeOptional,
-  SortType,
-  ToSafe,
-  ViewToVec,
+  aggregates::community_aggregates::CommunityAggregates, functions::hot_rank, fuzzy_search,
+  limit_and_offset, ListingType, MaybeOptional, SortType, ToSafe, ViewToVec,
 };
 use lemmy_db_schema::{
   schema::{community, community_aggregates, community_follower},
   source::community::{Community, CommunityFollower, CommunitySafe},
-  CommunityId,
-  PersonId,
+  CommunityId, PersonId,
 };
 use serde::Serialize;
 
@@ -39,7 +31,11 @@ impl CommunityView {
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
     // The left join below will return None in this case
-    let person_id_join = my_person_id.unwrap_or(PersonId(-1));
+    //let person_id_join = my_person_id.unwrap_or(PersonId(
+    //  Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+    //));
+
+    let person_id_join = my_person_id.unwrap();
 
     let (community, counts, follower) = community::table
       .find(community_id)
@@ -154,7 +150,7 @@ impl<'a> CommunityQueryBuilder<'a> {
 
   pub fn list(self) -> Result<Vec<CommunityView>, Error> {
     // The left join below will return None in this case
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(-1));
+    let person_id_join = self.my_person_id.unwrap();
 
     let mut query = community::table
       .inner_join(community_aggregates::table)
