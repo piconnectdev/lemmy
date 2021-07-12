@@ -18,6 +18,10 @@ impl Default for Settings {
       pictrs_url: Some("http://pictrs:8080".into()),
       iframely_url: Some("http://iframely".into()),
       additional_slurs: None,
+      pi_key: Some("changeme".into()),
+      pi_api_host: Some("https://api.minepi.com/v2".into()),
+      pi_testnet: Some(true),
+      pi_horizon_host: Some("https://api.testnet.minepi.com/".into()),
     }
   }
 }
@@ -25,11 +29,11 @@ impl Default for Settings {
 impl Default for DatabaseConfig {
   fn default() -> Self {
     Self {
-      user: Some("lemmy".to_string()),
+      user: Some("wepi".to_string()),
       password: "password".into(),
       host: "localhost".into(),
       port: Some(5432),
-      database: Some("lemmy".to_string()),
+      database: Some("wepi".to_string()),
       pool_size: Some(5),
     }
   }
