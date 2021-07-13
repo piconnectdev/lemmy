@@ -7,28 +7,27 @@ use lemmy_db_views_actor::{
 };
 use serde::{Deserialize, Serialize};
 
-
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct PiApprove {
   pub paymentid: String,
   pub username: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct PiResponse {
   pub paymentid: String,
   pub username: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct PiTip {
+  pub txid: String,
   pub username: String,
   pub paymentid: String,
   pub auth: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct PiTipResponse {
   pub paymentid: String,
 }
-

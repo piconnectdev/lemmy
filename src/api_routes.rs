@@ -1,6 +1,8 @@
 use actix_web::{error::ErrorBadRequest, *};
 use lemmy_api::Perform;
-use lemmy_api_common::{comment::*, community::*, person::*, post::*, site::*, websocket::*};
+use lemmy_api_common::{
+  comment::*, community::*, person::*, pipayment::*, post::*, site::*, websocket::*,
+};
 use lemmy_api_crud::PerformCrud;
 use lemmy_utils::rate_limit::RateLimit;
 use lemmy_websocket::{routes::chat_route, LemmyContext};
@@ -193,6 +195,13 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
         web::resource("/admin/add")
           .wrap(rate_limit.message())
           .route(web::post().to(route_post::<AddAdmin>)),
+      )
+      // Pi Payment
+      .service(
+        web::scope("/pi")
+          .wrap(rate_limit.message())
+          .route("/approve", web::post().to(route_post_crud::<PiApprove>))
+          .route("/tip", web::post().to(route_post_crud::<PiTip>)),
       ),
   );
 }

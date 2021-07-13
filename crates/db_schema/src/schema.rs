@@ -520,9 +520,10 @@ table! {
         bot_account -> Bool,
     }
 }
+
 /*
 table! {
-    payment (id) {
+    pipayment (id) {
         id -> BigInt,
         person_id -> Option<Int8>,
         payment_id -> Uuid,
@@ -539,13 +540,14 @@ table! {
         developer_completed -> Bool,
         cancelled -> Bool,
         user_cancelled -> Bool,
-        tx_verified: bool,
+        tx_verified: Bool,
         tx_link -> Text,
         tx_id -> Nullable<Text>,
         payment_dto -> Jsonb,
     }
 }
 */
+
 joinable!(comment_alias_1 -> person_alias_1 (creator_id));
 joinable!(comment -> comment_alias_1 (parent_id));
 joinable!(person_mention -> person_alias_1 (recipient_id));

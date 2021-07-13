@@ -6,6 +6,7 @@ extern crate strum_macros;
 pub mod apub;
 pub mod claims;
 pub mod email;
+pub mod pipayment;
 pub mod rate_limit;
 pub mod request;
 pub mod settings;
@@ -99,3 +100,5 @@ lazy_static! {
   ))
   .expect("compile webfinger regex");
 }
+
+

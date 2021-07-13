@@ -1,4 +1,4 @@
-use crate::{PaymentId, PersonId, PiPaymentId, PiUserId};
+use crate::{schema::*, DbUrl, PaymentId, PersonId, PiPaymentId, PiUserId};
 //use diesel::sql_types::Jsonb;
 use serde::Serialize;
 use serde_json::Value;

@@ -1,4 +1,4 @@
-use crate::{settings::structs::Settings, LemmyError};
+use crate::{request::*, settings::structs::Settings, LemmyError};
 use anyhow::anyhow;
 use log::error;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
@@ -58,77 +58,39 @@ pub(crate) struct IframelyResponse {
   html: Option<String>,
 }
 */
-#[derive(Deserialize, serde::Serialize, serde::Deserialize, Debug, Default)]
+#[derive(Deserialize, serde::Serialize, Debug, Default)]
 pub struct PiPaymentStatus {
-    pub developer_approved: bool,
-    pub transaction_verified: bool,
-    pub developer_completed: bool,
-    pub cancelled: bool,
-    pub user_cancelled: bool,
+  pub developer_approved: bool,
+  pub transaction_verified: bool,
+  pub developer_completed: bool,
+  pub cancelled: bool,
+  pub user_cancelled: bool,
 }
 
-#[derive(Deserialize, serde::Serialize, serde::Deserialize, Debug, Default)]
+#[derive(Deserialize, serde::Serialize, Debug, Default)]
 pub struct PiPaymentTransaction {
-    pub txid: Option<String>,
-    pub verified: bool,
-    pub link: String,
+  pub txid: Option<String>,
+  pub verified: bool,
+  pub link: String,
 }
 
-#[derive(Deserialize, serde::Serialize, serde::Deserialize, Debug, Default)]
+#[derive(Deserialize, serde::Serialize, Debug, Default)]
 pub struct PiPaymentDto {
-    pub identifier: String,
-    pub user_uid: String, /// uuid::Uuid
-    pub amount: f64,
-    pub memo: String,
-    pub to_address: String,
-    //pub created_at: chrono::NaiveDateTime,
-    pub status: PiPaymentStatus,
-    pub transaction: Option<PiPaymentTransaction>,
-    pub metadata:	Option<Value>,
+  pub identifier: String,
+  pub user_uid: String,
+  /// uuid::Uuid
+  pub amount: f64,
+  pub memo: String,
+  pub to_address: String,
+  //pub created_at: chrono::NaiveDateTime,
+  pub status: PiPaymentStatus,
+  pub transaction: Option<PiPaymentTransaction>,
+  pub metadata: Option<Value>,
 }
 
-#[derive(Deserialize, Debug)]
-pub(crate) struct TxRequest {
-  txid: String,
-}
-
-pub(crate) async fn pi_payment(client: &Client, url: &Url) -> Result<PiPaymentDto, LemmyError> {
-  let fetch_url = format!("{}/payments/{}", Settings::get().pi_api_host, url);
-
-  let response = retry(|| client.get(&fetch_url).send()).await?;
-
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| RecvError(e.to_string()))?;
-  Ok(res)
-}
-
-pub(crate) async fn pi_approve(client: &Client, url: &Url) -> Result<PiPaymentDto, LemmyError> {
-  let fetch_url = format!("{}/payments/{}/approve", Settings::get().pi_api_host, url);
-
-  let response = retry(|| client.post(&fetch_url).send()).await?;
-
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| RecvError(e.to_string()))?;
-  Ok(res)
-}
-
-pub(crate) async fn pi_complete(client: &Client, url: &Url, String txid) -> Result<PiPaymentDto, LemmyError> {
-  let fetch_url = format!("{}/payments/{}/complete", Settings::get().pi_api_host, url);
-
-  let r = TxRequest {
-    txid: txid
-  };
-  let response = retry(|| client.post(&fetch_url).json(&r).send()).await?;
-
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| RecvError(e.to_string()))?;
-  Ok(res)
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TxRequest {
+  pub txid: String,
 }
 
 /*
