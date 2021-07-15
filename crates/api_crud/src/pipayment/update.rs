@@ -12,10 +12,7 @@ use lemmy_db_queries::{
 };
 use lemmy_db_schema::naive_now;
 use lemmy_db_views::site_view::SiteView;
-use lemmy_utils::{
-  pipayment::PiPaymentDto, pipayment::*, request::*, utils::check_slurs_opt, ApiError,
-  ConnectionId, LemmyError,
-};
+use lemmy_utils::{request::*, utils::check_slurs_opt, ApiError, ConnectionId, LemmyError};
 use lemmy_websocket::{messages::SendAllMessage, LemmyContext, UserOperationCrud};
 
 #[async_trait::async_trait(?Send)]

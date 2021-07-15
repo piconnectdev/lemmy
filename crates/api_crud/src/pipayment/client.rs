@@ -1,8 +1,7 @@
+use lemmy_api_common::pipayment::*;
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
-  pipayment::PiPaymentDto,
-  pipayment::*,
   request::*,
   settings::structs::Settings,
   utils::{check_slurs, is_valid_username},

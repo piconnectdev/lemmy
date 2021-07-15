@@ -1,22 +1,19 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::pipayment::PiApprove;
 use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
 use lemmy_apub::{
   generate_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
   EndpointType,
 };
 use lemmy_db_queries::{
-  source::{local_user::LocalUser_, site::Site_},
-  Crud, Followable, Joinable, ListingType, SortType,
+  source::local_user::LocalUser_, Crud, Followable, Joinable, ListingType, SortType,
 };
 use lemmy_db_schema::{
   source::{
     community::*,
     local_user::{LocalUser, LocalUserForm},
     person::*,
-    site::*,
   },
   CommunityId,
 };
@@ -24,8 +21,6 @@ use lemmy_db_views_actor::person_view::PersonViewSafe;
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
-  pipayment::PiPaymentDto,
-  pipayment::*,
   request::*,
   settings::structs::Settings,
   utils::{check_slurs, is_valid_username},
@@ -34,6 +29,7 @@ use lemmy_utils::{
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use reqwest::Client;
 use uuid::Uuid;
+
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiApprove {
   type Response = PiResponse;
