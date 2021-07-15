@@ -1,14 +1,14 @@
-use crate::{request::*, settings::structs::Settings, LemmyError};
-use anyhow::anyhow;
-use log::error;
-use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
-use reqwest::Client;
+//use crate::{request::*, settings::structs::Settings, LemmyError};
+//use anyhow::anyhow;
+//use log::error;
+//use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+//use reqwest::Client;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use std::future::Future;
-use thiserror::Error;
-use url::Url;
+//use std::future::Future;
+//use thiserror::Error;
+//use url::Url;
 /*
 #[derive(Clone, Debug, Error)]
 #[error("Error sending request, {0}")]

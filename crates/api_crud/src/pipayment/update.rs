@@ -1,3 +1,4 @@
+use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
@@ -39,13 +40,13 @@ impl PerformCrud for PiTip {
     .await??;
     */
     let payment_url = payment_url;
-    let paymentDto = pi_complete(
+    let payment_dto = pi_complete(
       context.client(),
       &payment_url.to_owned(),
       &data.txid.to_owned(),
     )
     .await?;
-    let paymentId = paymentDto;
+    let payment_id = payment_dto;
 
     /*
     let payment_form = PaymentForm {

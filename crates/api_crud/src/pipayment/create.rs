@@ -1,3 +1,4 @@
+use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::PiApprove;
@@ -24,13 +25,15 @@ use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   pipayment::PiPaymentDto,
+  pipayment::*,
   request::*,
+  settings::structs::Settings,
   utils::{check_slurs, is_valid_username},
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
+use reqwest::Client;
 use uuid::Uuid;
-
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiApprove {
   type Response = PiResponse;
@@ -44,7 +47,7 @@ impl PerformCrud for PiApprove {
 
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.username)?;
-    let paymentId = data.paymentid.to_owned();
+    let payment_id = data.paymentid.to_owned();
     let user = data.username.to_owned();
     let payment_url = data.paymentid.to_owned();
     /*
@@ -53,7 +56,7 @@ impl PerformCrud for PiApprove {
     })
     .await??;
     */
-    let paymentDto: PiPaymentDto = pi_approve(context.client(), &payment_url).await?;
+    let payment_dto: PiPaymentDto = pi_approve(context.client(), &payment_url).await?;
     // Make sure site has open registration
     /*
     let payment_form = PaymentForm {
