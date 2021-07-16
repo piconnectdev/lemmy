@@ -1,7 +1,8 @@
-use crate::{schema::*, DbUrl, PaymentId, PersonId, PiPaymentId, PiUserId};
+use crate::{schema::pipayment, DbUrl, PaymentId, PersonId, PiPaymentId, PiUserId};
 //use diesel::sql_types::Jsonb;
 use serde::Serialize;
 use serde_json::Value;
+use uuid::Uuid;
 /*
 #[derive(FromSqlRow, AsExpression, serde::Serialize, serde::Deserialize, Debug, Default)]
 #[sql_type = "Jsonb"]
@@ -36,52 +37,51 @@ pub struct PiPaymentDto {
 }
 */
 
+//#[changeset_options(treat_none_as_null = "true")]
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "pipayment"]
 pub struct Payment {
   pub id: PaymentId,
-  pub person_id: Option<PersonId>,
+  pub person_id: PersonId,
   pub payment_id: PiPaymentId,
+  pub user_uid: Option<PiUserId>,
   pub person_name: String,
   pub identifier: String,
-  pub user_uid: PiUserId,
   pub amount: f64,
   pub memo: String,
   pub to_address: String,
   pub created_at: Option<chrono::NaiveDateTime>,
-
-  pub developer_approved: bool,
-  pub transaction_verified: bool,
-  pub developer_completed: bool,
+  pub approved: bool,
+  pub verified: bool,
+  pub completed: bool,
   pub cancelled: bool,
   pub user_cancelled: bool,
-  pub tx_id: Option<String>,
   pub tx_verified: bool,
   pub tx_link: String,
+  pub tx_id: String,
   pub payment_dto: Value,
 }
 
 #[derive(Insertable, AsChangeset, Clone)]
 #[table_name = "pipayment"]
 pub struct PaymentForm {
-  pub person_id: Option<PersonId>,
+  pub person_id: PersonId,
   pub payment_id: PiPaymentId,
+  pub user_uid: Option<PiUserId>,
   pub person_name: String,
   pub identifier: String,
-  pub user_uid: PiUserId,
   pub amount: f64,
   pub memo: String,
   pub to_address: String,
   pub created_at: Option<chrono::NaiveDateTime>,
-
-  pub developer_approved: bool,
-  pub transaction_verified: bool,
-  pub developer_completed: bool,
+  pub approved: bool,
+  pub verified: bool,
+  pub completed: bool,
   pub cancelled: bool,
   pub user_cancelled: bool,
-  pub tx_id: Option<String>,
   pub tx_verified: bool,
   pub tx_link: String,
+  pub tx_id: String,
   pub payment_dto: Value,
 }
 

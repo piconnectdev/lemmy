@@ -9,15 +9,13 @@ use lemmy_apub::{
 use lemmy_db_queries::{
   source::local_user::LocalUser_, Crud, Followable, Joinable, ListingType, SortType,
 };
-use lemmy_db_schema::{
-  source::{
-    community::*,
-    local_user::{LocalUser, LocalUserForm},
-    person::*,
-  },
-  CommunityId,
+use lemmy_db_schema::source::{
+  community::*,
+  local_user::{LocalUser, LocalUserForm},
+  person::*,
+  pipayment::*,
 };
-use lemmy_db_views_actor::person_view::PersonViewSafe;
+//use lemmy_db_views_actor::person_view::PersonViewSafe;
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
@@ -27,7 +25,6 @@ use lemmy_utils::{
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use reqwest::Client;
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -43,16 +40,12 @@ impl PerformCrud for PiApprove {
 
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.username)?;
-    let payment_id = data.paymentid.to_owned();
-    let user = data.username.to_owned();
-    let payment_url = data.paymentid.to_owned();
-    /*
-    let found_payment = blocking(context.pool(), move |conn| {
-      Payment::find(data.paymentid.as_ref())
-    })
-    .await??;
-    */
-    let payment_dto: PiPaymentDto = pi_approve(context.client(), &payment_url).await?;
+    let _payment_id = data.paymentid.to_owned();
+    let _user = data.username.to_owned();
+    let _payment_url = data.paymentid.clone();
+
+    //let found_payment = blocking(context.pool(), move |conn| Payment::find(_payment_url)).await??;
+    let _payment_dto: PiPaymentDto = pi_approve(context.client(), &_payment_url).await?;
     // Make sure site has open registration
     /*
     let payment_form = PaymentForm {

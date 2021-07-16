@@ -43,7 +43,7 @@ impl PerformCrud for PiTip {
       &data.txid.to_owned(),
     )
     .await?;
-    let payment_id = payment_dto;
+    //let payment_id = payment_dto;
 
     /*
     let payment_form = PaymentForm {

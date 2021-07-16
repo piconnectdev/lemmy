@@ -1,0 +1,21 @@
+create table pipayment (
+  id bigserial primary key,
+  person_id uuid,
+  payment_id uuid, 
+  person_name text,
+  identifier text,
+  user_uid uuid,
+  amount double precision,
+  memo text,
+  to_address text,
+  created_at timestamp,
+  developer_approved bool,
+  transaction_verified bool,
+  developer_completed bool,
+  cancelled bool,
+  user_cancelled bool,
+  tx_id text,
+  tx_verified bool,
+  tx_link text,
+  payment_dto jsonb
+);

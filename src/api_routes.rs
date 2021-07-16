@@ -201,7 +201,8 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
         web::scope("/pi")
           .wrap(rate_limit.message())
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
-          .route("/tip", web::post().to(route_post_crud::<PiTip>)),
+          .route("/tip", web::post().to(route_post_crud::<PiTip>))
+          .route("/payments", web::get().to(route_get_crud::<GetPayment>)),
       ),
   );
 }

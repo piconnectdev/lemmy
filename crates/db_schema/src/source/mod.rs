@@ -7,6 +7,7 @@ pub mod moderator;
 pub mod password_reset_request;
 pub mod person;
 pub mod person_mention;
+pub mod pipayment;
 pub mod post;
 pub mod post_report;
 pub mod private_message;

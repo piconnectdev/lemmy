@@ -1,9 +1,9 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_schema::{naive_now, source::payment::*, PaymentId, PersonId, PiPaymentId, PiUserId};
+use lemmy_db_schema::{naive_now, source::pipayment::*, PaymentId, PersonId, PiPaymentId, PiUserId};
 use uuid::Uuid;
 
-impl Crud<Payment, Uuid> for Site {
+impl Crud<PaymentForm, Uuid> for Payment {
   fn read(conn: &PgConnection, _payment_id: PaymentId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::payment::dsl::*;
     payment.first::<Self>(conn)
@@ -41,7 +41,7 @@ impl Crud<Payment, Uuid> for Site {
 
 pub trait Payment_ {
   //fn transfer(conn: &PgConnection, new_creator_id: PersonId) -> Result<Site, Error>;
-  fn read_simple(conn: &PgConnection) -> Result<Site, Error>;
+  fn read_simple(conn: &PgConnection) -> Result<Payment, Error>;
 }
 
 impl Payment_ for Payment {
