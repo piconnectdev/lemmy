@@ -1,12 +1,7 @@
 use crate::{
   location_info,
   settings::structs::{
-    CaptchaConfig,
-    DatabaseConfig,
-    EmailConfig,
-    FederationConfig,
-    RateLimitConfig,
-    Settings,
+    CaptchaConfig, DatabaseConfig, EmailConfig, FederationConfig, RateLimitConfig, Settings,
     SetupConfig,
   },
   LemmyError,
@@ -170,5 +165,18 @@ impl Settings {
   }
   pub fn setup(&self) -> Option<SetupConfig> {
     self.setup.to_owned()
+  }
+
+  pub fn pi_testnet(&self) -> bool {
+    self.pi_testnet.unwrap_or_default()
+  }
+  pub fn pi_key(&self) -> String {
+    self.pi_key.to_owned().unwrap_or_default()
+  }
+  pub fn pi_api_host(&self) -> String {
+    self.pi_api_host.to_owned().unwrap_or_default()
+  }
+  pub fn pi_horizon_host(&self) -> String {
+    self.pi_api_host.to_owned().unwrap_or_default()
   }
 }

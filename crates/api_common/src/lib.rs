@@ -1,6 +1,7 @@
 pub mod comment;
 pub mod community;
 pub mod person;
+pub mod pipayment;
 pub mod post;
 pub mod site;
 pub mod websocket;
@@ -12,9 +13,7 @@ use lemmy_db_queries::{
     community::{CommunityModerator_, Community_},
     site::Site_,
   },
-  Crud,
-  DbPool,
-  Readable,
+  Crud, DbPool, Readable,
 };
 use lemmy_db_schema::{
   source::{
@@ -25,22 +24,14 @@ use lemmy_db_schema::{
     post::{Post, PostRead, PostReadForm},
     site::Site,
   },
-  CommunityId,
-  LocalUserId,
-  PersonId,
-  PostId,
+  CommunityId, LocalUserId, PersonId, PostId,
 };
 use lemmy_db_views::local_user_view::{LocalUserSettingsView, LocalUserView};
 use lemmy_db_views_actor::{
-  community_person_ban_view::CommunityPersonBanView,
-  community_view::CommunityView,
+  community_person_ban_view::CommunityPersonBanView, community_view::CommunityView,
 };
 use lemmy_utils::{
-  claims::Claims,
-  email::send_email,
-  settings::structs::Settings,
-  utils::MentionData,
-  ApiError,
+  claims::Claims, email::send_email, settings::structs::Settings, utils::MentionData, ApiError,
   LemmyError,
 };
 use log::error;

@@ -520,32 +520,34 @@ table! {
         bot_account -> Bool,
     }
 }
-/*
+
 table! {
-    payment (id) {
+    pipayment (id) {
         id -> BigInt,
-        person_id -> Option<Int8>,
+        person_id -> BigInt,
         payment_id -> Uuid,
+        user_uid -> Nullable<Uuid>,
         person_name -> Text,
         identifier -> Text,
-        user_uid -> Uuid,
-        amount -> Double	,
-        memo -> Nullable<Text>,
+        amount -> Double,
+        memo -> Text,
         to_address -> Text,
-        created_at -> Timestamp,
+        created_at -> Nullable<Timestamp>,
 
-        developer_approved -> Bool,
-        transaction_verified -> Bool,
-        developer_completed -> Bool,
+        approved -> Bool,
+        verified -> Bool,
+        completed -> Bool,
         cancelled -> Bool,
         user_cancelled -> Bool,
-        tx_verified: bool,
+        tx_verified -> Bool,
         tx_link -> Text,
-        tx_id -> Nullable<Text>,
+        tx_id -> Text,
         payment_dto -> Jsonb,
     }
 }
-*/
+
+//joinable!(pipayment -> person (person_id));
+
 joinable!(comment_alias_1 -> person_alias_1 (creator_id));
 joinable!(comment -> comment_alias_1 (parent_id));
 joinable!(person_mention -> person_alias_1 (recipient_id));
@@ -641,4 +643,5 @@ allow_tables_to_appear_in_same_query!(
   comment_alias_1,
   person_alias_1,
   person_alias_2,
+  pipayment,
 );
