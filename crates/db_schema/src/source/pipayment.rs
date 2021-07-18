@@ -42,7 +42,10 @@ pub struct PiPaymentDto {
 #[table_name = "pipayment"]
 pub struct Payment {
   pub id: PaymentId,
-  pub person_id: PersonId,
+  pub person_id: Option<PersonId>,
+  pub ref_id: Option<PersonId>,
+  pub testnet: bool,
+  pub published: Option<chrono::NaiveDateTime>,
   pub payment_id: PiPaymentId,
   pub user_uid: Option<PiUserId>,
   pub person_name: String,
@@ -59,6 +62,7 @@ pub struct Payment {
   pub tx_verified: bool,
   pub tx_link: String,
   pub tx_id: String,
+  pub metadata: Value,
   pub payment_dto: Value,
 }
 

@@ -1,9 +1,9 @@
-use crate::{schema::password_reset_request, LocalUserId};
+use crate::{schema::password_reset_request, LocalUserId, PasswordResetId};
 
 #[derive(Queryable, Identifiable, PartialEq, Debug)]
 #[table_name = "password_reset_request"]
 pub struct PasswordResetRequest {
-  pub id: i64,
+  pub id: PasswordResetId,
   pub token_encrypted: String,
   pub published: chrono::NaiveDateTime,
   pub local_user_id: LocalUserId,

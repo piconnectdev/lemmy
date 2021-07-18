@@ -66,7 +66,7 @@ impl fmt::Display for PrivateMessageId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PersonMentionId(i64);
+pub struct PersonMentionId(Uuid);
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
 pub struct ActivityId(Uuid);
@@ -78,7 +78,7 @@ impl fmt::Display for ActivityId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PostLikeId(i64);
+pub struct PostLikeId(Uuid);
 
 impl fmt::Display for PostLikeId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -87,7 +87,7 @@ impl fmt::Display for PostLikeId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PostSaveId(i32);
+pub struct PostSaveId(Uuid);
 
 impl fmt::Display for PostSaveId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -96,7 +96,7 @@ impl fmt::Display for PostSaveId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PostReadId(i64);
+pub struct PostReadId(Uuid);
 
 impl fmt::Display for PostReadId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -105,7 +105,7 @@ impl fmt::Display for PostReadId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PostReportId(i64);
+pub struct PostReportId(Uuid);
 
 impl fmt::Display for PostReportId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -114,7 +114,7 @@ impl fmt::Display for PostReportId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommentReportId(i64);
+pub struct CommentReportId(Uuid);
 
 impl fmt::Display for CommentReportId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -123,7 +123,7 @@ impl fmt::Display for CommentReportId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommentLikeId(i64);
+pub struct CommentLikeId(Uuid);
 
 impl fmt::Display for CommentLikeId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -132,7 +132,7 @@ impl fmt::Display for CommentLikeId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommentSavedId(i32);
+pub struct CommentSavedId(Uuid);
 
 impl fmt::Display for CommentSavedId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -141,7 +141,7 @@ impl fmt::Display for CommentSavedId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommentAggregatesId(i64);
+pub struct CommentAggregatesId(Uuid);
 
 impl fmt::Display for CommentAggregatesId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -150,7 +150,7 @@ impl fmt::Display for CommentAggregatesId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommunityFollowerId(i64);
+pub struct CommunityFollowerId(Uuid);
 
 impl fmt::Display for CommunityFollowerId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -168,7 +168,7 @@ impl fmt::Display for CommunityModeratorId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommunityPersonBanId(i32);
+pub struct CommunityPersonBanId(Uuid);
 
 impl fmt::Display for CommunityPersonBanId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -177,7 +177,7 @@ impl fmt::Display for CommunityPersonBanId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommunityAggregatesId(i64);
+pub struct CommunityAggregatesId(Uuid);
 
 impl fmt::Display for CommunityAggregatesId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -186,7 +186,7 @@ impl fmt::Display for CommunityAggregatesId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PersonAggregatesId(i64);
+pub struct PersonAggregatesId(Uuid);
 
 impl fmt::Display for PersonAggregatesId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -195,7 +195,7 @@ impl fmt::Display for PersonAggregatesId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PostAggregatesId(i64);
+pub struct PostAggregatesId(Uuid);
 
 impl fmt::Display for PostAggregatesId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -204,7 +204,7 @@ impl fmt::Display for PostAggregatesId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct SiteAggregatesId(i64);
+pub struct SiteAggregatesId(Uuid);
 
 impl fmt::Display for SiteAggregatesId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -213,7 +213,7 @@ impl fmt::Display for SiteAggregatesId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModRemovePostId(i64);
+pub struct ModRemovePostId(Uuid);
 
 impl fmt::Display for ModRemovePostId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -231,7 +231,7 @@ impl fmt::Display for ModRemovePostId {
 // }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModLockPostId(i64);
+pub struct ModLockPostId(Uuid);
 
 impl fmt::Display for ModLockPostId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -240,7 +240,7 @@ impl fmt::Display for ModLockPostId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModStickyPostId(i64);
+pub struct ModStickyPostId(Uuid);
 
 impl fmt::Display for ModStickyPostId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -249,7 +249,7 @@ impl fmt::Display for ModStickyPostId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModRemoveCommentId(i64);
+pub struct ModRemoveCommentId(Uuid);
 
 impl fmt::Display for ModRemoveCommentId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -258,7 +258,7 @@ impl fmt::Display for ModRemoveCommentId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModRemoveCommunityId(i64);
+pub struct ModRemoveCommunityId(Uuid);
 
 impl fmt::Display for ModRemoveCommunityId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -267,7 +267,7 @@ impl fmt::Display for ModRemoveCommunityId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModBanFromCommunityId(i64);
+pub struct ModBanFromCommunityId(Uuid);
 
 impl fmt::Display for ModBanFromCommunityId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -276,7 +276,7 @@ impl fmt::Display for ModBanFromCommunityId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModAddCommunityId(i64);
+pub struct ModAddCommunityId(Uuid);
 
 impl fmt::Display for ModAddCommunityId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -285,7 +285,7 @@ impl fmt::Display for ModAddCommunityId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModBanId(i64);
+pub struct ModBanId(Uuid);
 
 impl fmt::Display for ModBanId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -294,7 +294,7 @@ impl fmt::Display for ModBanId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct ModAddId(i64);
+pub struct ModAddId(Uuid);
 
 impl fmt::Display for ModAddId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -302,6 +302,14 @@ impl fmt::Display for ModAddId {
   }
 }
 
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
+pub struct PasswordResetId(Uuid);
+
+impl fmt::Display for PasswordResetId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
 
 
 
@@ -319,7 +327,7 @@ impl fmt::Display for CommonId {
 */
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct PaymentId(i64);
+pub struct PaymentId(Uuid);
 
 impl fmt::Display for PaymentId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

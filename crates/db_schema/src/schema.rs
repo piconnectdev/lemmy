@@ -29,7 +29,7 @@ table! {
 
 table! {
     comment_aggregates (id) {
-        id -> BigInt,
+        id -> Uuid,
         comment_id -> Uuid,
         score -> Int8,
         upvotes -> Int8,
@@ -40,7 +40,7 @@ table! {
 
 table! {
     comment_like (id) {
-        id -> BigInt,
+        id -> Uuid,
         person_id -> Uuid,
         comment_id -> Uuid,
         post_id -> Uuid,
@@ -51,7 +51,7 @@ table! {
 
 table! {
     comment_report (id) {
-        id -> BigInt,
+        id -> Uuid,
         creator_id -> Uuid,
         comment_id -> Uuid,
         original_comment_text -> Text,
@@ -65,7 +65,7 @@ table! {
 
 table! {
     comment_saved (id) {
-        id -> Int4,
+        id -> Uuid,
         comment_id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
@@ -98,7 +98,7 @@ table! {
 
 table! {
     community_aggregates (id) {
-        id -> BigInt,
+        id -> Uuid,
         community_id -> Uuid,
         subscribers -> Int8,
         posts -> Int8,
@@ -113,7 +113,7 @@ table! {
 
 table! {
     community_follower (id) {
-        id -> BigInt,
+        id -> Uuid,
         community_id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
@@ -132,7 +132,7 @@ table! {
 
 table! {
     community_person_ban (id) {
-        id -> Int4,
+        id -> Uuid,
         community_id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
@@ -161,7 +161,7 @@ table! {
 
 table! {
     mod_add (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         other_person_id -> Uuid,
         removed -> Nullable<Bool>,
@@ -171,7 +171,7 @@ table! {
 
 table! {
     mod_add_community (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         other_person_id -> Uuid,
         community_id -> Uuid,
@@ -182,7 +182,7 @@ table! {
 
 table! {
     mod_ban (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         other_person_id -> Uuid,
         reason -> Nullable<Text>,
@@ -194,7 +194,7 @@ table! {
 
 table! {
     mod_ban_from_community (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         other_person_id -> Uuid,
         community_id -> Uuid,
@@ -207,7 +207,7 @@ table! {
 
 table! {
     mod_lock_post (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         post_id -> Uuid,
         locked -> Nullable<Bool>,
@@ -217,7 +217,7 @@ table! {
 
 table! {
     mod_remove_comment (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         comment_id -> Uuid,
         reason -> Nullable<Text>,
@@ -228,7 +228,7 @@ table! {
 
 table! {
     mod_remove_community (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         community_id -> Uuid,
         reason -> Nullable<Text>,
@@ -240,7 +240,7 @@ table! {
 
 table! {
     mod_remove_post (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         post_id -> Uuid,
         reason -> Nullable<Text>,
@@ -251,7 +251,7 @@ table! {
 
 table! {
     mod_sticky_post (id) {
-        id -> BigInt,
+        id -> Uuid,
         mod_person_id -> Uuid,
         post_id -> Uuid,
         stickied -> Nullable<Bool>,
@@ -261,7 +261,7 @@ table! {
 
 table! {
     password_reset_request (id) {
-        id -> BigInt,
+        id -> Uuid,
         token_encrypted -> Text,
         published -> Timestamp,
         local_user_id -> Uuid,
@@ -295,7 +295,7 @@ table! {
 
 table! {
     person_aggregates (id) {
-        id -> BigInt,
+        id -> Uuid,
         person_id -> Uuid,
         post_count -> Int8,
         post_score -> Int8,
@@ -306,7 +306,7 @@ table! {
 
 table! {
     person_ban (id) {
-        id -> Int4,
+        id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
     }
@@ -314,7 +314,7 @@ table! {
 
 table! {
     person_mention (id) {
-        id -> BigInt,
+        id -> Uuid,
         recipient_id -> Uuid,
         comment_id -> Uuid,
         read -> Bool,
@@ -348,7 +348,7 @@ table! {
 
 table! {
     post_aggregates (id) {
-        id -> BigInt,
+        id -> Uuid,
         post_id -> Uuid,
         comments -> Int8,
         score -> Int8,
@@ -363,7 +363,7 @@ table! {
 
 table! {
     post_like (id) {
-        id -> BigInt,
+        id -> Uuid,
         post_id -> Uuid,
         person_id -> Uuid,
         score -> Int2,
@@ -373,7 +373,7 @@ table! {
 
 table! {
     post_read (id) {
-        id -> BigInt,
+        id -> Uuid,
         post_id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
@@ -382,7 +382,7 @@ table! {
 
 table! {
     post_report (id) {
-        id -> BigInt,
+        id -> Uuid,
         creator_id -> Uuid,
         post_id -> Uuid,
         original_post_name -> Varchar,
@@ -398,7 +398,7 @@ table! {
 
 table! {
     post_saved (id) {
-        id -> Int4,
+        id -> Uuid,
         post_id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
@@ -440,7 +440,7 @@ table! {
 
 table! {
     site_aggregates (id) {
-        id -> BigInt,
+        id -> Uuid,
         site_id -> Int8,
         users -> Int8,
         posts -> Int8,
@@ -523,8 +523,11 @@ table! {
 
 table! {
     pipayment (id) {
-        id -> BigInt,
-        person_id -> BigInt,
+        id -> Uuid,
+        person_id -> Nullable<Uuid>, // WePi user id
+        ref_id -> Nullable<Uuid>,    // Captchar id
+        testnet -> Bool,
+        published-> Timestamp,
         payment_id -> Uuid,
         user_uid -> Nullable<Uuid>,
         person_name -> Text,
@@ -542,6 +545,7 @@ table! {
         tx_verified -> Bool,
         tx_link -> Text,
         tx_id -> Text,
+        metadata -> Jsonb,
         payment_dto -> Jsonb,
     }
 }
