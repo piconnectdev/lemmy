@@ -17,7 +17,7 @@ c.*,
 (select community_id from post p where p.id = c.post_id),
 (select co.name from post p, community co where p.id = c.post_id and p.community_id = co.id) as community_name,
 (select u.banned from user_ u where c.creator_id = u.id) as banned,
-(select cb.id::bool from community_user_ban cb, post p where c.creator_id = cb.user_id and p.id = c.post_id and p.community_id = cb.community_id) as banned_from_community,
+(select cb.id from community_user_ban cb, post p where c.creator_id = cb.user_id and p.id = c.post_id and p.community_id = cb.community_id) is not null as banned_from_community,
 (select name from user_ where c.creator_id = user_.id) as creator_name,
 (select avatar from user_ where c.creator_id = user_.id) as creator_avatar,
 coalesce(sum(cl.score), 0) as score,
@@ -44,8 +44,8 @@ select
 ac.*,
 u.id as user_id,
 coalesce(cl.score, 0) as my_vote,
-(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
-(select cs.id::integer::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
+(select cf.id from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) is not null as subscribed,
+(select cs.id from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) is not null as saved
 from user_ u
 cross join all_comment ac
 left join comment_like cl on u.id = cl.user_id and ac.id = cl.comment_id
@@ -73,8 +73,8 @@ select
 ac.*,
 u.id as user_id,
 coalesce(cl.score, 0) as my_vote,
-(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) as subscribed,
-(select cs.id::integer::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
+(select cf.id from community_follower cf where u.id = cf.user_id and ac.community_id = cf.community_id) is not null as subscribed,
+(select cs.id from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) is not null as saved
 from user_ u
 cross join all_comment ac
 left join comment_like cl on u.id = cl.user_id and ac.id = cl.comment_id
@@ -179,7 +179,7 @@ select
     ac.hot_rank,
     u.id as user_id,
     coalesce(cl.score, 0) as my_vote,
-    (select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved,
+    (select cs.id from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) is not null as saved,
     um.recipient_id
 from user_ u
 cross join all_comment ac

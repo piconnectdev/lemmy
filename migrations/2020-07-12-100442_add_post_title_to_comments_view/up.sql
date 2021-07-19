@@ -19,7 +19,7 @@ select
 	c."name" as community_name,
 	-- creator details
 	u.banned as banned,
-  coalesce(cb.id, 0)::bool as banned_from_community,
+  (coalesce(cb.id, null) is not null)::bool as banned_from_community,
 	u.actor_id as creator_actor_id,
 	u.local as creator_local,
 	u.name as creator_name,
@@ -57,8 +57,8 @@ cross join lateral (
 	select
 		u.id as user_id,
 		coalesce(cl.score, 0) as my_vote,
-    coalesce(cf.id::integer, 0) as is_subbed,
-    coalesce(cs.id::integer, 0) as is_saved
+    coalesce(cf.id, null) is not null as is_subbed,
+    coalesce(cs.id, null) is not null as is_saved
 	from user_ u
 	left join comment_like cl on u.id = cl.user_id and cav.id = cl.comment_id
 	left join comment_saved cs on u.id = cs.user_id and cs.comment_id = cav.id
@@ -91,8 +91,8 @@ cross join lateral (
 	select
 		u.id as user_id,
 		coalesce(cl.score, 0) as my_vote,
-    coalesce(cf.id::integer, 0) as is_subbed,
-    coalesce(cs.id::integer, 0) as is_saved
+    coalesce(cf.id, null) is not null as is_subbed,
+    coalesce(cs.id, null) is not null as is_saved
 	from user_ u
 	left join comment_like cl on u.id = cl.user_id and cav.id = cl.comment_id
 	left join comment_saved cs on u.id = cs.user_id and cs.comment_id = cav.id
@@ -176,7 +176,7 @@ select
     ac.hot_rank,
     u.id as user_id,
     coalesce(cl.score, 0) as my_vote,
-    (select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved,
+    (select cs.id from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) is not null as saved,
     um.recipient_id,
     (select actor_id from user_ u where u.id = um.recipient_id) as recipient_actor_id,
     (select local from user_ u where u.id = um.recipient_id) as recipient_local

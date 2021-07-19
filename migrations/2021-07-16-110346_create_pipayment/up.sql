@@ -20,6 +20,6 @@ create table pipayment (
   tx_verified bool,
   tx_id text,  
   tx_link text,
-  metadata jsonb
+  metadata jsonb,
   payment_dto jsonb
 );

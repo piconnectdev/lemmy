@@ -28,7 +28,7 @@ select
     ac.downvotes,
     u.id as user_id,
     coalesce(cl.score, 0) as my_vote,
-    (select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved,
+    (select cs.id from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) is not null as saved,
     um.recipient_id
 from user_ u
 cross join all_comment ac

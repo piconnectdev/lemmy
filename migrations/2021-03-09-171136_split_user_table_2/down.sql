@@ -65,7 +65,7 @@ alter table mod_add rename constraint mod_add_other_person_id_fkey to mod_add_ot
 
 -- community_user_ban
 alter table community_person_ban rename to community_user_ban;
-alter sequence community_person_ban_id_seq rename to community_user_ban_id_seq;
+-- alter sequence community_person_ban_id_seq rename to community_user_ban_id_seq;
 alter table community_user_ban rename column person_id to user_id;
 alter table community_user_ban rename constraint community_person_ban_pkey to community_user_ban_pkey; 
 alter table community_user_ban rename constraint community_person_ban_community_id_fkey to community_user_ban_community_id_fkey;
@@ -95,7 +95,7 @@ alter table comment_like rename constraint comment_like_person_id_fkey to commen
 
 -- user_ban
 alter table person_ban rename to user_ban;
-alter sequence person_ban_id_seq rename to user_ban_id_seq;
+-- alter sequence person_ban_id_seq rename to user_ban_id_seq;
 alter index person_ban_pkey rename to user_ban_pkey;
 alter index person_ban_person_id_key rename to user_ban_user_id_key;
 alter table user_ban rename column person_id to user_id;
@@ -103,7 +103,7 @@ alter table user_ban rename constraint person_ban_person_id_fkey to user_ban_use
 
 -- user_mention
 alter table person_mention rename to user_mention;
-alter sequence person_mention_id_seq rename to user_mention_id_seq;
+-- alter sequence person_mention_id_seq rename to user_mention_id_seq;
 alter index person_mention_pkey rename to user_mention_pkey;
 alter index person_mention_recipient_id_comment_id_key rename to user_mention_recipient_id_comment_id_key;
 alter table user_mention rename constraint person_mention_comment_id_fkey to user_mention_comment_id_fkey;
@@ -111,7 +111,7 @@ alter table user_mention rename constraint person_mention_recipient_id_fkey to u
 
 -- User aggregates table
 alter table person_aggregates rename to user_aggregates;
-alter sequence person_aggregates_id_seq rename to user_aggregates_id_seq;
+-- alter sequence person_aggregates_id_seq rename to user_aggregates_id_seq;
 alter table user_aggregates rename column person_id to user_id;
 
 -- Indexes

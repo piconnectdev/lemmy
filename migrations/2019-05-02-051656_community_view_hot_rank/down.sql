@@ -14,7 +14,7 @@ with all_community as
 select
 ac.*,
 u.id as user_id,
-(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
+(select cf.id from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) is not null as subscribed
 from user_ u
 cross join all_community ac
 

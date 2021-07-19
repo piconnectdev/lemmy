@@ -91,7 +91,7 @@ create view person_alias_2 as select * from person;
 
 -- Redo user aggregates into person_aggregates
 alter table user_aggregates rename to person_aggregates;
-alter sequence user_aggregates_id_seq rename to person_aggregates_id_seq;
+-- alter sequence user_aggregates_id_seq rename to person_aggregates_id_seq;
 alter table person_aggregates rename column user_id to person_id;
 
 -- index
@@ -257,7 +257,7 @@ execute procedure person_aggregates_comment_score();
 
 -- person_mention
 alter table user_mention rename to person_mention;
-alter sequence user_mention_id_seq rename to person_mention_id_seq;
+-- alter sequence user_mention_id_seq rename to person_mention_id_seq;
 alter index user_mention_pkey rename to person_mention_pkey;
 alter index user_mention_recipient_id_comment_id_key rename to person_mention_recipient_id_comment_id_key;
 alter table person_mention rename constraint user_mention_comment_id_fkey to person_mention_comment_id_fkey;
@@ -265,7 +265,7 @@ alter table person_mention rename constraint user_mention_recipient_id_fkey to p
 
 -- user_ban
 alter table user_ban rename to person_ban;
-alter sequence user_ban_id_seq rename to person_ban_id_seq;
+-- alter sequence user_ban_id_seq rename to person_ban_id_seq;
 alter index user_ban_pkey rename to person_ban_pkey;
 alter index user_ban_user_id_key rename to person_ban_person_id_key;
 alter table person_ban rename column user_id to person_id;
@@ -294,7 +294,7 @@ alter table community_moderator rename constraint community_moderator_user_id_fk
 
 -- community_user_ban
 alter table community_user_ban rename to community_person_ban;
-alter sequence community_user_ban_id_seq rename to community_person_ban_id_seq;
+-- alter sequence community_user_ban_id_seq rename to community_person_ban_id_seq;
 alter table community_person_ban rename column user_id to person_id;
 alter table community_person_ban rename constraint community_user_ban_pkey to community_person_ban_pkey; 
 alter table community_person_ban rename constraint community_user_ban_community_id_fkey to community_person_ban_community_id_fkey;

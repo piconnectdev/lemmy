@@ -15,7 +15,7 @@ create view post_aggregates_view as
 select        
 p.*,
 (select u.banned from user_ u where p.creator_id = u.id) as banned,
-(select cb.id::bool from community_user_ban cb where p.creator_id = cb.user_id and p.community_id = cb.community_id) as banned_from_community,
+(select cb.id from community_user_ban cb where p.creator_id = cb.user_id and p.community_id = cb.community_id) is not null as banned_from_community,
 (select name from user_ where p.creator_id = user_.id) as creator_name,
 (select avatar from user_ where p.creator_id = user_.id) as creator_avatar,
 (select name from community where p.community_id = community.id) as community_name,
@@ -45,9 +45,9 @@ select
 ap.*,
 u.id as user_id,
 coalesce(pl.score, 0) as my_vote,
-(select cf.id::integer from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id)::bool as subscribed,
-(select pr.id::integer from post_read pr where u.id = pr.user_id and pr.post_id = ap.id)::bool as read,
-(select ps.id::integer from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id)::bool as saved
+(select cf.id from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id) is not null as subscribed,
+(select pr.id from post_read pr where u.id = pr.user_id and pr.post_id = ap.id) is not null as read,
+(select ps.id from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id) is not null as saved
 from user_ u
 cross join all_post ap
 left join post_like pl on u.id = pl.user_id and ap.id = pl.post_id
@@ -74,9 +74,9 @@ select
 ap.*,
 u.id as user_id,
 coalesce(pl.score, 0) as my_vote,
-(select cf.id::integer from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id)::bool as subscribed,
-(select pr.id::integer from post_read pr where u.id = pr.user_id and pr.post_id = ap.id)::bool as read,
-(select ps.id::integer from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id)::bool as saved
+(select cf.id from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id) is not null as subscribed,
+(select pr.id from post_read pr where u.id = pr.user_id and pr.post_id = ap.id) is not null as read,
+(select ps.id from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id) is not null as saved
 from user_ u
 cross join all_post ap
 left join post_like pl on u.id = pl.user_id and ap.id = pl.post_id

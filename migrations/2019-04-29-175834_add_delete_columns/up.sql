@@ -20,7 +20,7 @@ with all_community as
 select
 ac.*,
 u.id as user_id,
-(select cf.id::integer::boolean from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) as subscribed
+(select cf.id from community_follower cf where u.id = cf.user_id and ac.id = cf.community_id) is not null as subscribed
 from user_ u
 cross join all_community ac
 
@@ -58,9 +58,9 @@ select
 ap.*,
 u.id as user_id,
 coalesce(pl.score, 0) as my_vote,
-(select cf.id::integer from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id)::bool as subscribed,
-(select pr.id::integer from post_read pr where u.id = pr.user_id and pr.post_id = ap.id)::bool as read,
-(select ps.id::integer from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id)::bool as saved
+(select cf.id from community_follower cf where u.id = cf.user_id and cf.community_id = ap.community_id) is not null as subscribed,
+(select pr.id from post_read pr where u.id = pr.user_id and pr.post_id = ap.id) is not null as read,
+(select ps.id from post_saved ps where u.id = ps.user_id and ps.post_id = ap.id) is not null as saved
 from user_ u
 cross join all_post ap
 left join post_like pl on u.id = pl.user_id and ap.id = pl.post_id
@@ -86,7 +86,7 @@ with all_comment as
   c.*,
   (select community_id from post p where p.id = c.post_id),
   (select u.banned from user_ u where c.creator_id = u.id) as banned,
-  (select cb.id::bool from community_user_ban cb, post p where c.creator_id = cb.user_id and p.id = c.post_id and p.community_id = cb.community_id) as banned_from_community,
+  (select cb.id from community_user_ban cb, post p where c.creator_id = cb.user_id and p.id = c.post_id and p.community_id = cb.community_id) is not null as banned_from_community,
   (select name from user_ where c.creator_id = user_.id) as creator_name,
   coalesce(sum(cl.score), 0) as score,
   count (case when cl.score = 1 then 1 else null end) as upvotes,
@@ -100,7 +100,7 @@ select
 ac.*,
 u.id as user_id,
 coalesce(cl.score, 0) as my_vote,
-(select cs.id::bool from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) as saved
+(select cs.id from comment_saved cs where u.id = cs.user_id and cs.comment_id = ac.id) is not null as saved
 from user_ u
 cross join all_comment ac
 left join comment_like cl on u.id = cl.user_id and ac.id = cl.comment_id

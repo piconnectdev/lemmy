@@ -21,7 +21,7 @@ create table post_like (
 );
 
 create table post_saved (
-  id uuid NOT NULL DEFAULT next_uuid() al primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   post_id uuid references post on update cascade on delete cascade not null,
   user_id uuid references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
