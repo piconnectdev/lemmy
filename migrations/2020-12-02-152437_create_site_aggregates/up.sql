@@ -1,6 +1,6 @@
 -- Add site aggregates
 create table site_aggregates (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   site_id bigint references site on update cascade on delete cascade not null,
   users bigint not null default 1,
   posts bigint not null default 0,

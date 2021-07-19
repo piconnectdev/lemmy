@@ -1,5 +1,5 @@
 create table user_mention (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   recipient_id uuid references user_ on update cascade on delete cascade not null,
   comment_id uuid references comment on update cascade on delete cascade not null,
   read boolean default false not null,

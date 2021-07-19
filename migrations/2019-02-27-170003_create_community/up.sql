@@ -52,7 +52,7 @@ create table community_moderator (
 );
 
 create table community_follower (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   community_id uuid references community on update cascade on delete cascade not null,
   user_id uuid references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
@@ -60,7 +60,7 @@ create table community_follower (
 );
 
 create table community_user_ban (
-  id serial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   community_id uuid references community on update cascade on delete cascade not null,
   user_id uuid references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),

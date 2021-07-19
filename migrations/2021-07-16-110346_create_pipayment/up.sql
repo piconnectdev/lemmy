@@ -1,6 +1,9 @@
 create table pipayment (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   person_id uuid,  
+  ref_id uuid,  
+  testnet bool,
+  published timestamp not null default now(),
   payment_id uuid,   
   user_uid uuid,  
   person_name text,
@@ -17,5 +20,6 @@ create table pipayment (
   tx_verified bool,
   tx_id text,  
   tx_link text,
+  metadata jsonb
   payment_dto jsonb
 );

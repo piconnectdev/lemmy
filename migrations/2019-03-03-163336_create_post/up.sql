@@ -12,7 +12,7 @@ create table post (
 );
 
 create table post_like (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   post_id uuid references post on update cascade on delete cascade not null,
   user_id uuid references user_ on update cascade on delete cascade not null,
   score smallint not null, -- -1, or 1 for dislike, like, no row for no opinion
@@ -21,7 +21,7 @@ create table post_like (
 );
 
 create table post_saved (
-  id serial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() al primary key,
   post_id uuid references post on update cascade on delete cascade not null,
   user_id uuid references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
@@ -29,7 +29,7 @@ create table post_saved (
 );
 
 create table post_read (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   post_id uuid references post on update cascade on delete cascade not null,
   user_id uuid references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
