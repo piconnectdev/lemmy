@@ -9,7 +9,7 @@ impl Crud<PaymentForm, Uuid> for Payment {
     payment.first::<Self>(conn)
   }
 
-  fn find(conn: &PgConnection, _payment_id: PiPaymentId) -> Result<Self, Error> {
+  fn find(conn: &PgConnection, _payment_id: &str) -> Result<Self, Error> {
     use lemmy_db_schema::schema::payment::dsl::*;
     payment
       .filter(payment::paymentid == _payment_id)

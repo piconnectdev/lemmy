@@ -1,4 +1,5 @@
 use lemmy_api_common::pipayment::*;
+use lemmy_db_schema::*;
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
@@ -9,7 +10,7 @@ use lemmy_utils::{
 };
 use reqwest::Client;
 
-pub async fn pi_payment(client: &Client, id: &String) -> Result<PiPaymentDto, LemmyError> {
+pub async fn pi_payment(client: &Client, id: &PiPaymentId) -> Result<PiPaymentDto, LemmyError> {
   let fetch_url = format!("{}/payments/{}", Settings::get().pi_api_host(), id);
 
   let response = retry(|| {
@@ -27,7 +28,7 @@ pub async fn pi_payment(client: &Client, id: &String) -> Result<PiPaymentDto, Le
   Ok(res)
 }
 
-pub async fn pi_approve(client: &Client, id: &String) -> Result<PiPaymentDto, LemmyError> {
+pub async fn pi_approve(client: &Client, id: &PiPaymentId) -> Result<PiPaymentDto, LemmyError> {
   let fetch_url = format!("{}/payments/{}/approve", Settings::get().pi_api_host(), id);
 
   let response = retry(|| {

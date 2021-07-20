@@ -1,11 +1,26 @@
-use lemmy_db_schema::PaymentId;
+use lemmy_db_schema::{PaymentId, PiPaymentId};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiApproveRegister {
+  pub paymentid: PiPaymentId,
+  pub pi_username: Option<String>,
+  pub username: String,
+  pub password: String,
+  pub password_verify: String,
+  pub show_nsfw: bool,
+  pub email: Option<String>,
+  pub captcha_uuid: Option<String>,
+  pub captcha_answer: Option<String>,
+}
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
-  pub paymentid: String,
+  pub paymentid: PiPaymentId,
   pub username: String,
+  pub auth: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -18,7 +33,7 @@ pub struct PiResponse {
 pub struct PiTip {
   pub txid: String,
   pub username: String,
-  pub paymentid: String,
+  pub paymentid: PiPaymentId,
   pub auth: String,
 }
 

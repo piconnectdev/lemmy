@@ -9,7 +9,7 @@ use lemmy_apub::{
   EndpointType,
 };
 use lemmy_db_queries::{
-  source::{local_user::LocalUser_, site::Site_},
+  source::{local_user::LocalUser_, site::Site_, community::Community_},
   Crud,
   Followable,
   Joinable,
@@ -164,7 +164,7 @@ impl PerformCrud for Register {
 
     // Create the main community if it doesn't exist
     let main_community = match blocking(context.pool(), move |conn| {
-      Community::read(conn, CommunityId(Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()))
+      Community::read_from_name(conn, "main")
     })
     .await?
     {

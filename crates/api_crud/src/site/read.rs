@@ -29,14 +29,14 @@ impl PerformCrud for GetSite {
       // If the site isn't created yet, check the setup
       Err(_) => {
         if let Some(setup) = Settings::get().setup().as_ref() {
-          let register = Register {
+          let register = Register {            
             username: setup.admin_username.to_owned(),
             email: setup.admin_email.to_owned(),
             password: setup.admin_password.to_owned(),
             password_verify: setup.admin_password.to_owned(),
             show_nsfw: true,
             captcha_uuid: None,
-            captcha_answer: None,
+            captcha_answer: None,            
           };
           let login_response = register.perform(context, websocket_id).await?;
           info!("Admin {} created", setup.admin_username);
