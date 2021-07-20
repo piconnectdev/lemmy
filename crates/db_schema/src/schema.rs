@@ -65,7 +65,7 @@ table! {
 
 table! {
     comment_saved (id) {
-        id -> Int4,
+        id -> BigInt,
         comment_id -> Int8,
         person_id -> Int8,
         published -> Timestamp,
@@ -132,7 +132,7 @@ table! {
 
 table! {
     community_person_ban (id) {
-        id -> Int4,
+        id -> BigInt,
         community_id -> Int8,
         person_id -> Int8,
         published -> Timestamp,
@@ -306,7 +306,7 @@ table! {
 
 table! {
     person_ban (id) {
-        id -> Int4,
+        id -> BigInt,
         person_id -> Int8,
         published -> Timestamp,
     }
@@ -398,7 +398,7 @@ table! {
 
 table! {
     post_saved (id) {
-        id -> Int4,
+        id -> BigInt,
         post_id -> Int8,
         person_id -> Int8,
         published -> Timestamp,

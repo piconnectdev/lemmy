@@ -60,7 +60,7 @@ create table community_follower (
 );
 
 create table community_user_ban (
-  id serial primary key,
+  id bigserial primary key,
   community_id bigint references community on update cascade on delete cascade not null,
   user_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),

@@ -21,7 +21,7 @@ create table comment_like (
 );
 
 create table comment_saved (
-  id serial primary key,
+  id bigserial primary key,
   comment_id bigint references comment on update cascade on delete cascade not null,
   user_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),

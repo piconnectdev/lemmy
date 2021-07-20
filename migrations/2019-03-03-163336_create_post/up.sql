@@ -21,7 +21,7 @@ create table post_like (
 );
 
 create table post_saved (
-  id serial primary key,
+  id bigserial primary key,
   post_id bigint references post on update cascade on delete cascade not null,
   user_id bigint references user_ on update cascade on delete cascade not null,
   published timestamp not null default now(),
