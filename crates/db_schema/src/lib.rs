@@ -311,21 +311,6 @@ impl fmt::Display for PasswordResetId {
   }
 }
 
-
-
-
-
-/*
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
-pub struct CommonId(i64);
-
-impl fmt::Display for CommonId {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self.0)
-  }
-}
-*/
-
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
 pub struct PaymentId(Uuid);
 
@@ -334,6 +319,10 @@ impl fmt::Display for PaymentId {
     write!(f, "{}", self.0)
   }
 }
+
+/*
+  PiPaymentId from Pi Network SDK
+*/
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
 pub struct PiPaymentId(uuid::Uuid);
@@ -344,6 +333,9 @@ impl fmt::Display for PiPaymentId {
   }
 }
 
+/*
+  PiUserId from Pi Network SDK
+*/
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
 pub struct PiUserId(Uuid);
 

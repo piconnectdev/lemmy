@@ -4,9 +4,9 @@ create table pipayment (
   ref_id uuid,  
   testnet bool,
   published timestamp not null default now(),
-  payment_id uuid,   
-  user_uid uuid,  
-  person_name text,
+  pi_payment_id uuid,   
+  pi_uid uuid,  
+  pi_username text,
   identifier text,
   amount double precision,
   memo text,
@@ -21,5 +21,5 @@ create table pipayment (
   tx_id text,  
   tx_link text,
   metadata jsonb,
-  payment_dto jsonb
+  dto jsonb
 );

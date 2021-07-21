@@ -4,7 +4,20 @@ use serde_json::Value;
 use uuid::Uuid;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct PiApproveRegister {
+pub struct PiPaymentFound {
+  pub paymentid: PiPaymentId,
+  pub username: String,
+  pub auth: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiPaymentFoundResponse {
+  pub paymentid: PiPaymentId,
+  pub id: PaymentId,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiAgreeRegister {
   pub paymentid: PiPaymentId,
   pub pi_username: Option<String>,
   pub username: String,
@@ -17,6 +30,18 @@ pub struct PiApproveRegister {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiAgreeResponse {
+  pub id: PiPaymentId,
+  pub username: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiRegisterResponse {
+  pub jwt: String,
+}
+
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
   pub paymentid: PiPaymentId,
   pub username: String,
@@ -24,8 +49,8 @@ pub struct PiApprove {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct PiResponse {
-  pub paymentid: String,
+pub struct PiApproveResponse {
+  pub paymentid: PiPaymentId,
   pub username: String,
 }
 
@@ -34,7 +59,7 @@ pub struct PiTip {
   pub txid: String,
   pub username: String,
   pub paymentid: PiPaymentId,
-  pub auth: String,
+  pub auth: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -66,7 +91,7 @@ pub struct PiPaymentDto {
   pub amount: f64,
   pub memo: String,
   pub to_address: String,
-  //pub created_at: chrono::NaiveDateTime,
+  pub created_at: Option<chrono::NaiveDateTime>,
   pub status: PiPaymentStatus,
   pub transaction: Option<PiPaymentTransaction>,
   pub metadata: Option<Value>,
@@ -80,11 +105,19 @@ pub struct TxRequest {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetPayment {
   pub id: PaymentId,
-  pub auth: Option<String>,
+  pub auth: String,
 }
 
 #[derive(Serialize, Debug, Default)]
 pub struct GetPaymentResponse {
   pub pid: String,
   //pub dto: PiPaymentDto,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetPayments {
+  pub sort: Option<String>,
+  pub page: Option<i64>,
+  pub limit: Option<i64>,
+  pub auth: String,
 }

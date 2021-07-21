@@ -290,6 +290,7 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
+        //payment_id -> Nullable<Uuid>,
     }
 }
 
@@ -524,13 +525,13 @@ table! {
 table! {
     pipayment (id) {
         id -> Uuid,
-        person_id -> Nullable<Uuid>, // WePi user id
+        person_id -> Nullable<Uuid>, // WePi user's id
         ref_id -> Nullable<Uuid>,    // Captchar id
         testnet -> Bool,
         published-> Timestamp,
-        payment_id -> Uuid,
-        user_uid -> Nullable<Uuid>,
-        person_name -> Text,
+        pi_payment_id -> Uuid,
+        pi_uid -> Nullable<Uuid>,
+        pi_username -> Text,
         identifier -> Text,
         amount -> Double,
         memo -> Text,
@@ -544,9 +545,9 @@ table! {
         user_cancelled -> Bool,
         tx_verified -> Bool,
         tx_link -> Text,
-        tx_id -> Text,
+        tx_id -> Nullable<Text>,
         metadata -> Jsonb,
-        payment_dto -> Jsonb,
+        dto -> Jsonb,
     }
 }
 
