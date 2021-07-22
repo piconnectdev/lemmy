@@ -1,38 +1,45 @@
-use lemmy_db_schema::{PaymentId, PiPaymentId};
+use lemmy_db_schema::{PaymentId, PiPaymentId, PiUserId};
+use crate::person::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize)]
 pub struct PiPaymentFound {
   pub paymentid: PiPaymentId,
-  pub username: String,
+  pub pi_username: String,
+  pub pi_uid: Option<PiUserId>,
   pub auth: Option<String>,
+  pub dto: Option<PiPaymentDto>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiPaymentFoundResponse {
-  pub paymentid: PiPaymentId,
   pub id: PaymentId,
+  pub paymentid: PiPaymentId,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize)]
 pub struct PiAgreeRegister {
   pub paymentid: PiPaymentId,
   pub pi_username: Option<String>,
-  pub username: String,
-  pub password: String,
-  pub password_verify: String,
-  pub show_nsfw: bool,
-  pub email: Option<String>,
-  pub captcha_uuid: Option<String>,
-  pub captcha_answer: Option<String>,
+  pub pi_uid: Option<PiUserId>,
+  pub info: Register,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiAgreeResponse {
-  pub id: PiPaymentId,
-  pub username: String,
+  pub id: PaymentId,
+  pub paymentid: PiPaymentId,
+}
+
+#[derive(Deserialize)]
+pub struct PiRegister {
+  pub paymentid: PiPaymentId,
+  pub pi_username: String,
+  pub pi_uid: Option<PiUserId>,
+  pub txid: String,
+  pub info: Register,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
