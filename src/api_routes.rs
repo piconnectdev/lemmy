@@ -201,12 +201,12 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
         web::scope("/pi")
           .wrap(rate_limit.message())
           .route("/found", web::post().to(route_post_crud::<PiPaymentFound>))
-          .route("/agree", web::post().to(route_post_crud::<PiApproveRegister>))
+          .route("/agree", web::post().to(route_post_crud::<PiAgreeRegister>))
           .route("/register", web::post().to(route_post_crud::<PiRegister>))
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
           .route("/complete", web::post().to(route_post_crud::<PiTip>))
           .route("/payment", web::get().to(route_get_crud::<GetPayment>)),
-          .route("/payments", web::get().to(route_get_crud::<GetPayments>)),
+          //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
       ),
   );
 }

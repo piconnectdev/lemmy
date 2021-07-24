@@ -22,8 +22,9 @@ pub struct PiPaymentFoundResponse {
 #[derive(Deserialize)]
 pub struct PiAgreeRegister {
   pub paymentid: PiPaymentId,
-  pub pi_username: Option<String>,
+  pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
+  pub comment: Option<String>,
   pub info: Register,
 }
 
@@ -38,6 +39,7 @@ pub struct PiRegister {
   pub paymentid: PiPaymentId,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
+  pub comment: Option<String>,
   pub txid: String,
   pub info: Register,
 }
@@ -51,27 +53,31 @@ pub struct PiRegisterResponse {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
   pub paymentid: PiPaymentId,
-  pub username: String,
+  pub pi_username: String,
+  pub pi_uid: Option<PiUserId>,
   pub auth: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApproveResponse {
+  pub id: PaymentId,
   pub paymentid: PiPaymentId,
-  pub username: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiTip {
-  pub txid: String,
-  pub username: String,
   pub paymentid: PiPaymentId,
+  pub pi_username: String,
+  pub pi_uid: Option<PiUserId>,
+  pub comment: Option<String>,
+  pub txid: String,
   pub auth: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiTipResponse {
-  pub paymentid: String,
+  pub id: PaymentId,
+  pub paymentid: PiPaymentId,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -85,9 +91,9 @@ pub struct PiPaymentStatus {
 
 #[derive(Deserialize, Serialize, Debug, Default)]
 pub struct PiPaymentTransaction {
-  pub txid: Option<String>,
+  pub txid: String,
   pub verified: bool,
-  pub link: String,
+  pub _link: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]

@@ -7,7 +7,7 @@ use lemmy_apub::{
   EndpointType,
 };
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::site::*, Crud, Followable, Joinable, ListingType,
+  source::local_user::LocalUser_, source::site::*, source::pipayment::PiPayment_, Crud, Followable, Joinable, ListingType,
   SortType,
 };
 use lemmy_db_schema::source::{
@@ -29,18 +29,17 @@ use lemmy_utils::{
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use uuid::Uuid;
 
+
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for PiPaymentFound {
-  type Response = PiPaymentFoundResponse;
+impl PerformCrud for PiApprove {
+  type Response = PiApproveResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<PiPaymentFoundResponse, LemmyError> {
-    let data: &PiPaymentFound = self;
-
-    check_slurs(&data.pi_username)?;
+  ) -> Result<PiApproveResponse, LemmyError> {
+    let data: &PiApprove = self;
 
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.username)?;
@@ -48,31 +47,21 @@ impl PerformCrud for PiPaymentFound {
     let _pi_username = data.pi_username.to_owned();
     let _pi_uid = data.pi_uid.clone();
 
-    /*
+  /*
+    
     let _payment = match blocking(context.pool(), move |conn| {
       PiPayment::find_by_pipayment_id(&conn, _payment_id)
     })
     .await?
     {
-      Ok(c) => c,
-      Err(_e) => None,
+       Ok(c) => c,
+       Err(_e) => {},
     };
-
-    if _payment.is_none() {
-      let _payment_dto: PiPaymentDto = pi_payment(context.client(), &_payment_id.clone()).await?;
-      // {
-      //   Ok(c) => c,
-      //   Err() => {
-      //     let err_type = "PI Server error";
-      //     return Err(ApiError::err(err_type).into());
-      //   }
-      // };
+    if (_payment.is_ok()) {
+      let x = _payment.unwrap();
     }
-    
-    if !_payment.approved {
 
-    } else if !_payment.completed {
-    }
+    let _payment_dto: PiPaymentDto = pi_approve(context.client(), &_payment_url).await?;
     */
     // Make sure site has open registration
     /*
@@ -116,7 +105,6 @@ impl PerformCrud for PiPaymentFound {
 
     let inserted_payment_id = inserted_payment.id;
     */
-    // Return the jwt
     let _payment = match pi_update_payment(context, _payment_id, &_pi_username, _pi_uid, None)
     .await
     {
@@ -126,11 +114,9 @@ impl PerformCrud for PiPaymentFound {
         return Err(ApiError::err(&err_type).into());
       }
     };
-    Ok(PiPaymentFoundResponse {
+    Ok(PiApproveResponse {
       id: _payment.id,
       paymentid: _payment_id.to_owned(),
     })
   }
 }
-
-

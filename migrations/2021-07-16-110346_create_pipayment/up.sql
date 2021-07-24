@@ -3,7 +3,10 @@ create table pipayment (
   person_id uuid,  
   ref_id uuid,  
   testnet bool,
+  finished bool default false,
   published timestamp not null default now(),
+  updated timestamp not null default now(),
+  comment text,  
   pi_payment_id uuid,   
   pi_uid uuid,  
   pi_username text,
@@ -23,3 +26,5 @@ create table pipayment (
   metadata jsonb,
   dto jsonb
 );
+
+

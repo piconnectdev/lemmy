@@ -48,7 +48,7 @@ impl PerformCrud for PiRegister {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
-    let data: &Register = &self;
+    let data: &PiRegister = &self;
 
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
@@ -57,10 +57,10 @@ impl PerformCrud for PiRegister {
       }
     }
 
-    password_length_check(&data.password)?;
+    password_length_check(&data.info.password)?;
 
     // Make sure passwords match
-    if data.password != data.password_verify {
+    if data.info.password != data.info.password_verify {
       return Err(ApiError::err("passwords_dont_match").into());
     }
 
@@ -75,11 +75,11 @@ impl PerformCrud for PiRegister {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
-          uuid: data
+          uuid: data.info
             .captcha_uuid
             .to_owned()
             .unwrap_or_else(|| "".to_string()),
-          answer: data
+          answer: data.info
             .captcha_answer
             .to_owned()
             .unwrap_or_else(|| "".to_string()),
@@ -90,19 +90,19 @@ impl PerformCrud for PiRegister {
       }
     }
 
-    check_slurs(&data.username)?;
+    check_slurs(&data.info.username)?;
 
     let actor_keypair = generate_actor_keypair()?;
-    if !is_valid_username(&data.username) {
+    if !is_valid_username(&data.info.username) {
       return Err(ApiError::err("invalid_username").into());
     }
-    let actor_id = generate_apub_endpoint(EndpointType::Person, &data.username)?;
+    let actor_id = generate_apub_endpoint(EndpointType::Person, &data.info.username)?;
 
     // We have to create both a person, and local_user
 
     // Register the new person
     let person_form = PersonForm {
-      name: data.username.to_owned(),
+      name: data.info.username.to_owned(),
       actor_id: Some(actor_id.clone()),
       private_key: Some(Some(actor_keypair.private_key)),
       public_key: Some(Some(actor_keypair.public_key)),
@@ -122,9 +122,9 @@ impl PerformCrud for PiRegister {
     // Create the local user
     let local_user_form = LocalUserForm {
       person_id: inserted_person.id,
-      email: Some(data.email.to_owned()),
-      password_encrypted: data.password.to_owned(),
-      show_nsfw: Some(data.show_nsfw),
+      email: Some(data.info.email.to_owned()),
+      password_encrypted: data.info.password.to_owned(),
+      show_nsfw: Some(data.info.show_nsfw),
       show_bot_accounts: Some(true),
       theme: Some("browser".into()),
       default_sort_type: Some(SortType::Active as i16),

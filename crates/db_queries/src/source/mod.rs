@@ -11,3 +11,4 @@ pub mod post;
 pub mod post_report;
 pub mod private_message;
 pub mod site;
+pub mod pipayment;

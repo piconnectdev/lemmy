@@ -528,11 +528,16 @@ table! {
         person_id -> Nullable<Uuid>, // WePi user's id
         ref_id -> Nullable<Uuid>,    // Captchar id
         testnet -> Bool,
-        published-> Timestamp,
+        finished -> Bool,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+        comment -> Nullable<Text>,
+
         pi_payment_id -> Uuid,
         pi_uid -> Nullable<Uuid>,
         pi_username -> Text,
         identifier -> Text,
+        user_uid -> Text,
         amount -> Double,
         memo -> Text,
         to_address -> Text,
@@ -545,9 +550,9 @@ table! {
         user_cancelled -> Bool,
         tx_verified -> Bool,
         tx_link -> Text,
-        tx_id -> Nullable<Text>,
-        metadata -> Jsonb,
-        dto -> Jsonb,
+        tx_id -> Text,
+        metadata -> Nullable<Jsonb>,
+        dto -> Nullable<Jsonb>,
     }
 }
 

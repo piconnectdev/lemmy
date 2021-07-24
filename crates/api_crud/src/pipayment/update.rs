@@ -17,16 +17,19 @@ use lemmy_websocket::{messages::SendAllMessage, LemmyContext, UserOperationCrud}
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiTip {
-  type Response = PiResponse;
+  type Response = PiTipResponse;
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     websocket_id: Option<ConnectionId>,
-  ) -> Result<PiResponse, LemmyError> {
+  ) -> Result<PiTipResponse, LemmyError> {
     let data: &PiTip = self;
     //let payment_url = &Url{data.paymentid.to_owned()};
-    let payment_url = data.paymentid.to_owned();
-    let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
+    let _payment_id = data.paymentid.to_owned();
+    let _pi_username = data.pi_username.to_owned();
+    let _pi_uid = data.pi_uid.clone();
+
+    //let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
     //check_slurs_opt(&data.paymentid)?;
     //check_slurs_opt(&data.username)?;
@@ -35,14 +38,15 @@ impl PerformCrud for PiTip {
       Payment::find(data.paymentid.as_ref())
     })
     .await??;
-    */
     let payment_url = payment_url;
-    let payment_dto = pi_complete(
-      context.client(),
-      &payment_url.to_owned(),
-      &data.txid.to_owned(),
-    )
-    .await?;
+    */
+
+    // let payment_dto = pi_complete(
+    //   context.client(),
+    //   &payment_url.to_owned(),
+    //   &data.txid.to_owned(),
+    // )
+    // .await?;
     //let payment_id = payment_dto;
 
     /*
@@ -58,18 +62,18 @@ impl PerformCrud for PiTip {
     }
     */
     //let site_view = blocking(context.pool(), move |conn| SiteView::read(conn)).await??;
-
-    let res = PiResponse {
-      paymentid: payment_url.to_owned(),
-      username: data.username.to_owned(),
+    let _payment = match pi_update_payment(context, _payment_id, &_pi_username, _pi_uid, None)
+    .await
+    {
+      Ok(c) => c,
+      Err(e) => {
+        let err_type = e.to_string();
+        return Err(ApiError::err(&err_type).into());
+      }
     };
-
-    // context.chat_server().do_send(SendAllMessage {
-    //   op: UserOperationCrud::EditSite,
-    //   response: res.clone(),
-    //   websocket_id,
-    // });
-
-    Ok(res)
+    Ok(PiTipResponse {
+      id: _payment.id,
+      paymentid: _payment_id.to_owned(),
+    })
   }
 }
