@@ -107,6 +107,7 @@ impl PerformCrud for PiRegister {
 
     let _payment_id = data.paymentid.to_owned();
     let _new_user = data.info.username.to_owned();
+    let _new_user2 = data.info.username.to_owned();
     let _new_password = data.info.password.to_owned();
     let _pi_uid = data.pi_uid.clone();
 
@@ -199,6 +200,11 @@ impl PerformCrud for PiRegister {
             return Err(ApiError::err(&err_type).into());
           }
           None => {
+              let err_type = format!(
+                "User {} is exist and belong NO Pi account",
+                &data.info.username
+              );
+              return Err(ApiError::err(&err_type).into());
             // No account, we must completed this and create new user
           }
         };
@@ -298,55 +304,41 @@ impl PerformCrud for PiRegister {
       }
     };
     if (change_password) {
-      // let mut local_user_id;
-      // let _local_user = match blocking(context.pool(), move |conn| {
-      //   LocalUserView::read_from_name(&conn, "abcd")
-      // })
-      // .await?
-      // {
-      //   Ok(lcu) => {
-      //     local_user_id = lcu.local_user.id;
-      //   },
-      //   Err(e) => {
-      //     let err_type = e.to_string();
-      //     return Err(ApiError::err(&err_type).into());
-      //   }
-      // };
-      // // if _local_user.is_some() {
-      // //   local_user_id = _local_user.unwrap().id;
-      // // } else {
-      // //   let err_type = "User not found".to_string();
-      // //   return Err(ApiError::err(&err_type).into());
-      // // }
-      // // match _local_user {
-      // //   Some(lu) => {
-      // //     local_user_id = lu.local_user.id;
-      // //   },
-      // //   None => {
-      // //     let err_type = "User not found".to_string();
-      // //     return Err(ApiError::err(&err_type).into());
-      // //   },
-      // // }
-      // let updated_local_user = match blocking(context.pool(), move |conn| {
-      //   LocalUser::update_password(&conn, local_user_id, "password")
-      // })
-      // .await
-      // {
-      //   Ok(chp) => chp,
-      //   Err(e) => {
-      //     // Update password failured
-      //     // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-      //     //   "post_title_too_long"
-      //     // } else {
-      //     //   "couldnt_create_post"
-      //     // };
-      //     let err_type = e.to_string();
-      //     return Err(ApiError::err(&err_type).into());
-      //   }
-      // };
-      // return Ok(LoginResponse {
-      //   jwt: Claims::jwt(local_user_id.0)?,
-      // })
+       let mut local_user_id;
+       let _local_user1 = match blocking(context.pool(), move |conn| {
+         LocalUserView::read_from_name(&conn, &_new_user2)
+       })
+       .await?
+       {
+         Ok(lcu) => Some(lcu), 
+         Err(e) => {
+           let err_type = e.to_string();
+           return Err(ApiError::err(&err_type).into());
+         }
+       };
+       let _local_user = _local_user1.unwrap();
+       local_user_id = _local_user.local_user.id;
+       let updated_local_user = match blocking(context.pool(), move |conn| {
+         LocalUser::update_password(&conn, local_user_id, &_new_password)
+       })
+       .await
+       {
+         Ok(chp) => chp,
+         Err(e) => {
+           // Update password failured
+           // let err_type = if e.to_string() == "value too long for type character varying(200)" {
+           //   "post_title_too_long"
+           // } else {
+           //   "couldnt_create_post"
+           // };
+           let err_type = e.to_string();
+           return Err(ApiError::err(&err_type).into());
+         }
+       };
+        return Ok(PiRegisterResponse {
+            jwt: Claims::jwt(local_user_id.0)?,
+            extra: Some(_pi_username3),
+            })
     }
     // We have to create both a person, and local_user
 
@@ -365,13 +357,21 @@ impl PerformCrud for PiRegister {
 
     // insert the person
     let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_username3);
-    let inserted_person = blocking(context.pool(), move |conn| {
+    let inserted_person1 = match blocking(context.pool(), move |conn| {
       Person::create(conn, &person_form)
     })
     .await?
-    .map_err(|_| ApiError::err(&err_type))?;
+    {
+      Ok(p) => Some(p),
+      Err(e) => {
+      let err_type = format!("user_already_exists: {} {}, exists{}, change:{}, err:{}", 
+                             &data.info.username, _pi_username3, pi_exist, change_password, e.to_string());
+      return Err(ApiError::err(&err_type).into());
+      },
+    };
 
-    //let inserted_person = inserted_person1.unwrap();
+
+    let inserted_person = inserted_person1.unwrap();
     // Create the local user
     let local_user_form = LocalUserForm {
       person_id: inserted_person.id,

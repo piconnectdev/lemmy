@@ -224,7 +224,7 @@ impl Person_ for Person {
 
       .filter(deleted.eq(false))
       .filter(local.eq(true))
-      .filter(extra_user_id.eq(from_name))
+      .filter(name.eq(from_name))
       .first::<Person>(conn)
   }
 
@@ -232,7 +232,7 @@ impl Person_ for Person {
     person
       .filter(deleted.eq(false))
       .filter(local.eq(true))
-      .filter(name.ilike(from_name))
+      .filter(extra_user_id.eq(from_name))
       .first::<Person>(conn)
   }
 
