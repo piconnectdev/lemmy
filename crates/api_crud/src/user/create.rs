@@ -48,6 +48,8 @@ impl PerformCrud for Register {
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
     let data: &Register = &self;
+    
+    return Err(ApiError::err("registration_disabled").into());
 
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {

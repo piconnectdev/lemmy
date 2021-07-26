@@ -33,7 +33,7 @@ pub async fn match_websocket_operation_crud(
 
   match op {
     // User ops
-    //UserOperationCrud::Register => do_websocket_operation::<Register>(context, id, op, data).await,
+    UserOperationCrud::Register => do_websocket_operation::<Register>(context, id, op, data).await,
     UserOperationCrud::GetPersonDetails => {
       do_websocket_operation::<GetPersonDetails>(context, id, op, data).await
     }
