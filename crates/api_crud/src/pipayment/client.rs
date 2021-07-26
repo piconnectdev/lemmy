@@ -36,7 +36,11 @@ pub async fn pi_payment(client: &Client, id: &str) -> Result<PiPaymentDto, Lemmy
   let response = retry(|| {
     client
       .get(&fetch_url)
+      .header("Host", format!("api.minepi.com"))
       .header("Authorization", format!("Key {}", Settings::get().pi_key()))
+      .header("Content-Type", format!("application/json"))
+      .header("Accept", format!("*/*"))
+      .header("User-Agent", format!("wepi.social"))
       .send()
   })
   .await?;
@@ -54,7 +58,11 @@ pub async fn pi_approve(client: &Client, id: &str) -> Result<PiPaymentDto, Lemmy
   let response = retry(|| {
     client
       .post(&fetch_url)
+      .header("Host", format!("api.minepi.com"))
       .header("Authorization", format!("Key {}", Settings::get().pi_key()))
+      .header("Content-Type", format!("application/json"))
+      .header("Accept", format!("*/*"))
+      .header("User-Agent", format!("wepi.social"))
       .send()
   })
   .await?;
@@ -79,7 +87,11 @@ pub async fn pi_complete(
   let response = retry(|| {
     client
       .post(&fetch_url)
+      .header("Host", format!("api.minepi.com"))
       .header("Authorization", format!("Key {}", Settings::get().pi_key()))
+      .header("Content-Type", format!("application/json"))
+      .header("Accept", format!("*/*"))
+      .header("User-Agent", format!("wepi.social"))
       .json(&r)
       .send()
   })

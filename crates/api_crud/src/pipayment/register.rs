@@ -92,7 +92,7 @@ impl PerformCrud for PiRegister {
 
     let actor_keypair = generate_actor_keypair()?;
     if !is_valid_username(&data.info.username) {
-      return Err(ApiError::err("invalid_username").into());
+      return Err(ApiError::err("register:invalid_username").into());
     }
     let actor_id = generate_apub_endpoint(EndpointType::Person, &data.info.username)?;
 

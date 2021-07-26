@@ -81,7 +81,7 @@ impl PerformCrud for PiAgreeRegister {
     check_slurs(&data.info.username)?;
 
     if !is_valid_username(&data.info.username) {
-      return Err(ApiError::err("invalid_username").into());
+      return Err(ApiError::err("agree:invalid_username").into());
     }
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.info.username)?;
@@ -190,7 +190,7 @@ impl PerformCrud for PiAgreeRegister {
       Ok(c) => Some(c),
       Err(_e) => {
         // Pi Server error
-        let err_type = format!("Call Pi Server API for approve {} error: {}", &data.paymentid, _e.to_string());
+        let err_type = format!("Call Pi Server API for approve: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
         //let err_type = _e.to_string();
         return Err(ApiError::err(&err_type).into());
       }

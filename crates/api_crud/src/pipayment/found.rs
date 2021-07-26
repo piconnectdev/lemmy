@@ -48,6 +48,10 @@ impl PerformCrud for PiPaymentFound {
     let _pi_username = data.pi_username.to_owned();
     let _pi_uid = data.pi_uid.clone();
 
+    //let err_type = e.to_string()
+    let err_type = format!("PiPaymentFound {}, id: {}", &_pi_username, &_payment_id);
+    return Err(ApiError::err(&err_type).into());
+
     /*
     let _payment = match blocking(context.pool(), move |conn| {
       PiPayment::find_by_pipayment_id(&conn, _payment_id)
