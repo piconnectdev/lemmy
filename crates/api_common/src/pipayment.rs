@@ -1,4 +1,4 @@
-use lemmy_db_schema::{PaymentId, PiUserId};
+use lemmy_db_schema::{PaymentId, PiUserId, source::pipayment::*};
 use crate::person::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,6 +31,8 @@ pub struct PiAgreeRegister {
 pub struct PiAgreeResponse {
   pub id: PaymentId,
   pub paymentid: String,
+  pub payment: Option<PiPayment>,
+  pub extra: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -46,6 +48,7 @@ pub struct PiRegister {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiRegisterResponse {
   pub jwt: String,
+  pub extra: Option<String>,
 }
 
 

@@ -185,6 +185,7 @@ impl PerformCrud for PiAgreeRegister {
         };
       }
     }
+    /*
     dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
       Ok(c) => Some(c),
       Err(_e) => {
@@ -194,10 +195,12 @@ impl PerformCrud for PiAgreeRegister {
         return Err(ApiError::err(&err_type).into());
       }
     };
+    */
 
     let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
     };
+    _payment_dto.status.developer_approved  =  true;
 
     if dto.is_some() {
       _payment_dto = dto.unwrap();
@@ -221,7 +224,7 @@ impl PerformCrud for PiAgreeRegister {
       pi_username: data.pi_username.clone(),
       comment: data.comment.clone(),
 
-      identifier: _payment_dto.identifier, //data.paymentid
+      identifier: data.paymentid.clone(),
       user_uid: "".to_string(),            //_payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
@@ -250,13 +253,16 @@ impl PerformCrud for PiAgreeRegister {
       None => {}
     }
 
-    if !exist {
+    //if !exist {
       _payment = match blocking(context.pool(), move |conn| {
         PiPayment::create(&conn, &payment_form)
       })
       .await?
       {
-        Ok(payment) => Some(payment),
+        Ok(payment) => {
+            pid = payment.id;
+            Some(payment)
+        },
         Err(e) => {
           // let err_type = if e.to_string() == "value too long for type character varying(200)" {
           //   "post_title_too_long"
@@ -267,11 +273,12 @@ impl PerformCrud for PiAgreeRegister {
           return Err(ApiError::err(&err_type).into());
         }
       };
-      pid = _payment.unwrap().id;
+      /*
+      //pid = _payment.unwrap().id;
     } else {
       let pmt = _payment.unwrap();
       pid = pmt.id;
-      let inserted_payment = match blocking(context.pool(), move |conn| {
+      let _payment = match blocking(context.pool(), move |conn| {
         PiPayment::update(&conn, pid, &payment_form)
       })
       .await?
@@ -288,13 +295,15 @@ impl PerformCrud for PiAgreeRegister {
         }
       };
     }
-
+    */
     //_payment = pi_update_payment(context, payment_id, &_pi_username, _pi_uid, Some(data.info)).await?;
     // Return the jwt
     Ok(PiAgreeResponse {
       id: pid,
       //id: _payment.map(|x| x.id),
       paymentid: data.paymentid.to_owned(),
+      payment: _payment,
+      extra: Some(_pi_username2),
     })
   }
 }

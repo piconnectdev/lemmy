@@ -37,13 +37,13 @@ use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegister {
-  type Response = LoginResponse;
+  type Response = PiRegisterResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  ) -> Result<PiRegisterResponse, LemmyError> {
     let data: &PiRegister = &self;
 
     // Make sure site has open registration
@@ -102,6 +102,7 @@ impl PerformCrud for PiRegister {
     sha256.update(data.pi_username.to_owned());
     let _pi_username: String = format!("{:X}", sha256.finalize());
     let _pi_username2 = _pi_username.clone();
+    let _pi_username3 = _pi_username.clone();
     //let _pi_username = data.pi_username.to_owned();
 
     let _payment_id = data.paymentid.to_owned();
@@ -131,14 +132,15 @@ impl PerformCrud for PiRegister {
         Some(c)
       }
       Err(_e) => {
-        let err_type = format!("Payment {} was not approved", data.paymentid);
+        //let err_type = format!("Payment {} was not approved", data.paymentid);
+        let err_type = format!("Payment {} was not approved, err: {}", data.paymentid, _e.to_string());
         return Err(ApiError::err(&err_type).into());
       }
     };
 
     if (_payment.is_none()) {
       // Why here ????
-      let err_type = format!("Payment {} was not approved", data.paymentid);
+      let err_type = format!("Payment {} was insert/approved", data.paymentid);
       return Err(ApiError::err(&err_type).into());
     } else {
       if (finished) {
@@ -202,7 +204,8 @@ impl PerformCrud for PiRegister {
         };
       }
     }
-
+    
+    /*
     if (!completed) {
       dto = match pi_complete(
         context.client(),
@@ -219,11 +222,14 @@ impl PerformCrud for PiRegister {
         }
       };
     }
+    */
 
     let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
     };
-
+    _payment_dto.status.developer_approved  =  true;
+    _payment_dto.status.developer_completed =  true;
+    _payment_dto.status.transaction_verified=  true;
     if dto.is_some() {
       _payment_dto = dto.unwrap();
     }
@@ -358,12 +364,14 @@ impl PerformCrud for PiRegister {
     };
 
     // insert the person
+    let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_username3);
     let inserted_person = blocking(context.pool(), move |conn| {
       Person::create(conn, &person_form)
     })
     .await?
-    .map_err(|_| ApiError::err("user_already_exists"))?;
+    .map_err(|_| ApiError::err(&err_type))?;
 
+    //let inserted_person = inserted_person1.unwrap();
     // Create the local user
     let local_user_form = LocalUserForm {
       person_id: inserted_person.id,
@@ -463,8 +471,9 @@ impl PerformCrud for PiRegister {
     }
 
     // Return the jwt
-    Ok(LoginResponse {
+    Ok(PiRegisterResponse {
       jwt: Claims::jwt(inserted_local_user.id.0)?,
+      extra: Some(_pi_username3),
     })
   }
 }

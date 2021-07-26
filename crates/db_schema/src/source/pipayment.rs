@@ -1,11 +1,11 @@
 use crate::{schema::pipayment, PaymentId, PersonId, PiUserId};
 //use diesel::sql_types::Jsonb;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
 //#[changeset_options(treat_none_as_null = "true")]
-#[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
+#[derive(Deserialize, Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
 #[table_name = "pipayment"]
 pub struct PiPayment {
   pub id: PaymentId,
