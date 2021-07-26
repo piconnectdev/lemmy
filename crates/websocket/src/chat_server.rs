@@ -465,7 +465,7 @@ impl ChatServer {
       if let Ok(user_operation_crud) = UserOperationCrud::from_str(&op) {
         let fut = (message_handler_crud)(context, msg.id, user_operation_crud.clone(), data);
         match user_operation_crud {
-          UserOperationCrud::Register => rate_limiter.register().wrap(ip, fut).await,
+          //UserOperationCrud::Register => rate_limiter.register().wrap(ip, fut).await,
           UserOperationCrud::CreatePost => rate_limiter.post().wrap(ip, fut).await,
           UserOperationCrud::CreateCommunity => rate_limiter.register().wrap(ip, fut).await,
           _ => rate_limiter.message().wrap(ip, fut).await,
