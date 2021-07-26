@@ -73,7 +73,8 @@ impl CommentView {
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
     // The left join below will return None in this case
-    let person_id_join = my_person_id.unwrap();
+    let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    let person_id_join = my_person_id.unwrap_or(PersonId(uuid));
 
     let (
       comment,
