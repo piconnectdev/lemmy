@@ -33,6 +33,7 @@ use lemmy_db_schema::{
   PersonMentionId,
 };
 use serde::Serialize;
+use uuid::Uuid;
 
 #[derive(Debug, PartialEq, Serialize, Clone)]
 pub struct PersonMentionView {
@@ -210,7 +211,7 @@ impl<'a> PersonMentionQueryBuilder<'a> {
 
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-    let person_id_join = my_person_id.unwrap_or(PersonId(uuid));
+    let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));
 
     let mut query = person_mention::table
       .inner_join(comment::table)
