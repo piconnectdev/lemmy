@@ -211,7 +211,7 @@ impl PerformCrud for PiRegister {
       }
     }
     
-    /*
+    
     if (!completed) {
       dto = match pi_complete(
         context.client(),
@@ -223,12 +223,13 @@ impl PerformCrud for PiRegister {
         Ok(c) => Some(c),
         Err(_e) => {
           // Server error
-          let err_type = _e.to_string();
+          let err_type = format!("Call Pi Server API for approve {} error: {}", &data.paymentid, _e.to_string());
+          //let err_type = _e.to_string();
           return Err(ApiError::err(&err_type).into());
         }
       };
     }
-    */
+    
 
     let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
