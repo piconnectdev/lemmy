@@ -62,15 +62,14 @@ impl PerformCrud for PiTip {
     }
     */
     //let site_view = blocking(context.pool(), move |conn| SiteView::read(conn)).await??;
-    let _payment = match pi_update_payment(context, _payment_id, &_pi_username, _pi_uid, None)
-    .await
-    {
-      Ok(c) => c,
-      Err(e) => {
-        let err_type = e.to_string();
-        return Err(ApiError::err(&err_type).into());
-      }
-    };
+    let _payment =
+      match pi_update_payment(context, &_payment_id, &_pi_username, _pi_uid, None).await {
+        Ok(c) => c,
+        Err(e) => {
+          let err_type = e.to_string();
+          return Err(ApiError::err(&err_type).into());
+        }
+      };
     Ok(PiTipResponse {
       id: _payment.id,
       paymentid: _payment_id.to_owned(),

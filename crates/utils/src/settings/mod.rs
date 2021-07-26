@@ -167,6 +167,9 @@ impl Settings {
     self.setup.to_owned()
   }
 
+  pub fn pi_seed(&self) -> String {
+    self.pi_seed.to_owned().unwrap_or_default()
+  }
   pub fn pi_testnet(&self) -> bool {
     self.pi_testnet.unwrap_or_default()
   }

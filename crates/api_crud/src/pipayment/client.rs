@@ -1,20 +1,21 @@
 use crate::PerformCrud;
+use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
-use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
-use lemmy_db_schema::*;
+use lemmy_api_common::{blocking, person::*};
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::site::*, source::pipayment::*, Crud, Followable, Joinable, ListingType,
-  SortType,
+  source::local_user::LocalUser_, source::pipayment::*, source::site::*, Crud, Followable,
+  Joinable, ListingType, SortType,
 };
-use lemmy_db_schema::{source::{
-  community::*,
-  local_user::{LocalUser, LocalUserForm},
-  person::*,
-  pipayment::*,
-  site::*,
-}, PaymentId, PiPaymentId, PiUserId, PersonId, };
+use lemmy_db_schema::*;
+use lemmy_db_schema::{
+  source::{
+    local_user::{LocalUser, LocalUserForm},
+    pipayment::*,
+    site::*,
+  },
+  PaymentId, PersonId, PiUserId,
+};
 use lemmy_utils::{
-  apub::generate_actor_keypair,
   claims::Claims,
   request::*,
   settings::structs::Settings,
@@ -23,14 +24,13 @@ use lemmy_utils::{
 };
 use lemmy_websocket::{
   messages::{SendModRoomMessage, SendUserRoomMessage},
-  LemmyContext,
-  UserOperation,
+  LemmyContext, UserOperation,
 };
-use actix_web::web::Data;
 use reqwest::Client;
+use sha2::{Digest, Sha256, Sha512};
 use uuid::Uuid;
 
-pub async fn pi_payment(client: &Client, id: &PiPaymentId) -> Result<PiPaymentDto, LemmyError> {
+pub async fn pi_payment(client: &Client, id: &str) -> Result<PiPaymentDto, LemmyError> {
   let fetch_url = format!("{}/payments/{}", Settings::get().pi_api_host(), id);
 
   let response = retry(|| {
@@ -48,7 +48,7 @@ pub async fn pi_payment(client: &Client, id: &PiPaymentId) -> Result<PiPaymentDt
   Ok(res)
 }
 
-pub async fn pi_approve(client: &Client, id: &PiPaymentId) -> Result<PiPaymentDto, LemmyError> {
+pub async fn pi_approve(client: &Client, id: &str) -> Result<PiPaymentDto, LemmyError> {
   let fetch_url = format!("{}/payments/{}/approve", Settings::get().pi_api_host(), id);
 
   let response = retry(|| {
@@ -68,8 +68,8 @@ pub async fn pi_approve(client: &Client, id: &PiPaymentId) -> Result<PiPaymentDt
 
 pub async fn pi_complete(
   client: &Client,
-  id: &String,
-  txid_: &String,
+  id: &str,
+  txid_: &str,
 ) -> Result<PiPaymentDto, LemmyError> {
   let fetch_url = format!("{}/payments/{}/complete", Settings::get().pi_api_host(), id);
 
@@ -94,131 +94,125 @@ pub async fn pi_complete(
 
 pub async fn pi_update_payment(
   context: &Data<LemmyContext>,
-  payment_id: PiPaymentId,
-  pi_username: &String,
+  payment_id: &str,
+  pi_username: &str,
   pi_uid: Option<PiUserId>,
-  info: Option<Register>
+  info: Option<Register>,
 ) -> Result<PiPayment, LemmyError> {
-  
-  let _payment_id = payment_id;
-  let _pi_username = pi_username;
+  // Hide PiUserName
+  let mut sha256 = Sha256::new();
+  sha256.update(pi_username.to_owned());
+  let _pi_username: String = format!("{:X}", sha256.finalize());
+  //let _pi_username = pi_username;
+
+  let mut _payment_id = format!("{}", payment_id); //payment_id.to_string();
+  let mut _payment_id2 = payment_id.to_string();
+  //let _payment_id: String = "123".into();
   let _pi_uid = pi_uid;
 
   let mut approved = false;
-    let mut completed = false;
-    let mut exist = false;
-    //let mut fetch_pi_server = true;
-    let mut pid;
-    let mut pmt;
-    let mut _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::find_by_pipayment_id(&conn, _payment_id)
-    })
-    .await?
-    {
-      Ok(c) => {
-        exist = true;
-        approved = c.approved;
-        completed = c.completed;
-        pid = c.id;
-        Some(c)
-      },
-      Err(_e) => {
-        None
-      },
-    };
+  let mut completed = false;
+  let mut exist = false;
+  //let mut fetch_pi_server = true;
+  let mut pid;
+  let mut pmt;
+  let mut _payment = match blocking(context.pool(), move |conn| {
+    PiPayment::find_by_pipayment_id(&conn, &_payment_id.to_owned())
+  })
+  .await?
+  {
+    Ok(c) => {
+      exist = true;
+      approved = c.approved;
+      completed = c.completed;
+      pid = c.id;
+      Some(c)
+    }
+    Err(_e) => None,
+  };
 
-    let mut dto: Option<PiPaymentDto> = None;
+  let mut dto: Option<PiPaymentDto> = None;
 
-    if (_payment.is_some()) {
-      if (!approved) {
-        let dto = match pi_approve(context.client(), &_payment_id.clone())
-        .await
-        {
-          Ok(c) => Some(c),
-          Err(_e) => None,
-        };
-      }
-    } else {
-      dto = match pi_approve(context.client(), &_payment_id.clone())
-      .await
-      {
+  if (_payment.is_some()) {
+    if (!approved) {
+      let dto = match pi_approve(context.client(), payment_id).await {
         Ok(c) => Some(c),
         Err(_e) => None,
       };
     }
-
-    if !exist || ! approved {
-      
-    } else {
-
-    }
-
-
-    // if _payment.is_some() {
-
-    // }
-    //let mut pm = None;
-
-    let mut _payment_dto = PiPaymentDto{
-      ..PiPaymentDto::default()
+  } else {
+    dto = match pi_approve(context.client(), payment_id).await {
+      Ok(c) => Some(c),
+      Err(_e) => None,
     };
+  }
 
-    if dto.is_some() {
-      _payment_dto = dto.unwrap();
+  if !exist || !approved {
+  } else {
+  }
+
+  // if _payment.is_some() {
+
+  // }
+  //let mut pm = None;
+
+  let mut _payment_dto = PiPaymentDto {
+    ..PiPaymentDto::default()
+  };
+
+  if dto.is_some() {
+    _payment_dto = dto.unwrap();
+  }
+
+  let _info = info.unwrap();
+  let refid = match _info.captcha_uuid {
+    Some(uid) => match Uuid::parse_str(&uid) {
+      Ok(uidx) => Some(uidx),
+      Err(_e) => None,
+    },
+    None => None,
+  };
+
+  let mut payment_form = PiPaymentForm {
+    person_id: None,
+    ref_id: refid,
+    testnet: Settings::get().pi_testnet(),
+    finished: false,
+    updated: None,
+    pi_uid: _pi_uid,
+    pi_username: _pi_username.clone(),
+    comment: Some(_pi_username.clone()),
+
+    identifier: _payment_dto.identifier.into(),
+    user_uid: _payment_dto.user_uid,
+    amount: _payment_dto.amount,
+    memo: _payment_dto.memo,
+    to_address: _payment_dto.to_address,
+    created_at: _payment_dto.created_at,
+    approved: _payment_dto.status.developer_approved,
+    verified: _payment_dto.status.transaction_verified,
+    completed: _payment_dto.status.developer_completed,
+    cancelled: _payment_dto.status.cancelled,
+    user_cancelled: _payment_dto.status.user_cancelled,
+    tx_link: "".to_string(),
+    tx_id: "".to_string(),
+    tx_verified: false,
+    metadata: None,
+    extras: None,
+    //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
+    //..PiPaymentForm::default()
+  };
+
+  match _payment_dto.transaction {
+    Some(tx) => {
+      payment_form.tx_link = tx._link;
+      payment_form.tx_verified = tx.verified;
+      payment_form.tx_id = tx.txid;
     }
+    None => {}
+  }
 
-    let _info = info.unwrap();
-    let refid = match _info.captcha_uuid {
-      Some(uid) =>  match Uuid::parse_str(&uid) {
-        Ok(uidx) => Some(uidx),
-        Err(_e) => None,
-      }
-      None => None,
-    };
-
-    let mut payment_form = PiPaymentForm {
-      person_id: None,
-      ref_id: refid,
-      testnet: Settings::get().pi_testnet() ,
-      finished: false,
-      updated: None,
-      pi_payment_id: _payment_id,
-      pi_uid: _pi_uid,
-      pi_username: _pi_username.clone(),
-      comment: Some(_pi_username.clone()),
-
-      identifier: _payment_dto.identifier,
-      user_uid: _payment_dto.user_uid,
-      amount: _payment_dto.amount,
-      memo: _payment_dto.memo,
-      to_address: _payment_dto.to_address,
-      created_at: _payment_dto.created_at,
-      approved: _payment_dto.status.developer_approved,
-      verified: _payment_dto.status.transaction_verified,
-      completed: _payment_dto.status.developer_completed,
-      cancelled: _payment_dto.status.cancelled,
-      user_cancelled: _payment_dto.status.user_cancelled,
-      tx_link: "".to_string(),
-      tx_id: "".to_string(),
-      tx_verified: false,
-      //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
-      //payment_dto: _payment_dto,
-      //..PiPaymentForm::default()
-      metadata: None,
-      //dto: None,
-    };
-
-    match _payment_dto.transaction {
-      Some(tx) =>  {
-        payment_form.tx_link = tx._link; 
-        payment_form.tx_verified = tx.verified;
-        payment_form.tx_id = tx.txid;          
-      },
-      None => {}
-      
-    }
-
-    if !exist {
+  if !exist {
     _payment = match blocking(context.pool(), move |conn| {
       PiPayment::create(&conn, &payment_form)
     })
@@ -227,7 +221,7 @@ pub async fn pi_update_payment(
       Ok(payment) => {
         pid = payment.id;
         Some(payment)
-      },
+      }
       Err(e) => {
         // let err_type = if e.to_string() == "value too long for type character varying(200)" {
         //   "post_title_too_long"

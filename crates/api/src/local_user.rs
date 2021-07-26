@@ -215,6 +215,7 @@ impl Perform for SaveUserSettings {
       shared_inbox_url: None,
       matrix_user_id,
       bot_account,
+      extra_user_id: None,
     };
 
     let person_res = blocking(context.pool(), move |conn| {

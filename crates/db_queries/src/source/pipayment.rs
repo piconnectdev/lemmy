@@ -1,12 +1,12 @@
 use crate::Crud;
-use diesel::{dsl::*, result::Error, sql_types::*, *};
+use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{
-  naive_now, 
+  naive_now,
   source::pipayment::*, 
-  PersonId, 
-  PaymentId, 
-  PiPaymentId, 
-  PiUserId  
+  PaymentId, PiUserId 
+};
+use lemmy_utils::{
+  settings::structs::Settings,
 };
 
 use uuid::Uuid;
@@ -42,14 +42,97 @@ impl Crud<PiPaymentForm, PaymentId> for PiPayment {
 }
 
 pub trait PiPayment_ {
-  fn find_by_pipayment_id(conn: &PgConnection, payment_id: PiPaymentId) -> Result<PiPayment, Error>;
+  fn find_by_pipayment_id(conn: &PgConnection, payment_id: &str) -> Result<PiPayment, Error>;
 }
 
 impl PiPayment_ for PiPayment { 
-  fn find_by_pipayment_id(conn: &PgConnection, payment_id: PiPaymentId) -> Result<Self, Error> {
+  fn find_by_pipayment_id(conn: &PgConnection, payment_id: &str) -> Result<Self, Error> {
     use lemmy_db_schema::schema::pipayment::dsl::*;
     pipayment
-      .filter(pi_payment_id.eq(payment_id))
+      .filter(identifier.eq(payment_id))
       .first::<Self>(conn)
+  }
+}
+
+
+#[cfg(test)]
+mod tests {
+  use crate::{establish_unpooled_connection, source::pipayment::*};
+
+  #[test]
+  fn test_crud() {
+    let conn = establish_unpooled_connection();
+    let uid = Uuid::new_v4();
+    let new_payment = PiPaymentForm {
+      person_id: None,
+      ref_id: Some(uid),
+      testnet: Settings::get().pi_testnet(),
+
+      finished: false,
+      updated: None,
+      pi_uid: Some(PiUserId(uid.clone())),
+      pi_username: "wepi".into(),
+      comment: Some("wepi.social".into()),
+
+      identifier: uid.to_hyphenated().to_string(),
+      user_uid: uid.to_hyphenated().to_string(),
+      amount: 0.001,
+      memo: "wepi.social".into(),
+      to_address: "".into(),
+      created_at: Some(naive_now()),
+      approved: true,
+      verified: true,
+      completed: false,
+      cancelled: false,
+      user_cancelled: false,
+      tx_link: "".into(),
+      tx_id: "".into(),
+      tx_verified: false,
+      metadata: None,
+      extras: None,
+      //..PiPaymentForm::default()
+    };
+
+    let inserted_payment = PiPayment::create(&conn, &new_payment).unwrap();
+
+    let expected_payment = PiPayment {
+      id: inserted_payment.id,
+      person_id: None,
+      ref_id: Some(uid),
+      testnet: Settings::get().pi_testnet(),
+      published: inserted_payment.published.clone(),
+      finished: false,
+      updated: None,
+      pi_uid: Some(PiUserId(uid)),
+      pi_username: "wepi".into(),
+      comment: Some("wepi.social".into()),
+
+      identifier: uid.to_hyphenated().to_string(),
+      user_uid: uid.to_hyphenated().to_string(),
+      amount: 0.001,
+      memo: "wepi.social".into(),
+      to_address: "".into(),
+      created_at: inserted_payment.created_at.clone(),
+      approved: true,
+      verified: true,
+      completed: false,
+      cancelled: false,
+      user_cancelled: false,
+      tx_link: "".into(),
+      tx_id: "".into(),
+      tx_verified: false,
+      metadata: None,
+      extras: None,      
+    };
+
+
+    let read_payment = PiPayment::read(&conn, inserted_payment.id).unwrap();
+    let updated_payment = PiPayment::update(&conn, inserted_payment.id, &new_payment).unwrap();
+    let num_deleted = PiPayment::delete(&conn, inserted_payment.id).unwrap();
+
+    assert_eq!(expected_payment, read_payment);
+    assert_eq!(expected_payment, inserted_payment);
+    assert_eq!(expected_payment, updated_payment);
+    assert_eq!(1, num_deleted);
   }
 }

@@ -1,12 +1,11 @@
-use lemmy_db_schema::{PaymentId, PiPaymentId, PiUserId};
+use lemmy_db_schema::{PaymentId, PiUserId};
 use crate::person::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct PiPaymentFound {
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub auth: Option<String>,
@@ -16,12 +15,12 @@ pub struct PiPaymentFound {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiPaymentFoundResponse {
   pub id: PaymentId,
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
 }
 
 #[derive(Deserialize)]
 pub struct PiAgreeRegister {
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub comment: Option<String>,
@@ -31,12 +30,12 @@ pub struct PiAgreeRegister {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiAgreeResponse {
   pub id: PaymentId,
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
 }
 
 #[derive(Deserialize)]
 pub struct PiRegister {
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub comment: Option<String>,
@@ -52,7 +51,7 @@ pub struct PiRegisterResponse {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub auth: Option<String>,
@@ -61,12 +60,12 @@ pub struct PiApprove {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApproveResponse {
   pub id: PaymentId,
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiTip {
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub comment: Option<String>,
@@ -77,7 +76,7 @@ pub struct PiTip {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiTipResponse {
   pub id: PaymentId,
-  pub paymentid: PiPaymentId,
+  pub paymentid: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
@@ -100,7 +99,6 @@ pub struct PiPaymentTransaction {
 pub struct PiPaymentDto {
   pub identifier: String,
   pub user_uid: String,
-  /// uuid::Uuid
   pub amount: f64,
   pub memo: String,
   pub to_address: String,

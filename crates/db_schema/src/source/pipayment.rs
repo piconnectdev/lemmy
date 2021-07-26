@@ -1,4 +1,4 @@
-use crate::{schema::pipayment, PaymentId, PersonId, PiPaymentId, PiUserId};
+use crate::{schema::pipayment, PaymentId, PersonId, PiUserId};
 //use diesel::sql_types::Jsonb;
 use serde::Serialize;
 use serde_json::Value;
@@ -17,7 +17,6 @@ pub struct PiPayment {
   pub updated: Option<chrono::NaiveDateTime>,
   pub comment: Option<String>,
 
-  pub pi_payment_id: PiPaymentId,
   pub pi_uid: Option<PiUserId>,
   pub pi_username: String,
 
@@ -37,7 +36,7 @@ pub struct PiPayment {
   pub tx_link: String,
   pub tx_id: String,
   pub metadata: Option<Value>,
-  pub dto: Option<Value>,
+  pub extras: Option<Value>,
 }
 
 #[derive(Insertable, AsChangeset, Clone)]
@@ -50,7 +49,6 @@ pub struct PiPaymentForm {
   pub updated: Option<chrono::NaiveDateTime>,
   pub comment: Option<String>,
 
-  pub pi_payment_id: PiPaymentId,
   pub pi_uid: Option<PiUserId>,
   pub pi_username: String,
   pub identifier: String,
@@ -69,4 +67,5 @@ pub struct PiPaymentForm {
   pub tx_link: String,
   pub tx_id: String,
   pub metadata: Option<Value>,
+  pub extras: Option<Value>,
 }

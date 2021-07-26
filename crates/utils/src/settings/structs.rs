@@ -18,6 +18,7 @@ pub struct Settings {
   pub(crate) email: Option<EmailConfig>,
   pub(crate) setup: Option<SetupConfig>,
   pub(crate) additional_slurs: Option<String>,
+  pub(crate) pi_seed: Option<String>,
   pub(crate) pi_key: Option<String>,
   pub(crate) pi_api_host: Option<String>,
   pub(crate) pi_testnet: Option<bool>,

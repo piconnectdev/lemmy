@@ -201,6 +201,7 @@ pub trait Person_ {
   fn ban_person(conn: &PgConnection, person_id: PersonId, ban: bool) -> Result<Person, Error>;
   fn add_admin(conn: &PgConnection, person_id: PersonId, added: bool) -> Result<Person, Error>;
   fn find_by_name(conn: &PgConnection, name: &str) -> Result<Person, Error>;
+  fn find_by_pi_name(conn: &PgConnection, name: &str) -> Result<Person, Error>;
   fn mark_as_updated(conn: &PgConnection, person_id: PersonId) -> Result<Person, Error>;
   fn delete_account(conn: &PgConnection, person_id: PersonId) -> Result<Person, Error>;
 }
@@ -219,6 +220,15 @@ impl Person_ for Person {
   }
 
   fn find_by_name(conn: &PgConnection, from_name: &str) -> Result<Person, Error> {
+    person
+
+      .filter(deleted.eq(false))
+      .filter(local.eq(true))
+      .filter(extra_user_id.eq(from_name))
+      .first::<Person>(conn)
+  }
+
+  fn find_by_pi_name(conn: &PgConnection, from_name: &str) -> Result<Person, Error> {
     person
       .filter(deleted.eq(false))
       .filter(local.eq(true))
@@ -291,6 +301,7 @@ mod tests {
       inbox_url: inserted_person.inbox_url.to_owned(),
       shared_inbox_url: None,
       matrix_user_id: None,
+      extra_user_id: None,
     };
 
     let read_person = Person::read(&conn, inserted_person.id).unwrap();

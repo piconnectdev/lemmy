@@ -68,7 +68,7 @@ impl PerformCrud for PiPaymentFound {
       //   }
       // };
     }
-    
+
     if !_payment.approved {
 
     } else if !_payment.completed {
@@ -117,20 +117,17 @@ impl PerformCrud for PiPaymentFound {
     let inserted_payment_id = inserted_payment.id;
     */
     // Return the jwt
-    let _payment = match pi_update_payment(context, _payment_id, &_pi_username, _pi_uid, None)
-    .await
-    {
-      Ok(c) => c,
-      Err(e) => {
-        let err_type = e.to_string();
-        return Err(ApiError::err(&err_type).into());
-      }
-    };
+    let _payment =
+      match pi_update_payment(context, &_payment_id, &_pi_username, _pi_uid, None).await {
+        Ok(c) => c,
+        Err(e) => {
+          let err_type = e.to_string();
+          return Err(ApiError::err(&err_type).into());
+        }
+      };
     Ok(PiPaymentFoundResponse {
       id: _payment.id,
       paymentid: _payment_id.to_owned(),
     })
   }
 }
-
-

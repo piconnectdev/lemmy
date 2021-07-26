@@ -7,8 +7,8 @@ use lemmy_apub::{
   EndpointType,
 };
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::site::*, source::pipayment::*, Crud, Followable, Joinable, ListingType,
-  SortType,
+  source::local_user::LocalUser_, source::person::*, source::pipayment::*, source::site::*, Crud,
+  Followable, Joinable, ListingType, SortType,
 };
 use lemmy_db_schema::source::{
   community::*,
@@ -27,6 +27,7 @@ use lemmy_utils::{
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
+use sha2::{Digest, Sha256, Sha512};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -60,11 +61,13 @@ impl PerformCrud for PiAgreeRegister {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
-          uuid: data.info
+          uuid: data
+            .info
             .captcha_uuid
             .to_owned()
             .unwrap_or_else(|| "".to_string()),
-          answer: data.info
+          answer: data
+            .info
             .captcha_answer
             .to_owned()
             .unwrap_or_else(|| "".to_string()),
@@ -83,8 +86,16 @@ impl PerformCrud for PiAgreeRegister {
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.info.username)?;
 
+    // Hide Pi user name, not store pi_uid
+    let mut sha256 = Sha256::new();
+    sha256.update(Settings::get().pi_seed());
+    sha256.update(data.pi_username.to_owned());
+    let _pi_username: String = format!("{:X}", sha256.finalize());
+    let _pi_username2 = _pi_username.clone();
+    //let _pi_username = data.pi_username.to_owned();
+
     let _payment_id = data.paymentid.to_owned();
-    let _pi_username = data.pi_username.to_owned();
+    let _new_user = data.info.username.to_owned();
     let _pi_uid = data.pi_uid.clone();
 
     let mut approved = false;
@@ -92,8 +103,10 @@ impl PerformCrud for PiAgreeRegister {
     let mut exist = false;
     //let mut fetch_pi_server = true;
     let mut pid;
+    let mut dto: Option<PiPaymentDto> = None;
+
     let mut _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::find_by_pipayment_id(&conn, _payment_id)
+      PiPayment::find_by_pipayment_id(&conn, &_payment_id)
     })
     .await?
     {
@@ -103,45 +116,86 @@ impl PerformCrud for PiAgreeRegister {
         completed = c.completed;
         pid = c.id;
         Some(c)
-      },
-      Err(_e) => {
-        None
-      },
+      }
+      Err(_e) => None,
     };
 
-    let mut dto: Option<PiPaymentDto> = None;
-
     if (_payment.is_some()) {
-      if (!approved) {
-        let dto = match pi_approve(context.client(), &_payment_id.clone())
-        .await
-        {
-          Ok(c) => Some(c),
-          Err(_e) => None,
+      // Why here ????
+      let err_type = format!("Payment {} was approved", data.paymentid);
+      return Err(ApiError::err(&err_type).into());
+      // if (!approved) {
+      //   let dto = match pi_approve(context.client(), &data.paymentid.clone())
+      //   .await
+      //   {
+      //     Ok(c) => Some(c),
+      //     Err(_e) => None,
+      //   };
+      // }
+    } else {
+    }
+
+    let mut pi_person = match blocking(context.pool(), move |conn| {
+      Person::find_by_pi_name(&conn, &_pi_username)
+    })
+    .await?
+    {
+      Ok(c) => Some(c),
+      Err(_e) => None,
+    };
+
+    let person = match blocking(context.pool(), move |conn| {
+      Person::find_by_name(&conn, &_new_user)
+    })
+    .await?
+    {
+      Ok(c) => Some(c),
+      Err(_e) => None,
+    };
+    match pi_person {
+      Some(pi) => {
+        match person {
+          Some(per) => {
+            if (pi.name != per.name) {
+              let err_type = format!(
+                "User {} is exist and belong other Pi account",
+                &data.info.username
+              );
+              return Err(ApiError::err(&err_type).into());
+            } else {
+              // Same name and account: change password ???
+            }
+          }
+          None => {
+            // Not allow change username
+            let err_type = format!("Account already have user name {}", pi.name);
+            return Err(ApiError::err(&err_type).into());
+          }
         };
       }
-    } else {
-      dto = match pi_approve(context.client(), &_payment_id.clone())
-      .await
-      {
-        Ok(c) => Some(c),
-        Err(_e) => None,
-      };
+      None => {
+        match person {
+          Some(per) => {
+            let err_type = format!("User {} is exist", &data.info.username);
+            return Err(ApiError::err(&err_type).into());
+          }
+          None => {
+            // No account, we approved this tx
+          }
+        };
+      }
     }
+    dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
+      Ok(c) => Some(c),
+      Err(_e) => {
+        // Pi Server error
+        //let err_type = format!("User {} is exist", &data.info.username);
+        let err_type = _e.to_string();
+        return Err(ApiError::err(&err_type).into());
+      }
+    };
 
-    if !exist || ! approved {
-      
-    } else {
-
-    }
-
-
-    // if _payment.is_some() {
-
-    // }
-    //let mut pm = None;
-
-    let mut _payment_dto = PiPaymentDto{
+    let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
     };
 
@@ -150,10 +204,10 @@ impl PerformCrud for PiAgreeRegister {
     }
 
     let refid = match &data.info.captcha_uuid {
-      Some(uid) =>  match Uuid::parse_str(uid) {
+      Some(uid) => match Uuid::parse_str(uid) {
         Ok(uidx) => Some(uidx),
         Err(_e) => None,
-      }
+      },
       None => None,
     };
 
@@ -163,13 +217,12 @@ impl PerformCrud for PiAgreeRegister {
       testnet: Settings::get().pi_testnet(),
       finished: false,
       updated: None,
-      pi_payment_id: data.paymentid,
-      pi_uid: data.pi_uid,
+      pi_uid: None, // data.pi_uid
       pi_username: data.pi_username.clone(),
       comment: data.comment.clone(),
 
-      identifier: _payment_dto.identifier,
-      user_uid: _payment_dto.user_uid,
+      identifier: _payment_dto.identifier, //data.paymentid
+      user_uid: "".to_string(),            //_payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
       to_address: _payment_dto.to_address,
@@ -182,70 +235,66 @@ impl PerformCrud for PiAgreeRegister {
       tx_link: "".to_string(),
       tx_id: "".to_string(),
       tx_verified: false,
+      metadata: _payment_dto.metadata,
+      extras: None,
       //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
-      //payment_dto: _payment_dto,
       //..PiPaymentForm::default()
-      metadata: None,
-      //dto: None,
-
     };
 
     match _payment_dto.transaction {
-      Some(tx) =>  {
-        payment_form.tx_link = tx._link; 
+      Some(tx) => {
+        payment_form.tx_link = tx._link;
         payment_form.tx_verified = tx.verified;
-        payment_form.tx_id = tx.txid;          
-      },
+        payment_form.tx_id = tx.txid;
+      }
       None => {}
-  }
+    }
 
     if !exist {
-    _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::create(&conn, &payment_form)
-    })
-    .await?
-    {
-      Ok(payment) => Some(payment),
-      Err(e) => {
-        // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-        //   "post_title_too_long"
-        // } else {
-        //   "couldnt_create_post"
-        // };
-        let err_type = e.to_string();
-        return Err(ApiError::err(&err_type).into());
-      }
-    };
-    pid = _payment.unwrap().id;
+      _payment = match blocking(context.pool(), move |conn| {
+        PiPayment::create(&conn, &payment_form)
+      })
+      .await?
+      {
+        Ok(payment) => Some(payment),
+        Err(e) => {
+          // let err_type = if e.to_string() == "value too long for type character varying(200)" {
+          //   "post_title_too_long"
+          // } else {
+          //   "couldnt_create_post"
+          // };
+          let err_type = e.to_string();
+          return Err(ApiError::err(&err_type).into());
+        }
+      };
+      pid = _payment.unwrap().id;
+    } else {
+      let pmt = _payment.unwrap();
+      pid = pmt.id;
+      let inserted_payment = match blocking(context.pool(), move |conn| {
+        PiPayment::update(&conn, pid, &payment_form)
+      })
+      .await?
+      {
+        Ok(payment) => payment,
+        Err(e) => {
+          // let err_type = if e.to_string() == "value too long for type character varying(200)" {
+          //   "post_title_too_long"
+          // } else {
+          //   "couldnt_create_post"
+          // };
+          let err_type = e.to_string();
+          return Err(ApiError::err(&err_type).into());
+        }
+      };
+    }
 
-  } else {
-    let pmt = _payment.unwrap();
-    pid = pmt.id;
-    let inserted_payment = match blocking(context.pool(), move |conn| {
-      PiPayment::update(&conn, pid, &payment_form)
-    })
-    .await?
-    {
-      Ok(payment) => payment,
-      Err(e) => {
-        // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-        //   "post_title_too_long"
-        // } else {
-        //   "couldnt_create_post"
-        // };
-        let err_type = e.to_string();
-        return Err(ApiError::err(&err_type).into());
-      }
-    };
-  }
-    
     //_payment = pi_update_payment(context, payment_id, &_pi_username, _pi_uid, Some(data.info)).await?;
     // Return the jwt
     Ok(PiAgreeResponse {
       id: pid,
       //id: _payment.map(|x| x.id),
-      paymentid: _payment_id.to_owned(),
+      paymentid: data.paymentid.to_owned(),
     })
   }
 }
-

@@ -18,6 +18,7 @@ impl Default for Settings {
       pictrs_url: Some("http://pictrs:8080".into()),
       iframely_url: Some("http://iframely".into()),
       additional_slurs: None,
+      pi_seed: Some("wepi.social".into()),
       pi_key: Some("changeme".into()),
       pi_api_host: Some("https://api.minepi.com/v2".into()),
       pi_testnet: Some(true),

@@ -210,6 +210,7 @@ impl FromApubToForm<PersonExt> for PersonForm {
       inbox_url: Some(person.inner.inbox()?.to_owned().into()),
       shared_inbox_url: Some(shared_inbox),
       matrix_user_id: Some(person.ext_one.matrix_user_id.to_owned()),
+      extra_user_id: None,
     })
   }
 }

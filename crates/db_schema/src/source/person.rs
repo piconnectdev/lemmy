@@ -28,6 +28,7 @@ pub struct Person {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub extra_user_id: Option<String>,
 }
 
 /// A safe representation of person, without the sensitive info
@@ -169,4 +170,5 @@ pub struct PersonForm {
   pub matrix_user_id: Option<Option<String>>,
   pub admin: Option<bool>,
   pub bot_account: Option<bool>,
+  pub extra_user_id: Option<String>,
 }

@@ -290,7 +290,7 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
-        //payment_id -> Nullable<Uuid>,
+        extra_user_id -> Nullable<Text>,
     }
 }
 
@@ -533,11 +533,10 @@ table! {
         updated -> Nullable<Timestamp>,
         comment -> Nullable<Text>,
 
-        pi_payment_id -> Uuid,
         pi_uid -> Nullable<Uuid>,
         pi_username -> Text,
         identifier -> Text,
-        user_uid -> Text,
+        user_uid -> Text, //  PaymentDto
         amount -> Double,
         memo -> Text,
         to_address -> Text,
@@ -552,7 +551,7 @@ table! {
         tx_link -> Text,
         tx_id -> Text,
         metadata -> Nullable<Jsonb>,
-        dto -> Nullable<Jsonb>,
+        extras -> Nullable<Jsonb>,
     }
 }
 

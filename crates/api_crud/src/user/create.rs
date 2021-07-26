@@ -108,6 +108,7 @@ impl PerformCrud for Register {
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
       admin: Some(no_admins),
+      extra_user_id: None,
       ..PersonForm::default()
     };
 

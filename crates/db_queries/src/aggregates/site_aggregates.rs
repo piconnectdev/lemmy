@@ -42,6 +42,7 @@ mod tests {
 
     let new_person = PersonForm {
       name: "thommy_site_agg".into(),
+      extra_user_id: None,
       ..PersonForm::default()
     };
 

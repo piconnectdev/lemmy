@@ -7,8 +7,8 @@ use lemmy_apub::{
   EndpointType,
 };
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::site::*, source::pipayment::PiPayment_, Crud, Followable, Joinable, ListingType,
-  SortType,
+  source::local_user::LocalUser_, source::pipayment::PiPayment_, source::site::*, Crud, Followable,
+  Joinable, ListingType, SortType,
 };
 use lemmy_db_schema::source::{
   community::*,
@@ -29,7 +29,6 @@ use lemmy_utils::{
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use uuid::Uuid;
 
-
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiApprove {
   type Response = PiApproveResponse;
@@ -43,12 +42,12 @@ impl PerformCrud for PiApprove {
 
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.username)?;
-    let _payment_id = data.paymentid.to_owned();
+    let _payment_id = data.paymentid.clone();
     let _pi_username = data.pi_username.to_owned();
     let _pi_uid = data.pi_uid.clone();
 
-  /*
-    
+    /*
+
     let _payment = match blocking(context.pool(), move |conn| {
       PiPayment::find_by_pipayment_id(&conn, _payment_id)
     })
@@ -105,15 +104,14 @@ impl PerformCrud for PiApprove {
 
     let inserted_payment_id = inserted_payment.id;
     */
-    let _payment = match pi_update_payment(context, _payment_id, &_pi_username, _pi_uid, None)
-    .await
-    {
-      Ok(c) => c,
-      Err(e) => {
-        let err_type = e.to_string();
-        return Err(ApiError::err(&err_type).into());
-      }
-    };
+    let _payment =
+      match pi_update_payment(context, &_payment_id, &_pi_username, _pi_uid, None).await {
+        Ok(c) => c,
+        Err(e) => {
+          let err_type = e.to_string();
+          return Err(ApiError::err(&err_type).into());
+        }
+      };
     Ok(PiApproveResponse {
       id: _payment.id,
       paymentid: _payment_id.to_owned(),

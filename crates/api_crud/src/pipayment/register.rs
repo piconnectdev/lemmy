@@ -1,42 +1,38 @@
+use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
 use lemmy_apub::{
-  generate_apub_endpoint,
-  generate_followers_url,
-  generate_inbox_url,
-  generate_shared_inbox_url,
+  generate_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
   EndpointType,
 };
 use lemmy_db_queries::{
-  source::{local_user::LocalUser_, site::Site_, community::Community_, pipayment::*},
-  Crud,
-  Followable,
-  Joinable,
-  ListingType,
-  SortType,
+  source::{community::Community_, local_user::LocalUser_, person::*, pipayment::*, site::Site_},
+  Crud, Followable, Joinable, ListingType, SortType,
 };
 use lemmy_db_schema::{
+  naive_now,
   source::{
     community::*,
     local_user::{LocalUser, LocalUserForm},
     person::*,
-    site::*,
     pipayment::*,
+    site::*,
   },
-  CommunityId,
+  CommunityId, PaymentId, PersonId,
 };
+use lemmy_db_views::{comment_view::CommentView, local_user_view::LocalUserView};
 use lemmy_db_views_actor::person_view::PersonViewSafe;
+
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   settings::structs::Settings,
   utils::{check_slurs, is_valid_username},
-  ApiError,
-  ConnectionId,
-  LemmyError,
+  ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
+use sha2::{Digest, Sha256, Sha512};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -75,11 +71,13 @@ impl PerformCrud for PiRegister {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
-          uuid: data.info
+          uuid: data
+            .info
             .captcha_uuid
             .to_owned()
             .unwrap_or_else(|| "".to_string()),
-          answer: data.info
+          answer: data
+            .info
             .captcha_answer
             .to_owned()
             .unwrap_or_else(|| "".to_string()),
@@ -98,6 +96,252 @@ impl PerformCrud for PiRegister {
     }
     let actor_id = generate_apub_endpoint(EndpointType::Person, &data.info.username)?;
 
+    // Hide Pi user name, not store pi_uid
+    let mut sha256 = Sha256::new();
+    sha256.update(Settings::get().pi_seed());
+    sha256.update(data.pi_username.to_owned());
+    let _pi_username: String = format!("{:X}", sha256.finalize());
+    let _pi_username2 = _pi_username.clone();
+    //let _pi_username = data.pi_username.to_owned();
+
+    let _payment_id = data.paymentid.to_owned();
+    let _new_user = data.info.username.to_owned();
+    let _new_password = data.info.password.to_owned();
+    let _pi_uid = data.pi_uid.clone();
+
+    let mut approved = false;
+    let mut completed = false;
+    let mut finished = false;
+    let mut payment_id: PaymentId;
+    let mut person_id: PersonId;
+    let mut pi_exist = false;
+    let mut dto: Option<PiPaymentDto> = None;
+
+    let mut _payment = match blocking(context.pool(), move |conn| {
+      PiPayment::find_by_pipayment_id(&conn, &_payment_id)
+    })
+    .await?
+    {
+      Ok(c) => {
+        approved = c.approved;
+        completed = c.completed;
+        payment_id = c.id;
+        finished = c.finished;
+        payment_id = c.id;
+        Some(c)
+      }
+      Err(_e) => {
+        let err_type = format!("Payment {} was not approved", data.paymentid);
+        return Err(ApiError::err(&err_type).into());
+      }
+    };
+
+    if (_payment.is_none()) {
+      // Why here ????
+      let err_type = format!("Payment {} was not approved", data.paymentid);
+      return Err(ApiError::err(&err_type).into());
+    } else {
+      if (finished) {
+        let err_type = format!("Payment {} was finished", data.paymentid);
+        return Err(ApiError::err(&err_type).into());
+      }
+    }
+
+    let pi_person = match blocking(context.pool(), move |conn| {
+      Person::find_by_pi_name(&conn, &_pi_username)
+    })
+    .await?
+    {
+      Ok(c) => Some(c),
+      Err(_e) => None,
+    };
+
+    let person = match blocking(context.pool(), move |conn| {
+      Person::find_by_name(&conn, &_new_user)
+    })
+    .await?
+    {
+      Ok(c) => Some(c),
+      Err(_e) => None,
+    };
+
+    let mut change_password = false;
+    match pi_person {
+      Some(pi) => {
+        person_id = pi.id;
+        pi_exist = true;
+        match person {
+          Some(per) => {
+            if (pi.name != per.name) {
+              let err_type = format!(
+                "User {} is exist and belong other Pi account",
+                &data.info.username
+              );
+              return Err(ApiError::err(&err_type).into());
+            } else {
+              // Same name and account: change password ???
+              change_password = true;
+            }
+          }
+          None => {
+            // Not allow change username
+            let err_type = format!("Account already have user name {}", pi.name);
+            return Err(ApiError::err(&err_type).into());
+          }
+        };
+      }
+      None => {
+        match person {
+          Some(per) => {
+            let err_type = format!("User {} is exist", &data.info.username);
+            return Err(ApiError::err(&err_type).into());
+          }
+          None => {
+            // No account, we must completed this and create new user
+          }
+        };
+      }
+    }
+
+    if (!completed) {
+      dto = match pi_complete(
+        context.client(),
+        &data.paymentid.clone(),
+        &data.txid.clone(),
+      )
+      .await
+      {
+        Ok(c) => Some(c),
+        Err(_e) => {
+          // Server error
+          let err_type = _e.to_string();
+          return Err(ApiError::err(&err_type).into());
+        }
+      };
+    }
+
+    let mut _payment_dto = PiPaymentDto {
+      ..PiPaymentDto::default()
+    };
+
+    if dto.is_some() {
+      _payment_dto = dto.unwrap();
+    }
+
+    let refid = match &data.info.captcha_uuid {
+      Some(uid) => match Uuid::parse_str(uid) {
+        Ok(uidx) => Some(uidx),
+        Err(_e) => None,
+      },
+      None => None,
+    };
+    // Update relate payment
+    let mut payment_form = PiPaymentForm {
+      person_id: None,
+      ref_id: refid,
+      testnet: Settings::get().pi_testnet(),
+      finished: true,
+      updated: Some(naive_now()),
+      pi_uid: None,
+      pi_username: data.pi_username.clone(),
+      comment: data.comment.clone(),
+
+      identifier: _payment_dto.identifier, //data.paymentid
+      user_uid: "".to_string(),            //_payment_dto.user_uid,
+      amount: _payment_dto.amount,
+      memo: _payment_dto.memo,
+      to_address: _payment_dto.to_address,
+      created_at: _payment_dto.created_at,
+      approved: _payment_dto.status.developer_approved,
+      verified: _payment_dto.status.transaction_verified,
+      completed: _payment_dto.status.developer_completed,
+      cancelled: _payment_dto.status.cancelled,
+      user_cancelled: _payment_dto.status.user_cancelled,
+      tx_link: "".to_string(),
+      tx_id: "".to_string(),
+      tx_verified: false,
+      metadata: _payment_dto.metadata,
+      extras: None,
+      //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
+      //..PiPaymentForm::default()
+    };
+
+    match _payment_dto.transaction {
+      Some(tx) => {
+        payment_form.tx_link = tx._link;
+        payment_form.tx_verified = tx.verified;
+        payment_form.tx_id = tx.txid;
+      }
+      None => {}
+    }
+
+    let updated_payment = match blocking(context.pool(), move |conn| {
+      PiPayment::update(&conn, payment_id, &payment_form)
+    })
+    .await?
+    {
+      Ok(payment) => payment,
+      Err(e) => {
+        // let err_type = if e.to_string() == "value too long for type character varying(200)" {
+        //   "post_title_too_long"
+        // } else {
+        //   "couldnt_create_post"
+        // };
+        let err_type = e.to_string();
+        return Err(ApiError::err(&err_type).into());
+      }
+    };
+    if (change_password) {
+      // let mut local_user_id;
+      // let _local_user = match blocking(context.pool(), move |conn| {
+      //   LocalUserView::read_from_name(&conn, "abcd")
+      // })
+      // .await?
+      // {
+      //   Ok(lcu) => {
+      //     local_user_id = lcu.local_user.id;
+      //   },
+      //   Err(e) => {
+      //     let err_type = e.to_string();
+      //     return Err(ApiError::err(&err_type).into());
+      //   }
+      // };
+      // // if _local_user.is_some() {
+      // //   local_user_id = _local_user.unwrap().id;
+      // // } else {
+      // //   let err_type = "User not found".to_string();
+      // //   return Err(ApiError::err(&err_type).into());
+      // // }
+      // // match _local_user {
+      // //   Some(lu) => {
+      // //     local_user_id = lu.local_user.id;
+      // //   },
+      // //   None => {
+      // //     let err_type = "User not found".to_string();
+      // //     return Err(ApiError::err(&err_type).into());
+      // //   },
+      // // }
+      // let updated_local_user = match blocking(context.pool(), move |conn| {
+      //   LocalUser::update_password(&conn, local_user_id, "password")
+      // })
+      // .await
+      // {
+      //   Ok(chp) => chp,
+      //   Err(e) => {
+      //     // Update password failured
+      //     // let err_type = if e.to_string() == "value too long for type character varying(200)" {
+      //     //   "post_title_too_long"
+      //     // } else {
+      //     //   "couldnt_create_post"
+      //     // };
+      //     let err_type = e.to_string();
+      //     return Err(ApiError::err(&err_type).into());
+      //   }
+      // };
+      // return Ok(LoginResponse {
+      //   jwt: Claims::jwt(local_user_id.0)?,
+      // })
+    }
     // We have to create both a person, and local_user
 
     // Register the new person
@@ -109,6 +353,7 @@ impl PerformCrud for PiRegister {
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
       admin: Some(no_admins),
+      extra_user_id: Some(_pi_username2),
       ..PersonForm::default()
     };
 

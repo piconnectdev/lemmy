@@ -5,12 +5,12 @@ create table pipayment (
   testnet bool,
   finished bool default false,
   published timestamp not null default now(),
-  updated timestamp not null default now(),
+  updated timestamp,
   comment text,  
-  pi_payment_id uuid,   
   pi_uid uuid,  
   pi_username text,
   identifier text,
+  user_uid text,
   amount double precision,
   memo text,
   to_address text,
@@ -24,7 +24,8 @@ create table pipayment (
   tx_id text,  
   tx_link text,
   metadata jsonb,
-  dto jsonb
+  extras jsonb
 );
 
+alter table person add column extra_user_id text;
 
