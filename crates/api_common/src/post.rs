@@ -47,7 +47,7 @@ pub struct GetPosts {
   pub sort: Option<String>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
-  pub community_id: Option<CommunityId>,
+  pub community_id: Option<String>,
   pub community_name: Option<String>,
   pub saved_only: Option<bool>,
   pub auth: Option<String>,

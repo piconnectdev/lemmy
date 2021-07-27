@@ -2,6 +2,7 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{blocking, get_local_user_view_from_jwt_opt, mark_post_as_read, post::*};
 use lemmy_db_queries::{from_opt_str_to_opt_enum, ListingType, SortType};
+use lemmy_db_schema::{CommunityId,};
 use lemmy_db_views::{
   comment_view::CommentQueryBuilder,
   post_view::{PostQueryBuilder, PostView},
@@ -12,6 +13,7 @@ use lemmy_db_views_actor::{
 };
 use lemmy_utils::{ApiError, ConnectionId, LemmyError};
 use lemmy_websocket::{messages::GetPostUsersOnline, LemmyContext};
+use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for GetPost {
@@ -110,8 +112,20 @@ impl PerformCrud for GetPosts {
 
     let page = data.page;
     let limit = data.limit;
-    let community_id = data.community_id;
-    let community_name = data.community_name.to_owned();
+    let mut community_name = data.community_name.to_owned();
+    let community_id =  match &data.community_id {
+        Some(cid) => {
+          let uuid = Uuid::parse_str(cid);
+          match uuid {
+              Ok(uid) => Some(CommunityId(uid)),
+              Err(e) => {
+                community_name = data.community_id.clone();
+                None
+              }
+          }
+        },
+        None => None
+    };
     let saved_only = data.saved_only;
 
     let posts = blocking(context.pool(), move |conn| {
