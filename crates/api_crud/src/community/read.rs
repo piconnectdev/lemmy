@@ -7,14 +7,14 @@ use lemmy_db_queries::{
   ListingType,
   SortType,
 };
-use lemmy_db_schema::source::community::*;
+use lemmy_db_schema::{source::community::*, CommunityId};
 use lemmy_db_views_actor::{
   community_moderator_view::CommunityModeratorView,
   community_view::{CommunityQueryBuilder, CommunityView},
 };
 use lemmy_utils::{ApiError, ConnectionId, LemmyError};
 use lemmy_websocket::{messages::GetCommunityUsersOnline, LemmyContext};
-
+use uuid::Uuid;
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for GetCommunity {
   type Response = GetCommunityResponse;
@@ -28,8 +28,23 @@ impl PerformCrud for GetCommunity {
     let local_user_view = get_local_user_view_from_jwt_opt(&data.auth, context.pool()).await?;
     let person_id = local_user_view.map(|u| u.person.id);
 
-    let community_id = match data.id {
-      Some(id) => id,
+    /// TODO: XXX Community may id or name
+    let community_id = match &data.id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => CommunityId(u),
+          Err(e) => {
+            let name = data.id.to_owned().unwrap_or_else(|| "main".to_string());
+            blocking(context.pool(), move |conn| {
+              Community::read_from_name(conn, &name)
+            })
+            .await?
+            .map_err(|_| ApiError::err("couldnt_find_community"))?
+            .id    
+          }
+        }
+      },
       None => {
         let name = data.name.to_owned().unwrap_or_else(|| "main".to_string());
         blocking(context.pool(), move |conn| {

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct GetCommunity {
-  pub id: Option<CommunityId>,
+  pub id: Option<String>,
   pub name: Option<String>,
   pub auth: Option<String>,
 }
@@ -51,6 +51,7 @@ pub struct ListCommunitiesResponse {
   pub communities: Vec<CommunityView>,
 }
 
+/// TODO: XXX Check use by id or name
 #[derive(Deserialize, Clone)]
 pub struct BanFromCommunity {
   pub community_id: CommunityId,

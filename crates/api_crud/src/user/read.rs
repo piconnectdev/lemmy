@@ -2,7 +2,7 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{blocking, get_local_user_view_from_jwt_opt, person::*};
 use lemmy_db_queries::{from_opt_str_to_opt_enum, source::person::Person_, SortType};
-use lemmy_db_schema::source::person::*;
+use lemmy_db_schema::{source::person::*, PersonId};
 use lemmy_db_views::{comment_view::CommentQueryBuilder, post_view::PostQueryBuilder};
 use lemmy_db_views_actor::{
   community_follower_view::CommunityFollowerView,
@@ -11,6 +11,7 @@ use lemmy_db_views_actor::{
 };
 use lemmy_utils::{ApiError, ConnectionId, LemmyError};
 use lemmy_websocket::LemmyContext;
+use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for GetPersonDetails {
@@ -34,12 +35,28 @@ impl PerformCrud for GetPersonDetails {
 
     let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
 
+    /// TODO: XXX person_id may be name.
     let username = data
       .username
       .to_owned()
       .unwrap_or_else(|| "admin".to_string());
-    let person_details_id = match data.person_id {
-      Some(id) => id,
+    let person_details_id = match &data.person_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => PersonId(u),
+          Err(e) => {
+            let name = id.clone();
+            let person = blocking(context.pool(), move |conn| {
+              Person::find_by_name(conn, &name)
+            })
+            .await?;
+            person
+              .map_err(|_| ApiError::err("couldnt_find_that_username_or_email"))?
+              .id  
+          }
+        }
+      },
       None => {
         let person = blocking(context.pool(), move |conn| {
           Person::find_by_name(conn, &username)
