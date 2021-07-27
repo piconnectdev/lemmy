@@ -107,7 +107,7 @@ impl PerformCrud for PiPaymentFound {
       // };
       approved = dto_read.status.developer_approved;
       completed = dto_read.status.developer_completed;
-      cancelled = dto_read.status.cancelled;
+      cancelled = dto_read.status.cancelled;      
       let mut tx;
       if cancelled {
         let err_type = format!("Pi Server: payment cancelled: user {}, paymentid {}", &data.pi_username, &data.paymentid);
@@ -174,6 +174,15 @@ impl PerformCrud for PiPaymentFound {
     //   None => None,
     // };
 
+    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z"){
+      Ok(dt) => Some(dt),
+      Err(_e) => {
+        let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
+        &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
+        return Err(ApiError::err(&err_type).into());  
+      }
+    };
+
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: None,
@@ -189,7 +198,7 @@ impl PerformCrud for PiPaymentFound {
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
       to_address: _payment_dto.to_address,
-      created_at: Some(chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z").unwrap()),
+      created_at: create_at,
       approved: _payment_dto.status.developer_approved,
       verified: _payment_dto.status.transaction_verified,
       completed: _payment_dto.status.developer_completed,

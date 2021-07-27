@@ -248,6 +248,16 @@ impl PerformCrud for PiRegister {
       },
       None => None,
     };
+
+    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z"){
+      Ok(dt) => Some(dt),
+      Err(_e) => {
+        let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
+        &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
+        return Err(ApiError::err(&err_type).into());  
+      }
+    };
+
     // Update relate payment
     let mut payment_form = PiPaymentForm {
       person_id: None,
@@ -264,7 +274,7 @@ impl PerformCrud for PiRegister {
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
       to_address: _payment_dto.to_address,
-      created_at: Some(chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z").unwrap()),
+      created_at: create_at,
       approved: _payment_dto.status.developer_approved,
       verified: _payment_dto.status.transaction_verified,
       completed: _payment_dto.status.developer_completed,
