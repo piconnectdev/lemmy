@@ -191,7 +191,7 @@ pub async fn pi_update_payment(
     amount: _payment_dto.amount,
     memo: _payment_dto.memo,
     to_address: _payment_dto.to_address,
-    created_at: _payment_dto.created_at,
+    created_at: Some(chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z").unwrap()),
     approved: _payment_dto.status.developer_approved,
     verified: _payment_dto.status.transaction_verified,
     completed: _payment_dto.status.developer_completed,

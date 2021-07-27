@@ -72,7 +72,7 @@ impl PerformCrud for PiApprove {
       amount: paymentDto.amount,
       memo: paymentDto.memo,
       to_address: paymentDto.to_address,
-      created_at: paymentDto.created_at,
+      created_at: Some(chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at).unwrap(), "%Y-%m-%dT%H:%M:%S%.f%z")),
       developer_approved: paymentDto.status.developer_approved,
       transaction_verified: paymentDto.status.transaction_verified,
       developer_completed: paymentDto.status.developer_completed,

@@ -105,7 +105,7 @@ pub struct PiPaymentDto {
   pub amount: f64,
   pub memo: String,
   pub to_address: String,
-  pub created_at: Option<chrono::NaiveDateTime>,
+  pub created_at: String,
   pub status: PiPaymentStatus,
   pub transaction: Option<PiPaymentTransaction>,
   pub metadata: Option<Value>,

@@ -18,6 +18,7 @@ use lemmy_utils::{
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256};
+use chrono::*;
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -218,7 +219,7 @@ impl PerformCrud for PiAgreeRegister {
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
       to_address: _payment_dto.to_address,
-      created_at: _payment_dto.created_at,
+      created_at: Some(chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z").unwrap()),
       approved: _payment_dto.status.developer_approved,
       verified: _payment_dto.status.transaction_verified,
       completed: _payment_dto.status.developer_completed,
