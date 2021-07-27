@@ -234,13 +234,8 @@ pub async fn pi_update_payment(
         pid = payment.id;
         Some(payment)
       }
-      Err(e) => {
-        // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-        //   "post_title_too_long"
-        // } else {
-        //   "couldnt_create_post"
-        // };
-        let err_type = e.to_string();
+      Err(_e) => {
+        let err_type = _e.to_string();
         return Err(ApiError::err(&err_type).into());
       }
     };
@@ -254,13 +249,8 @@ pub async fn pi_update_payment(
     .await?
     {
       Ok(payment) => Some(payment),
-      Err(e) => {
-        // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-        //   "post_title_too_long"
-        // } else {
-        //   "couldnt_create_post"
-        // };
-        let err_type = e.to_string();
+      Err(_e) => {
+        let err_type = _e.to_string();
         return Err(ApiError::err(&err_type).into());
       }
     };

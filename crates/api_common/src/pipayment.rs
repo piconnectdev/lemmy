@@ -82,7 +82,7 @@ pub struct PiTipResponse {
   pub paymentid: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentStatus {
   pub developer_approved: bool,
   pub transaction_verified: bool,
@@ -91,14 +91,14 @@ pub struct PiPaymentStatus {
   pub user_cancelled: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentTransaction {
   pub txid: String,
   pub verified: bool,
   pub _link: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Default)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentDto {
   pub identifier: String,
   pub user_uid: String,

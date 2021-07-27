@@ -1,33 +1,23 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
-use lemmy_apub::{
-  generate_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
-  EndpointType,
-};
+use lemmy_api_common::{blocking, password_length_check, pipayment::*};
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::person::*, source::pipayment::*, source::site::*, Crud,
-  Followable, Joinable, ListingType, SortType,
+  source::person::*, source::pipayment::*, source::site::*, Crud,  
 };
 use lemmy_db_schema::source::{
-  community::*,
-  local_user::{LocalUser, LocalUserForm},
   person::*,
   pipayment::*,
   site::*,
 };
 use lemmy_db_views_actor::person_view::PersonViewSafe;
 use lemmy_utils::{
-  apub::generate_actor_keypair,
-  claims::Claims,
-  request::*,
   settings::structs::Settings,
-  utils::{check_slurs, check_slurs_opt, is_valid_username},
+  utils::{check_slurs, is_valid_username},
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -190,13 +180,12 @@ impl PerformCrud for PiAgreeRegister {
       Ok(c) => Some(c),
       Err(_e) => {
         // Pi Server error
-        let err_type = format!("Call Pi Server API for approve: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+        let err_type = format!("Pi Server: Error while approve: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
         //let err_type = _e.to_string();
         return Err(ApiError::err(&err_type).into());
       }
     };
     
-
     let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
     };
@@ -220,12 +209,12 @@ impl PerformCrud for PiAgreeRegister {
       testnet: Settings::get().pi_testnet(),
       finished: false,
       updated: None,
-      pi_uid: None, // data.pi_uid
-      pi_username: data.pi_username.clone(),
+      pi_uid: data.pi_uid,
+      pi_username: "".to_string(), //data.pi_username.clone(), => Hide user info
       comment: data.comment.clone(),
 
       identifier: data.paymentid.clone(),
-      user_uid: "".to_string(),            //_payment_dto.user_uid,
+      user_uid: _payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
       to_address: _payment_dto.to_address,
@@ -263,13 +252,13 @@ impl PerformCrud for PiAgreeRegister {
             pid = payment.id;
             Some(payment)
         },
-        Err(e) => {
+        Err(_e) => {
           // let err_type = if e.to_string() == "value too long for type character varying(200)" {
           //   "post_title_too_long"
           // } else {
           //   "couldnt_create_post"
           // };
-          let err_type = e.to_string();
+          let err_type = format!("Error insert payment for agree: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
           return Err(ApiError::err(&err_type).into());
         }
       };
@@ -284,7 +273,7 @@ impl PerformCrud for PiAgreeRegister {
       .await?
       {
         Ok(payment) => payment,
-        Err(e) => {
+        Err(_e) => {
           // let err_type = if e.to_string() == "value too long for type character varying(200)" {
           //   "post_title_too_long"
           // } else {

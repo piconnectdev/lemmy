@@ -255,12 +255,12 @@ impl PerformCrud for PiRegister {
       testnet: Settings::get().pi_testnet(),
       finished: true,
       updated: Some(naive_now()),
-      pi_uid: None,
-      pi_username: data.pi_username.clone(),
+      pi_uid: data.pi_uid,
+      pi_username: "".to_string(), // data.pi_username.clone(), Hide username
       comment: data.comment.clone(),
 
       identifier: _payment_dto.identifier, //data.paymentid
-      user_uid: "".to_string(),            //_payment_dto.user_uid,
+      user_uid: _payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
       to_address: _payment_dto.to_address,
@@ -294,13 +294,8 @@ impl PerformCrud for PiRegister {
     .await?
     {
       Ok(payment) => payment,
-      Err(e) => {
-        // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-        //   "post_title_too_long"
-        // } else {
-        //   "couldnt_create_post"
-        // };
-        let err_type = e.to_string();
+      Err(_e) => {
+        let err_type = _e.to_string();
         return Err(ApiError::err(&err_type).into());
       }
     };
@@ -312,8 +307,8 @@ impl PerformCrud for PiRegister {
        .await?
        {
          Ok(lcu) => Some(lcu), 
-         Err(e) => {
-           let err_type = e.to_string();
+         Err(_e) => {
+           let err_type = _e.to_string();
            return Err(ApiError::err(&err_type).into());
          }
        };
@@ -325,14 +320,14 @@ impl PerformCrud for PiRegister {
        .await
        {
          Ok(chp) => chp,
-         Err(e) => {
+         Err(_e) => {
            // Update password failured
            // let err_type = if e.to_string() == "value too long for type character varying(200)" {
            //   "post_title_too_long"
            // } else {
            //   "couldnt_create_post"
            // };
-           let err_type = e.to_string();
+           let err_type = _e.to_string();
            return Err(ApiError::err(&err_type).into());
          }
        };
@@ -364,9 +359,9 @@ impl PerformCrud for PiRegister {
     .await?
     {
       Ok(p) => Some(p),
-      Err(e) => {
+      Err(_e) => {
       let err_type = format!("user_already_exists: {} {}, exists{}, change:{}, err:{}", 
-                             &data.info.username, _pi_username3, pi_exist, change_password, e.to_string());
+                             &data.info.username, _pi_username3, pi_exist, change_password, _e.to_string());
       return Err(ApiError::err(&err_type).into());
       },
     };
@@ -396,8 +391,8 @@ impl PerformCrud for PiRegister {
     .await?
     {
       Ok(lu) => lu,
-      Err(e) => {
-        let err_type = if e.to_string()
+      Err(_e) => {
+        let err_type = if _e.to_string()
           == "duplicate key value violates unique constraint \"local_user_email_key\""
         {
           "email_already_exists"
