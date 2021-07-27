@@ -204,7 +204,7 @@ impl PerformCrud for PiAgreeRegister {
       None => None,
     };
 
-    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z"){
+    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
       Ok(dt) => Some(dt),
       Err(_e) => {
         let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 

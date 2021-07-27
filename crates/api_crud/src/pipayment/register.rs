@@ -200,11 +200,6 @@ impl PerformCrud for PiRegister {
             return Err(ApiError::err(&err_type).into());
           }
           None => {
-              let err_type = format!(
-                "User {} is exist and belong NO Pi account",
-                &data.info.username
-              );
-              return Err(ApiError::err(&err_type).into());
             // No account, we must completed this and create new user
           }
         };
@@ -249,7 +244,7 @@ impl PerformCrud for PiRegister {
       None => None,
     };
 
-    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%z"){
+    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
       Ok(dt) => Some(dt),
       Err(_e) => {
         let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
