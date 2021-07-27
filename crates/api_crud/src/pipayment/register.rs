@@ -141,7 +141,7 @@ impl PerformCrud for PiRegister {
 
     if (_payment.is_none()) {
       // Why here ????
-      let err_type = format!("Payment {} was insert/approved", data.paymentid);
+      let err_type = format!("Payment {} was not insert/approved", data.paymentid);
       return Err(ApiError::err(&err_type).into());
     } else {
       if (finished) {

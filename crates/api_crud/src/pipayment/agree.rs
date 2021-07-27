@@ -301,7 +301,7 @@ impl PerformCrud for PiAgreeRegister {
       id: pid,
       //id: _payment.map(|x| x.id),
       paymentid: data.paymentid.to_owned(),
-      payment: _payment,
+      payment: None, //_payment,
       extra: Some(_pi_username2),
     })
   }
