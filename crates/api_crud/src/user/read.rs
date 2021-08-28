@@ -1,7 +1,8 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{blocking, get_local_user_view_from_jwt_opt, person::*};
-use lemmy_db_queries::{from_opt_str_to_opt_enum, source::person::Person_, SortType};
+use lemmy_apub::{build_actor_id_from_shortname, EndpointType};
+use lemmy_db_queries::{from_opt_str_to_opt_enum, ApubObject, source::person::Person_, SortType};
 use lemmy_db_schema::{source::person::*, PersonId};
 use lemmy_db_views::{comment_view::CommentQueryBuilder, post_view::PostQueryBuilder};
 use lemmy_db_views_actor::{
@@ -22,7 +23,7 @@ impl PerformCrud for GetPersonDetails {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<GetPersonDetailsResponse, LemmyError> {
-    let data: &GetPersonDetails = &self;
+    let data: &GetPersonDetails = self;
     let local_user_view = get_local_user_view_from_jwt_opt(&data.auth, context.pool()).await?;
 
     let show_nsfw = local_user_view.as_ref().map(|t| t.local_user.show_nsfw);
@@ -35,7 +36,7 @@ impl PerformCrud for GetPersonDetails {
 
     let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
 
-    /// TODO: XXX person_id may be name.
+    /// TODO: person_id may be name.
     let username = data
       .username
       .to_owned()
@@ -47,8 +48,14 @@ impl PerformCrud for GetPersonDetails {
           Ok(u) => PersonId(u),
           Err(e) => {
             let name = id.clone();
+            //let person = blocking(context.pool(), move |conn| {
+            //  Person::find_by_name(conn, &name)
+            //})
+            //.await?;
+            let actor_id = build_actor_id_from_shortname(EndpointType::Person, &name)?;
+
             let person = blocking(context.pool(), move |conn| {
-              Person::find_by_name(conn, &name)
+              Person::read_from_apub_id(conn, &actor_id)
             })
             .await?;
             person
@@ -58,8 +65,14 @@ impl PerformCrud for GetPersonDetails {
         }
       },
       None => {
+        let name = data
+          .username
+          .to_owned()
+          .unwrap_or_else(|| "admin".to_string());
+        let actor_id = build_actor_id_from_shortname(EndpointType::Person, &name)?;
+
         let person = blocking(context.pool(), move |conn| {
-          Person::find_by_name(conn, &username)
+          Person::read_from_apub_id(conn, &actor_id)
         })
         .await?;
         person

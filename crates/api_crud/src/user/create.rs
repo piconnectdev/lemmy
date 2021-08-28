@@ -47,9 +47,9 @@ impl PerformCrud for Register {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
-    let data: &Register = &self;
+    let data: &Register = self;
     
-    return Err(ApiError::err("registration_disabled").into());
+    //return Err(ApiError::err("registration_disabled").into());
 
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
@@ -122,6 +122,7 @@ impl PerformCrud for Register {
     .map_err(|_| ApiError::err("user_already_exists"))?;
 
     // Create the local user
+    // TODO some of these could probably use the DB defaults
     let local_user_form = LocalUserForm {
       person_id: inserted_person.id,
       email: Some(data.email.to_owned()),
@@ -135,6 +136,7 @@ impl PerformCrud for Register {
       show_avatars: Some(true),
       show_scores: Some(true),
       show_read_posts: Some(true),
+      show_new_post_notifs: Some(false),
       send_notifications_to_email: Some(false),
     };
 
@@ -155,7 +157,7 @@ impl PerformCrud for Register {
 
         // If the local user creation errored, then delete that person
         blocking(context.pool(), move |conn| {
-          Person::delete(&conn, inserted_person.id)
+          Person::delete(conn, inserted_person.id)
         })
         .await??;
 

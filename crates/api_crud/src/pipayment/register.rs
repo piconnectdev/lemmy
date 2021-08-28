@@ -388,6 +388,7 @@ impl PerformCrud for PiRegister {
       show_scores: Some(true),
       show_read_posts: Some(true),
       send_notifications_to_email: Some(false),
+      show_new_post_notifs: Some(false),
     };
 
     let inserted_local_user = match blocking(context.pool(), move |conn| {

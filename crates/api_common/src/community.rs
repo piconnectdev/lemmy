@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize)]
 pub struct GetCommunity {
   pub id: Option<String>,
+  /// Example: star_trek , or star_trek@xyz.tld
   pub name: Option<String>,
   pub auth: Option<String>,
 }

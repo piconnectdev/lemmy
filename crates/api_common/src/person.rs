@@ -59,6 +59,7 @@ pub struct SaveUserSettings {
   pub bot_account: Option<bool>,
   pub show_bot_accounts: Option<bool>,
   pub show_read_posts: Option<bool>,
+  pub show_new_post_notifs: Option<bool>,
   pub auth: String,
 }
 
@@ -78,6 +79,7 @@ pub struct LoginResponse {
 #[derive(Deserialize)]
 pub struct GetPersonDetails {
   pub person_id: Option<String>, // One of these two are required
+  /// Example: dessalines , or dessalines@xyz.tld
   pub username: Option<String>,
   pub sort: Option<String>,
   pub page: Option<i64>,

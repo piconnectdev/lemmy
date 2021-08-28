@@ -22,7 +22,7 @@ impl Claims {
       ..Validation::default()
     };
     decode::<Claims>(
-      &jwt,
+      jwt,
       &DecodingKey::from_secret(Settings::get().jwt_secret().as_ref()),
       &v,
     )

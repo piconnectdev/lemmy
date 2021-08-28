@@ -1,9 +1,12 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{blocking, community::*, get_local_user_view_from_jwt_opt};
+use lemmy_apub::{build_actor_id_from_shortname, EndpointType};
 use lemmy_db_queries::{
   from_opt_str_to_opt_enum,
-  source::community::Community_,
+  source::community::Community_, 
+  ApubObject,
+  DeleteableOrRemoveable,
   ListingType,
   SortType,
 };
@@ -24,11 +27,10 @@ impl PerformCrud for GetCommunity {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<GetCommunityResponse, LemmyError> {
-    let data: &GetCommunity = &self;
+    let data: &GetCommunity = self;
     let local_user_view = get_local_user_view_from_jwt_opt(&data.auth, context.pool()).await?;
     let person_id = local_user_view.map(|u| u.person.id);
 
-    /// TODO: XXX Community may id or name
     let community_id = match &data.id {
       Some(id) => {
         let uuid = Uuid::parse_str(&id.clone());
@@ -47,8 +49,10 @@ impl PerformCrud for GetCommunity {
       },
       None => {
         let name = data.name.to_owned().unwrap_or_else(|| "main".to_string());
+        let community_actor_id = build_actor_id_from_shortname(EndpointType::Community, &name)?;
+
         blocking(context.pool(), move |conn| {
-          Community::read_from_name(conn, &name)
+          Community::read_from_apub_id(conn, &community_actor_id)
         })
         .await?
         .map_err(|_| ApiError::err("couldnt_find_community"))?
@@ -56,11 +60,16 @@ impl PerformCrud for GetCommunity {
       }
     };
 
-    let community_view = blocking(context.pool(), move |conn| {
+    let mut community_view = blocking(context.pool(), move |conn| {
       CommunityView::read(conn, community_id, person_id)
     })
     .await?
     .map_err(|_| ApiError::err("couldnt_find_community"))?;
+
+    // Blank out deleted or removed info
+    if community_view.community.deleted || community_view.community.removed {
+      community_view.community = community_view.community.blank_out_deleted_or_removed_info();
+    }
 
     let moderators: Vec<CommunityModeratorView> = blocking(context.pool(), move |conn| {
       CommunityModeratorView::for_community(conn, community_id)
@@ -94,7 +103,7 @@ impl PerformCrud for ListCommunities {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<ListCommunitiesResponse, LemmyError> {
-    let data: &ListCommunities = &self;
+    let data: &ListCommunities = self;
     let local_user_view = get_local_user_view_from_jwt_opt(&data.auth, context.pool()).await?;
 
     let person_id = local_user_view.to_owned().map(|l| l.person.id);
@@ -110,7 +119,7 @@ impl PerformCrud for ListCommunities {
 
     let page = data.page;
     let limit = data.limit;
-    let communities = blocking(context.pool(), move |conn| {
+    let mut communities = blocking(context.pool(), move |conn| {
       CommunityQueryBuilder::create(conn)
         .listing_type(listing_type)
         .sort(sort)
@@ -121,6 +130,14 @@ impl PerformCrud for ListCommunities {
         .list()
     })
     .await??;
+
+    // Blank out deleted or removed info
+    for cv in communities
+      .iter_mut()
+      .filter(|cv| cv.community.deleted || cv.community.removed)
+    {
+      cv.community = cv.to_owned().community.blank_out_deleted_or_removed_info();
+    }
 
     // Return the jwt
     Ok(ListCommunitiesResponse { communities })

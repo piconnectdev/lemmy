@@ -27,6 +27,7 @@ mod safe_settings_type {
     show_bot_accounts,
     show_scores,
     show_read_posts,
+    show_new_post_notifs,
   );
 
   impl ToSafeSettings for LocalUser {
@@ -49,6 +50,7 @@ mod safe_settings_type {
         show_bot_accounts,
         show_scores,
         show_read_posts,
+        show_new_post_notifs,
       )
     }
   }
@@ -70,7 +72,7 @@ impl LocalUser_ for LocalUser {
       hash(&form.password_encrypted, DEFAULT_COST).expect("Couldn't hash password");
     edited_user.password_encrypted = password_hash;
 
-    Self::create(&conn, &edited_user)
+    Self::create(conn, &edited_user)
   }
 
   fn update_password(

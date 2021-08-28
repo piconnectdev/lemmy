@@ -1,15 +1,14 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{
-  naive_now,
   source::pipayment::*, 
-  PaymentId, PiUserId 
+  PaymentId, 
 };
 use lemmy_utils::{
   settings::structs::Settings,
 };
 
-use uuid::Uuid;
+//use uuid::Uuid;
 
 impl Crud<PiPaymentForm, PaymentId> for PiPayment {
   fn read(conn: &PgConnection, pipayment_id: PaymentId) -> Result<Self, Error> {

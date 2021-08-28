@@ -10,11 +10,12 @@ use lemmy_api_common::{
   is_admin,
   site::*,
 };
-use lemmy_apub::fetcher::search::search_by_apub_id;
+use lemmy_apub::{build_actor_id_from_shortname, fetcher::search::search_by_apub_id, EndpointType};
 use lemmy_db_queries::{
   from_opt_str_to_opt_enum,
   source::site::Site_,
   Crud,
+  DeleteableOrRemoveable,
   ListingType,
   SearchType,
   SortType,
@@ -60,7 +61,7 @@ impl Perform for GetModlog {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<GetModlogResponse, LemmyError> {
-    let data: &GetModlog = &self;
+    let data: &GetModlog = self;
 
     let community_id = data.community_id;
     let mod_person_id = data.mod_person_id;
@@ -134,7 +135,7 @@ impl Perform for Search {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<SearchResponse, LemmyError> {
-    let data: &Search = &self;
+    let data: &Search = self;
 
     match search_by_apub_id(&data.q, context).await {
       Ok(r) => return Ok(r),
@@ -167,7 +168,11 @@ impl Perform for Search {
     let listing_type: Option<ListingType> = from_opt_str_to_opt_enum(&data.listing_type);
     let search_type: SearchType = from_opt_str_to_opt_enum(&data.type_).unwrap_or(SearchType::All);
     let community_id = data.community_id;
-    let community_name = data.community_name.to_owned();
+    let community_actor_id = data
+      .community_name
+      .as_ref()
+      .map(|t| build_actor_id_from_shortname(EndpointType::Community, t).ok())
+      .unwrap_or(None);
     let creator_id = data.creator_id;
     match search_type {
       SearchType::Posts => {
@@ -179,7 +184,7 @@ impl Perform for Search {
             .show_read_posts(show_read_posts)
             .listing_type(listing_type)
             .community_id(community_id)
-            .community_name(community_name)
+            .community_actor_id(community_actor_id)
             .creator_id(creator_id)
             .my_person_id(person_id)
             .search_term(q)
@@ -191,13 +196,13 @@ impl Perform for Search {
       }
       SearchType::Comments => {
         comments = blocking(context.pool(), move |conn| {
-          CommentQueryBuilder::create(&conn)
+          CommentQueryBuilder::create(conn)
             .sort(sort)
             .listing_type(listing_type)
             .search_term(q)
             .show_bot_accounts(show_bot_accounts)
             .community_id(community_id)
-            .community_name(community_name)
+            .community_actor_id(community_actor_id)
             .creator_id(creator_id)
             .my_person_id(person_id)
             .page(page)
@@ -234,6 +239,7 @@ impl Perform for Search {
         // If the community or creator is included, dont search communities or users
         let community_or_creator_included =
           data.community_id.is_some() || data.community_name.is_some() || data.creator_id.is_some();
+        let community_actor_id_2 = community_actor_id.to_owned();
 
         posts = blocking(context.pool(), move |conn| {
           PostQueryBuilder::create(conn)
@@ -243,7 +249,7 @@ impl Perform for Search {
             .show_read_posts(show_read_posts)
             .listing_type(listing_type)
             .community_id(community_id)
-            .community_name(community_name)
+            .community_actor_id(community_actor_id_2)
             .creator_id(creator_id)
             .my_person_id(person_id)
             .search_term(q)
@@ -254,7 +260,7 @@ impl Perform for Search {
         .await??;
 
         let q = data.q.to_owned();
-        let community_name = data.community_name.to_owned();
+        let community_actor_id = community_actor_id.to_owned();
 
         comments = blocking(context.pool(), move |conn| {
           CommentQueryBuilder::create(conn)
@@ -263,7 +269,7 @@ impl Perform for Search {
             .search_term(q)
             .show_bot_accounts(show_bot_accounts)
             .community_id(community_id)
-            .community_name(community_name)
+            .community_actor_id(community_actor_id)
             .creator_id(creator_id)
             .my_person_id(person_id)
             .page(page)
@@ -316,7 +322,7 @@ impl Perform for Search {
             .listing_type(listing_type)
             .my_person_id(person_id)
             .community_id(community_id)
-            .community_name(community_name)
+            .community_actor_id(community_actor_id)
             .creator_id(creator_id)
             .url_search(q)
             .page(page)
@@ -326,6 +332,28 @@ impl Perform for Search {
         .await??;
       }
     };
+
+    // Blank out deleted or removed info
+    for cv in comments
+      .iter_mut()
+      .filter(|cv| cv.comment.deleted || cv.comment.removed)
+    {
+      cv.comment = cv.to_owned().comment.blank_out_deleted_or_removed_info();
+    }
+
+    for cv in communities
+      .iter_mut()
+      .filter(|cv| cv.community.deleted || cv.community.removed)
+    {
+      cv.community = cv.to_owned().community.blank_out_deleted_or_removed_info();
+    }
+
+    for pv in posts
+      .iter_mut()
+      .filter(|p| p.post.deleted || p.post.removed)
+    {
+      pv.post = pv.to_owned().post.blank_out_deleted_or_removed_info();
+    }
 
     // Return the jwt
     Ok(SearchResponse {
@@ -347,7 +375,7 @@ impl Perform for TransferSite {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<GetSiteResponse, LemmyError> {
-    let data: &TransferSite = &self;
+    let data: &TransferSite = self;
     let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
     is_admin(&local_user_view)?;
@@ -410,7 +438,7 @@ impl Perform for GetSiteConfig {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<GetSiteConfigResponse, LemmyError> {
-    let data: &GetSiteConfig = &self;
+    let data: &GetSiteConfig = self;
     let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
     // Only let admins read this
@@ -431,7 +459,7 @@ impl Perform for SaveSiteConfig {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<GetSiteConfigResponse, LemmyError> {
-    let data: &SaveSiteConfig = &self;
+    let data: &SaveSiteConfig = self;
     let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
     // Only let admins read this

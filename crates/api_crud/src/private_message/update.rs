@@ -6,7 +6,7 @@ use lemmy_api_common::{
   person::{EditPrivateMessage, PrivateMessageResponse},
 };
 use lemmy_apub::ApubObjectType;
-use lemmy_db_queries::{source::private_message::PrivateMessage_, Crud};
+use lemmy_db_queries::{source::private_message::PrivateMessage_, Crud, DeleteableOrRemoveable};
 use lemmy_db_schema::source::private_message::PrivateMessage;
 use lemmy_db_views::{local_user_view::LocalUserView, private_message_view::PrivateMessageView};
 use lemmy_utils::{utils::remove_slurs, ApiError, ConnectionId, LemmyError};
@@ -21,7 +21,7 @@ impl PerformCrud for EditPrivateMessage {
     context: &Data<LemmyContext>,
     websocket_id: Option<ConnectionId>,
   ) -> Result<PrivateMessageResponse, LemmyError> {
-    let data: &EditPrivateMessage = &self;
+    let data: &EditPrivateMessage = self;
     let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
     // Checking permissions
@@ -49,10 +49,17 @@ impl PerformCrud for EditPrivateMessage {
       .await?;
 
     let private_message_id = data.private_message_id;
-    let private_message_view = blocking(context.pool(), move |conn| {
+    let mut private_message_view = blocking(context.pool(), move |conn| {
       PrivateMessageView::read(conn, private_message_id)
     })
     .await??;
+
+    // Blank out deleted or removed info
+    if private_message_view.private_message.deleted {
+      private_message_view.private_message = private_message_view
+        .private_message
+        .blank_out_deleted_or_removed_info();
+    }
 
     let res = PrivateMessageResponse {
       private_message_view,

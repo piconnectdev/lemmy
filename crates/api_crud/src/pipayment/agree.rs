@@ -18,7 +18,7 @@ use lemmy_utils::{
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256};
-use chrono::*;
+//use chrono::*;
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -111,7 +111,7 @@ impl PerformCrud for PiAgreeRegister {
       Err(_e) => None,
     };
 
-    if (_payment.is_some()) {
+    if _payment.is_some() {
       // Why here ????
       let err_type = format!("Payment {} was approved", data.paymentid);
       return Err(ApiError::err(&err_type).into());
@@ -147,7 +147,7 @@ impl PerformCrud for PiAgreeRegister {
       Some(pi) => {
         match person {
           Some(per) => {
-            if (pi.name != per.name) {
+            if pi.name != per.name {
               let err_type = format!(
                 "User {} is exist and belong other Pi account",
                 &data.info.username

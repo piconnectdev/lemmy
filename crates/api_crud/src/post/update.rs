@@ -2,12 +2,12 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{blocking, check_community_ban, get_local_user_view_from_jwt, post::*};
 use lemmy_apub::ApubObjectType;
-use lemmy_db_queries::{source::post::Post_, Crud};
+use lemmy_db_queries::{source::post::Post_, Crud, DeleteableOrRemoveable};
 use lemmy_db_schema::{naive_now, source::post::*};
 use lemmy_db_views::post_view::PostView;
 use lemmy_utils::{
   request::fetch_iframely_and_pictrs_data,
-  utils::{check_slurs_opt, is_valid_post_title},
+  utils::{check_slurs_opt, clean_url_params, is_valid_post_title},
   ApiError,
   ConnectionId,
   LemmyError,
@@ -23,7 +23,7 @@ impl PerformCrud for EditPost {
     context: &Data<LemmyContext>,
     websocket_id: Option<ConnectionId>,
   ) -> Result<PostResponse, LemmyError> {
-    let data: &EditPost = &self;
+    let data: &EditPost = self;
     let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
     check_slurs_opt(&data.name)?;
@@ -59,7 +59,7 @@ impl PerformCrud for EditPost {
       creator_id: orig_post.creator_id.to_owned(),
       community_id: orig_post.community_id,
       name: data.name.to_owned().unwrap_or(orig_post.name),
-      url: data_url.map(|u| u.to_owned().into()),
+      url: data_url.map(|u| clean_url_params(u.to_owned()).into()),
       body: data.body.to_owned(),
       nsfw: data.nsfw,
       updated: Some(naive_now()),
@@ -94,10 +94,15 @@ impl PerformCrud for EditPost {
       .await?;
 
     let post_id = data.post_id;
-    let post_view = blocking(context.pool(), move |conn| {
+    let mut post_view = blocking(context.pool(), move |conn| {
       PostView::read(conn, post_id, Some(local_user_view.person.id))
     })
     .await??;
+
+    // Blank out deleted info
+    if post_view.post.deleted || post_view.post.removed {
+      post_view.post = post_view.post.blank_out_deleted_or_removed_info();
+    }
 
     let res = PostResponse { post_view };
 
