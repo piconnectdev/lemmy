@@ -1,14 +1,9 @@
 use crate::{
-  check_is_apub_id_valid,
+  activities::community::announce::{AnnouncableActivities, AnnounceActivity},
   extensions::signatures::sign_and_send,
   insert_activity,
   ActorType,
-  CommunityType,
   APUB_JSON_CONTENT_TYPE,
-};
-use activitystreams::{
-  base::{BaseExt, Extends, ExtendsExt},
-  object::AsObject,
 };
 use anyhow::{anyhow, Context, Error};
 use background_jobs::{
@@ -20,195 +15,71 @@ use background_jobs::{
   QueueHandle,
   WorkerConfig,
 };
-use itertools::Itertools;
-use lemmy_db_schema::source::{community::Community, person::Person};
+use lemmy_db_schema::source::community::Community;
 use lemmy_utils::{location_info, settings::structs::Settings, LemmyError};
 use lemmy_websocket::LemmyContext;
-use log::{debug, warn};
+use log::{info, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, env, fmt::Debug, future::Future, pin::Pin};
 use url::Url;
 
-/// Sends a local activity to a single, remote actor.
-///
-/// * `activity` the apub activity to be sent
-/// * `creator` the local actor which created the activity
-/// * `inbox` the inbox url where the activity should be delivered to
-pub(crate) async fn send_activity_single_dest<T, Kind>(
-  activity: T,
-  creator: &dyn ActorType,
-  inbox: Url,
-  context: &LemmyContext,
-) -> Result<(), LemmyError>
-where
-  T: AsObject<Kind> + Extends<Kind> + Debug + BaseExt<Kind>,
-  Kind: Serialize,
-  <T as Extends<Kind>>::Error: From<serde_json::Error> + Send + Sync + 'static,
-{
-  if check_is_apub_id_valid(&inbox, false).is_ok() {
-    debug!(
-      "Sending activity {:?} to {}",
-      &activity.id_unchecked(),
-      &inbox
-    );
-    send_activity_internal(context, activity, creator, vec![inbox], true, true).await?;
-  }
-
-  Ok(())
-}
-
-/// From a local community, send activity to all remote followers.
-///
-/// * `activity` the apub activity to send
-/// * `community` the sending community
-/// * `extra_inbox` actor inbox which should receive the activity, in addition to followers
-pub(crate) async fn send_to_community_followers<T, Kind>(
-  activity: T,
+pub(crate) async fn send_to_community_new(
+  activity: AnnouncableActivities,
+  activity_id: &Url,
+  actor: &dyn ActorType,
   community: &Community,
-  extra_inbox: Option<Url>,
+  additional_inboxes: Vec<Url>,
   context: &LemmyContext,
-) -> Result<(), LemmyError>
-where
-  T: AsObject<Kind> + Extends<Kind> + Debug + BaseExt<Kind>,
-  Kind: Serialize,
-  <T as Extends<Kind>>::Error: From<serde_json::Error> + Send + Sync + 'static,
-{
-  let extra_inbox: Vec<Url> = extra_inbox.into_iter().collect();
-  let follower_inboxes: Vec<Url> = vec![
-    community.get_follower_inboxes(context.pool()).await?,
-    extra_inbox,
-  ]
-  .iter()
-  .flatten()
-  .unique()
-  .filter(|inbox| inbox.host_str() != Some(&Settings::get().hostname()))
-  .filter(|inbox| check_is_apub_id_valid(inbox, false).is_ok())
-  .map(|inbox| inbox.to_owned())
-  .collect();
-  debug!(
-    "Sending activity {:?} to followers of {}",
-    &activity.id_unchecked().map(|i| i.to_string()),
-    &community.actor_id
-  );
-
-  send_activity_internal(context, activity, community, follower_inboxes, true, false).await?;
-
-  Ok(())
-}
-
-/// Sends an activity from a local person to a remote community.
-///
-/// * `activity` the activity to send
-/// * `creator` the creator of the activity
-/// * `community` the destination community
-/// * `object_actor` if the object of the activity is an actor, it should be passed here so it can
-///                  be sent directly to the actor
-///
-pub(crate) async fn send_to_community<T, Kind>(
-  activity: T,
-  creator: &Person,
-  community: &Community,
-  object_actor: Option<Url>,
-  context: &LemmyContext,
-) -> Result<(), LemmyError>
-where
-  T: AsObject<Kind> + Extends<Kind> + Debug + BaseExt<Kind>,
-  Kind: Serialize,
-  <T as Extends<Kind>>::Error: From<serde_json::Error> + Send + Sync + 'static,
-{
+) -> Result<(), LemmyError> {
   // if this is a local community, we need to do an announce from the community instead
   if community.local {
-    community
-      .send_announce(activity.into_any_base()?, object_actor, context)
-      .await?;
+    insert_activity(activity_id, activity.clone(), true, false, context.pool()).await?;
+    AnnounceActivity::send(activity, community, additional_inboxes, context).await?;
   } else {
-    let inbox = community.get_shared_inbox_or_inbox_url();
-    check_is_apub_id_valid(&inbox, false)?;
-    debug!(
-      "Sending activity {:?} to community {}",
-      &activity.id_unchecked(),
-      &community.actor_id
-    );
-    // dont send to object_actor here, as that is responsibility of the community itself
-    send_activity_internal(context, activity, creator, vec![inbox], true, false).await?;
+    let mut inboxes = additional_inboxes;
+    inboxes.push(community.get_shared_inbox_or_inbox_url());
+    send_activity_new(context, &activity, activity_id, actor, inboxes, false).await?;
   }
 
   Ok(())
 }
 
-/// Sends notification to any persons mentioned in a comment
-///
-/// * `creator` person who created the comment
-/// * `mentions` list of inboxes of persons which are mentioned in the comment
-/// * `activity` either a `Create/Note` or `Update/Note`
-pub(crate) async fn send_comment_mentions<T, Kind>(
-  creator: &Person,
-  mentions: Vec<Url>,
-  activity: T,
+pub(crate) async fn send_activity_new<T>(
   context: &LemmyContext,
-) -> Result<(), LemmyError>
-where
-  T: AsObject<Kind> + Extends<Kind> + Debug + BaseExt<Kind>,
-  Kind: Serialize,
-  <T as Extends<Kind>>::Error: From<serde_json::Error> + Send + Sync + 'static,
-{
-  debug!(
-    "Sending mentions activity {:?} to {:?}",
-    &activity.id_unchecked(),
-    &mentions
-  );
-  let mentions = mentions
-    .iter()
-    .filter(|inbox| check_is_apub_id_valid(inbox, false).is_ok())
-    .map(|i| i.to_owned())
-    .collect();
-  send_activity_internal(
-    context, activity, creator, mentions, false, // Don't create a new DB row
-    false,
-  )
-  .await?;
-  Ok(())
-}
-
-/// Create new `SendActivityTasks`, which will deliver the given activity to inboxes, as well as
-/// handling signing and retrying failed deliveres.
-///
-/// The caller of this function needs to remove any blocked domains from `to`,
-/// using `check_is_apub_id_valid()`.
-async fn send_activity_internal<T, Kind>(
-  context: &LemmyContext,
-  activity: T,
+  activity: &T,
+  activity_id: &Url,
   actor: &dyn ActorType,
   inboxes: Vec<Url>,
-  insert_into_db: bool,
   sensitive: bool,
 ) -> Result<(), LemmyError>
 where
-  T: AsObject<Kind> + Extends<Kind> + Debug,
-  Kind: Serialize,
-  <T as Extends<Kind>>::Error: From<serde_json::Error> + Send + Sync + 'static,
+  T: Serialize,
 {
-  if !Settings::get().federation().enabled || inboxes.is_empty() {
+  if !Settings::get().federation.enabled || inboxes.is_empty() {
     return Ok(());
   }
 
+  info!("Sending activity {}", activity_id.to_string());
+
   // Don't send anything to ourselves
+  // TODO: this should be a debug assert
   let hostname = Settings::get().get_hostname_without_port()?;
   let inboxes: Vec<&Url> = inboxes
     .iter()
     .filter(|i| i.domain().expect("valid inbox url") != hostname)
     .collect();
 
-  let activity = activity.into_any_base()?;
   let serialised_activity = serde_json::to_string(&activity)?;
 
-  // This is necessary because send_comment and send_comment_mentions
-  // might send the same ap_id
-  if insert_into_db {
-    let id = activity.id().context(location_info!())?;
-    insert_activity(id, activity.clone(), true, sensitive, context.pool()).await?;
-  }
+  insert_activity(
+    activity_id,
+    serialised_activity.clone(),
+    true,
+    sensitive,
+    context.pool(),
+  )
+  .await?;
 
   for i in inboxes {
     let message = SendActivityTask {

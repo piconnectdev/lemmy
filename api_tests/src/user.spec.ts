@@ -3,7 +3,7 @@ import {
   alpha,
   beta,
   registerUser,
-  searchForUser,
+  resolvePerson,
   saveUserSettings,
   getSite,
 } from './shared';
@@ -14,12 +14,11 @@ import {
   ListingType,
 } from 'lemmy-js-client';
 
-let auth: string;
 let apShortname: string;
 
 function assertUserFederation(userOne: PersonViewSafe, userTwo: PersonViewSafe) {
   expect(userOne.person.name).toBe(userTwo.person.name);
-  expect(userOne.person.preferred_username).toBe(userTwo.person.preferred_username);
+  expect(userOne.person.display_name).toBe(userTwo.person.display_name);
   expect(userOne.person.bio).toBe(userTwo.person.bio);
   expect(userOne.person.actor_id).toBe(userTwo.person.actor_id);
   expect(userOne.person.avatar).toBe(userTwo.person.avatar);
@@ -30,11 +29,11 @@ function assertUserFederation(userOne: PersonViewSafe, userTwo: PersonViewSafe) 
 test('Create user', async () => {
   let userRes = await registerUser(alpha);
   expect(userRes.jwt).toBeDefined();
-  auth = userRes.jwt;
-
-  let site = await getSite(alpha, auth);
+  alpha.auth = userRes.jwt;
+  
+  let site = await getSite(alpha);
   expect(site.my_user).toBeDefined();
-  apShortname = `@${site.my_user.person.name}@lemmy-alpha:8541`;
+  apShortname = `@${site.my_user.local_user_view.person.name}@lemmy-alpha:8541`;
 });
 
 test('Set some user settings, check that they are federated', async () => {
@@ -49,17 +48,15 @@ test('Set some user settings, check that they are federated', async () => {
     lang: '',
     avatar,
     banner,
-    preferred_username: 'user321',
+    display_name: 'user321',
     show_avatars: false,
     send_notifications_to_email: false,
     bio,
-    auth,
+    auth: alpha.auth,
   };
   await saveUserSettings(alpha, form);
 
-  let searchAlpha = await searchForUser(alpha, apShortname);
-  let userOnAlpha = searchAlpha.users[0];
-  let searchBeta = await searchForUser(beta, apShortname);
-  let userOnBeta = searchBeta.users[0];
-  assertUserFederation(userOnAlpha, userOnBeta);
+  let alphaPerson = (await resolvePerson(alpha, apShortname)).person;
+  let betaPerson = (await resolvePerson(beta, apShortname)).person;
+  assertUserFederation(alphaPerson, betaPerson);
 });

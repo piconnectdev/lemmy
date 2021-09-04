@@ -1,4 +1,8 @@
-use crate::{fetcher::fetch::fetch_remote_object, objects::FromApub, NoteExt, PageExt};
+use crate::{
+  fetcher::fetch::fetch_remote_object,
+  objects::{comment::Note, post::Page, FromApub},
+  PostOrComment,
+};
 use anyhow::anyhow;
 use diesel::result::Error::NotFound;
 use lemmy_api_common::blocking;
@@ -13,7 +17,7 @@ use url::Url;
 /// pulled from its apub ID, inserted and returned.
 ///
 /// The parent community is also pulled if necessary. Comments are not pulled.
-pub async fn get_or_fetch_and_insert_post(
+pub(crate) async fn get_or_fetch_and_insert_post(
   post_ap_id: &Url,
   context: &LemmyContext,
   recursion_counter: &mut i32,
@@ -29,15 +33,8 @@ pub async fn get_or_fetch_and_insert_post(
     Err(NotFound {}) => {
       debug!("Fetching and creating remote post: {}", post_ap_id);
       let page =
-        fetch_remote_object::<PageExt>(context.client(), post_ap_id, recursion_counter).await?;
-      let post = Post::from_apub(
-        &page,
-        context,
-        post_ap_id.to_owned(),
-        recursion_counter,
-        false,
-      )
-      .await?;
+        fetch_remote_object::<Page>(context.client(), post_ap_id, recursion_counter).await?;
+      let post = Post::from_apub(&page, context, post_ap_id, recursion_counter).await?;
 
       Ok(post)
     }
@@ -49,7 +46,7 @@ pub async fn get_or_fetch_and_insert_post(
 /// pulled from its apub ID, inserted and returned.
 ///
 /// The parent community, post and comment are also pulled if necessary.
-pub async fn get_or_fetch_and_insert_comment(
+pub(crate) async fn get_or_fetch_and_insert_comment(
   comment_ap_id: &Url,
   context: &LemmyContext,
   recursion_counter: &mut i32,
@@ -68,15 +65,8 @@ pub async fn get_or_fetch_and_insert_comment(
         comment_ap_id
       );
       let comment =
-        fetch_remote_object::<NoteExt>(context.client(), comment_ap_id, recursion_counter).await?;
-      let comment = Comment::from_apub(
-        &comment,
-        context,
-        comment_ap_id.to_owned(),
-        recursion_counter,
-        false,
-      )
-      .await?;
+        fetch_remote_object::<Note>(context.client(), comment_ap_id, recursion_counter).await?;
+      let comment = Comment::from_apub(&comment, context, comment_ap_id, recursion_counter).await?;
 
       let post_id = comment.post_id;
       let post = blocking(context.pool(), move |conn| Post::read(conn, post_id)).await??;
@@ -88,4 +78,20 @@ pub async fn get_or_fetch_and_insert_comment(
     }
     Err(e) => Err(e.into()),
   }
+}
+
+pub(crate) async fn get_or_fetch_and_insert_post_or_comment(
+  ap_id: &Url,
+  context: &LemmyContext,
+  recursion_counter: &mut i32,
+) -> Result<PostOrComment, LemmyError> {
+  Ok(
+    match get_or_fetch_and_insert_post(ap_id, context, recursion_counter).await {
+      Ok(p) => PostOrComment::Post(Box::new(p)),
+      Err(_) => {
+        let c = get_or_fetch_and_insert_comment(ap_id, context, recursion_counter).await?;
+        PostOrComment::Comment(Box::new(c))
+      }
+    },
+  )
 }

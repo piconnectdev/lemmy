@@ -7,18 +7,26 @@ use lemmy_api_common::{
   mark_post_as_read,
   post::*,
 };
-use lemmy_apub::{generate_apub_endpoint, ApubLikeableType, ApubObjectType, EndpointType};
+use lemmy_apub::{
+  activities::{
+    post::create_or_update::CreateOrUpdatePost,
+    voting::vote::{Vote, VoteType},
+    CreateOrUpdateType,
+  },
+  generate_apub_endpoint,
+  EndpointType,
+  PostOrComment,
+};
 use lemmy_db_queries::{source::post::Post_, Crud, Likeable};
 use lemmy_db_schema::source::post::*;
-use lemmy_db_views::post_view::PostView;
 use lemmy_utils::{
-  request::fetch_iframely_and_pictrs_data,
+  request::fetch_site_data,
   utils::{check_slurs, check_slurs_opt, clean_url_params, is_valid_post_title},
   ApiError,
   ConnectionId,
   LemmyError,
 };
-use lemmy_websocket::{messages::SendPost, LemmyContext, UserOperationCrud};
+use lemmy_websocket::{send::send_post_ws_message, LemmyContext, UserOperationCrud};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for CreatePost {
@@ -41,10 +49,12 @@ impl PerformCrud for CreatePost {
 
     check_community_ban(local_user_view.person.id, data.community_id, context.pool()).await?;
 
-    // Fetch Iframely and pictrs cached image
+    // Fetch post links and pictrs cached image
     let data_url = data.url.as_ref();
-    let (iframely_title, iframely_description, iframely_html, pictrs_thumbnail) =
-      fetch_iframely_and_pictrs_data(context.client(), data_url).await;
+    let (metadata_res, pictrs_thumbnail) = fetch_site_data(context.client(), data_url).await;
+    let (embed_title, embed_description, embed_html) = metadata_res
+      .map(|u| (u.title, u.description, u.html))
+      .unwrap_or((None, None, None));
 
     let post_form = PostForm {
       name: data.name.trim().to_owned(),
@@ -53,9 +63,9 @@ impl PerformCrud for CreatePost {
       community_id: data.community_id,
       creator_id: local_user_view.person.id,
       nsfw: data.nsfw,
-      embed_title: iframely_title,
-      embed_description: iframely_description,
-      embed_html: iframely_html,
+      embed_title,
+      embed_description,
+      embed_html,
       thumbnail_url: pictrs_thumbnail.map(|u| u.into()),
       ..PostForm::default()
     };
@@ -82,9 +92,13 @@ impl PerformCrud for CreatePost {
     .await?
     .map_err(|_| ApiError::err("couldnt_create_post"))?;
 
-    updated_post
-      .send_create(&local_user_view.person, context)
-      .await?;
+    CreateOrUpdatePost::send(
+      &updated_post,
+      &local_user_view.person,
+      CreateOrUpdateType::Create,
+      context,
+    )
+    .await?;
 
     // They like their own post by default
     let person_id = local_user_view.person.id;
@@ -103,26 +117,23 @@ impl PerformCrud for CreatePost {
     // Mark the post as read
     mark_post_as_read(person_id, post_id, context.pool()).await?;
 
-    updated_post
-      .send_like(&local_user_view.person, context)
-      .await?;
+    let object = PostOrComment::Post(Box::new(updated_post));
+    Vote::send(
+      &object,
+      &local_user_view.person,
+      inserted_post.community_id,
+      VoteType::Like,
+      context,
+    )
+    .await?;
 
-    // Refetch the view
-    let inserted_post_id = inserted_post.id;
-    let post_view = blocking(context.pool(), move |conn| {
-      PostView::read(conn, inserted_post_id, Some(local_user_view.person.id))
-    })
-    .await?
-    .map_err(|_| ApiError::err("couldnt_find_post"))?;
-
-    let res = PostResponse { post_view };
-
-    context.chat_server().do_send(SendPost {
-      op: UserOperationCrud::CreatePost,
-      post: res.clone(),
+    send_post_ws_message(
+      inserted_post.id,
+      UserOperationCrud::CreatePost,
       websocket_id,
-    });
-
-    Ok(res)
+      Some(local_user_view.person.id),
+      context,
+    )
+    .await
   }
 }

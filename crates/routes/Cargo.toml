@@ -1,29 +1,34 @@
 [package]
 name = "lemmy_routes"
-version = "0.1.0"
+version = "0.12.0"
 edition = "2018"
+description = "A link aggregator for the fediverse"
+license = "AGPL-3.0"
 
 [lib]
 doctest = false
 
 [dependencies]
-lemmy_utils = { path = "../utils" }
-lemmy_websocket = { path = "../websocket" }
-lemmy_db_queries = { path = "../db_queries" }
-lemmy_db_views = { path = "../db_views" }
-lemmy_db_views_actor = { path = "../db_views_actor" }
-lemmy_db_schema = { path = "../db_schema" }
-lemmy_api_common = { path = "../api_common" }
+lemmy_utils = { version = "=0.12.0", path = "../utils" }
+lemmy_websocket = { version = "=0.12.0", path = "../websocket" }
+lemmy_db_queries = { version = "=0.12.0", path = "../db_queries" }
+lemmy_db_views = { version = "=0.12.0", path = "../db_views" }
+lemmy_db_views_actor = { version = "=0.12.0", path = "../db_views_actor" }
+lemmy_db_schema = { version = "=0.12.0", path = "../db_schema" }
+lemmy_api_common = { version = "=0.12.0", path = "../api_common" }
+lemmy_apub_lib = { version = "=0.12.0", path = "../apub_lib" }
 diesel = "1.4.7"
 actix = "0.12.0"
 actix-web = { version = "4.0.0-beta.8", default-features = false, features = ["rustls"] }
 actix-web-actors = { version = "4.0.0-beta.6", default-features = false }
 sha2 = "0.9.5"
 log = "0.4.14"
-anyhow = "1.0.41"
+anyhow = "1.0.43"
 chrono = { version = "0.4.19", features = ["serde"] }
 rss = "1.10.0"
-serde = { version = "1.0.126", features = ["derive"] }
+serde = { version = "1.0.129", features = ["derive"] }
+# TODO awc should use default-features = false, because gzip is a heavy dependency.
+# This must wait for pictrs to have a configurable disabled gzip
 awc = { version = "3.0.0-beta.7", default-features = false }
 url = { version = "2.2.2", features = ["serde"] }
 strum = "0.21.0"

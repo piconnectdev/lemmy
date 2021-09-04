@@ -27,7 +27,7 @@ use lemmy_utils::{
   claims::Claims,
   request::*,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_username},
+  utils::{check_slurs, is_valid_actor_name},
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
@@ -186,7 +186,7 @@ impl PerformCrud for PiPaymentFound {
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: None,
-      testnet: Settings::get().pi_testnet(),
+      testnet: Settings::get().pi_testnet,
       finished: finished,
       updated: updated,
       pi_uid: data.pi_uid, //data.pi_uid

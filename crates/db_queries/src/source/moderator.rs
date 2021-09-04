@@ -1,18 +1,10 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_schema::{source::moderator::*,
-  ModRemovePostId,
-  ModLockPostId,
-  ModStickyPostId,
-  ModRemoveCommentId,
-  ModRemoveCommunityId,
-  ModBanFromCommunityId,
-  ModAddCommunityId,
-  ModBanId,
-  ModAddId,  
-};
+use lemmy_db_schema::{*,source::moderator::*};
 
-impl Crud<ModRemovePostForm, ModRemovePostId> for ModRemovePost {
+impl Crud for ModRemovePost {
+  type Form = ModRemovePostForm;
+  type IdType = ModRemovePostId;
   fn read(conn: &PgConnection, from_id: ModRemovePostId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_post::dsl::*;
     mod_remove_post.find(from_id).first::<Self>(conn)
@@ -33,7 +25,9 @@ impl Crud<ModRemovePostForm, ModRemovePostId> for ModRemovePost {
   }
 }
 
-impl Crud<ModLockPostForm, ModLockPostId> for ModLockPost {
+impl Crud for ModLockPost {
+  type Form = ModLockPostForm;
+  type IdType = ModLockPostId;
   fn read(conn: &PgConnection, from_id: ModLockPostId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_lock_post::dsl::*;
     mod_lock_post.find(from_id).first::<Self>(conn)
@@ -54,7 +48,9 @@ impl Crud<ModLockPostForm, ModLockPostId> for ModLockPost {
   }
 }
 
-impl Crud<ModStickyPostForm, ModStickyPostId> for ModStickyPost {
+impl Crud for ModStickyPost {
+  type Form = ModStickyPostForm;
+  type IdType = ModStickyPostId;
   fn read(conn: &PgConnection, from_id: ModStickyPostId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_sticky_post::dsl::*;
     mod_sticky_post.find(from_id).first::<Self>(conn)
@@ -75,7 +71,9 @@ impl Crud<ModStickyPostForm, ModStickyPostId> for ModStickyPost {
   }
 }
 
-impl Crud<ModRemoveCommentForm, ModRemoveCommentId> for ModRemoveComment {
+impl Crud for ModRemoveComment {
+  type Form = ModRemoveCommentForm;
+  type IdType = ModRemoveCommentId;
   fn read(conn: &PgConnection, from_id: ModRemoveCommentId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_comment::dsl::*;
     mod_remove_comment.find(from_id).first::<Self>(conn)
@@ -96,7 +94,9 @@ impl Crud<ModRemoveCommentForm, ModRemoveCommentId> for ModRemoveComment {
   }
 }
 
-impl Crud<ModRemoveCommunityForm, ModRemoveCommunityId> for ModRemoveCommunity {
+impl Crud for ModRemoveCommunity {
+  type Form = ModRemoveCommunityForm;
+  type IdType = ModRemoveCommunityId;
   fn read(conn: &PgConnection, from_id: ModRemoveCommunityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_remove_community::dsl::*;
     mod_remove_community.find(from_id).first::<Self>(conn)
@@ -121,7 +121,9 @@ impl Crud<ModRemoveCommunityForm, ModRemoveCommunityId> for ModRemoveCommunity {
   }
 }
 
-impl Crud<ModBanFromCommunityForm, ModBanFromCommunityId> for ModBanFromCommunity {
+impl Crud for ModBanFromCommunity {
+  type Form = ModBanFromCommunityForm;
+  type IdType = ModBanFromCommunityId;
   fn read(conn: &PgConnection, from_id: ModBanFromCommunityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_ban_from_community::dsl::*;
     mod_ban_from_community.find(from_id).first::<Self>(conn)
@@ -146,7 +148,9 @@ impl Crud<ModBanFromCommunityForm, ModBanFromCommunityId> for ModBanFromCommunit
   }
 }
 
-impl Crud<ModBanForm, ModBanId> for ModBan {
+impl Crud for ModBan {
+  type Form = ModBanForm;
+  type IdType = ModBanId;
   fn read(conn: &PgConnection, from_id: ModBanId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_ban::dsl::*;
     mod_ban.find(from_id).first::<Self>(conn)
@@ -165,7 +169,9 @@ impl Crud<ModBanForm, ModBanId> for ModBan {
   }
 }
 
-impl Crud<ModAddCommunityForm, ModAddCommunityId> for ModAddCommunity {
+impl Crud for ModAddCommunity {
+  type Form = ModAddCommunityForm;
+  type IdType = ModAddCommunityId;
   fn read(conn: &PgConnection, from_id: ModAddCommunityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_add_community::dsl::*;
     mod_add_community.find(from_id).first::<Self>(conn)
@@ -186,7 +192,36 @@ impl Crud<ModAddCommunityForm, ModAddCommunityId> for ModAddCommunity {
   }
 }
 
-impl Crud<ModAddForm, ModAddId> for ModAdd {
+impl Crud for ModTransferCommunity {
+  type Form = ModTransferCommunityForm;
+  type IdType = ModTransferCommunityId;
+  fn read(conn: &PgConnection, from_id: ModTransferCommunityId) -> Result<Self, Error> {
+    use lemmy_db_schema::schema::mod_transfer_community::dsl::*;
+    mod_transfer_community.find(from_id).first::<Self>(conn)
+  }
+
+  fn create(conn: &PgConnection, form: &ModTransferCommunityForm) -> Result<Self, Error> {
+    use lemmy_db_schema::schema::mod_transfer_community::dsl::*;
+    insert_into(mod_transfer_community)
+      .values(form)
+      .get_result::<Self>(conn)
+  }
+
+  fn update(
+    conn: &PgConnection,
+    from_id: ModTransferCommunityId,
+    form: &ModTransferCommunityForm,
+  ) -> Result<Self, Error> {
+    use lemmy_db_schema::schema::mod_transfer_community::dsl::*;
+    diesel::update(mod_transfer_community.find(from_id))
+      .set(form)
+      .get_result::<Self>(conn)
+  }
+}
+
+impl Crud for ModAdd {
+  type Form = ModAddForm;
+  type IdType = ModAddId;
   fn read(conn: &PgConnection, from_id: ModAddId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::mod_add::dsl::*;
     mod_add.find(from_id).first::<Self>(conn)

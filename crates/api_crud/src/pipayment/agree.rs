@@ -13,7 +13,7 @@ use lemmy_db_schema::source::{
 use lemmy_db_views_actor::person_view::PersonViewSafe;
 use lemmy_utils::{
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_username},
+  utils::{check_slurs, is_valid_actor_name},
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
@@ -48,7 +48,7 @@ impl PerformCrud for PiAgreeRegister {
     .await??;
 
     // If its not the admin, check the captcha
-    if !no_admins && Settings::get().captcha().enabled {
+    if !no_admins && Settings::get().captcha.enabled {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
@@ -71,7 +71,7 @@ impl PerformCrud for PiAgreeRegister {
 
     check_slurs(&data.info.username)?;
 
-    if !is_valid_username(&data.info.username) {
+    if !is_valid_actor_name(&data.info.username) {
       return Err(ApiError::err("agree:invalid_username").into());
     }
     //check_slurs_opt(&data.paymentid.unwrap())?;
@@ -216,7 +216,7 @@ impl PerformCrud for PiAgreeRegister {
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: refid,
-      testnet: Settings::get().pi_testnet(),
+      testnet: Settings::get().pi_testnet,
       finished: false,
       updated: None,
       pi_uid: data.pi_uid,

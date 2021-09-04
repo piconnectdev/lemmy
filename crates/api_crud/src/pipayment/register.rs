@@ -28,7 +28,7 @@ use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_username},
+  utils::{check_slurs, is_valid_actor_name},
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
@@ -67,7 +67,7 @@ impl PerformCrud for PiRegister {
     .await??;
 
     // If its not the admin, check the captcha
-    if !no_admins && Settings::get().captcha().enabled {
+    if !no_admins && Settings::get().captcha.enabled {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
@@ -91,7 +91,7 @@ impl PerformCrud for PiRegister {
     check_slurs(&data.info.username)?;
 
     let actor_keypair = generate_actor_keypair()?;
-    if !is_valid_username(&data.info.username) {
+    if !is_valid_actor_name(&data.info.username) {
       return Err(ApiError::err("register:invalid_username").into());
     }
     let actor_id = generate_apub_endpoint(EndpointType::Person, &data.info.username)?;
@@ -257,7 +257,7 @@ impl PerformCrud for PiRegister {
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: refid,
-      testnet: Settings::get().pi_testnet(),
+      testnet: Settings::get().pi_testnet,
       finished: true,
       updated: Some(naive_now()),
       pi_uid: data.pi_uid,

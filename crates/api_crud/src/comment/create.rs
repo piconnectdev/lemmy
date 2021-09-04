@@ -3,22 +3,31 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   blocking,
   check_community_ban,
+  check_person_block,
   comment::*,
   get_local_user_view_from_jwt,
   get_post,
   send_local_notifs,
 };
-use lemmy_apub::{generate_apub_endpoint, ApubLikeableType, ApubObjectType, EndpointType};
+use lemmy_apub::{
+  activities::{
+    comment::create_or_update::CreateOrUpdateComment,
+    voting::vote::{Vote, VoteType},
+    CreateOrUpdateType,
+  },
+  generate_apub_endpoint,
+  EndpointType,
+  PostOrComment,
+};
 use lemmy_db_queries::{source::comment::Comment_, Crud, Likeable};
 use lemmy_db_schema::source::comment::*;
-use lemmy_db_views::comment_view::CommentView;
 use lemmy_utils::{
   utils::{remove_slurs, scrape_text_for_mentions},
   ApiError,
   ConnectionId,
   LemmyError,
 };
-use lemmy_websocket::{messages::SendComment, LemmyContext, UserOperationCrud};
+use lemmy_websocket::{send::send_comment_ws_message, LemmyContext, UserOperationCrud};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for CreateComment {
@@ -37,8 +46,11 @@ impl PerformCrud for CreateComment {
     // Check for a community ban
     let post_id = data.post_id;
     let post = get_post(post_id, context.pool()).await?;
+    let community_id = post.community_id;
 
-    check_community_ban(local_user_view.person.id, post.community_id, context.pool()).await?;
+    check_community_ban(local_user_view.person.id, community_id, context.pool()).await?;
+
+    check_person_block(local_user_view.person.id, post.creator_id, context.pool()).await?;
 
     // Check if post is locked, no new comments
     if post.locked {
@@ -51,6 +63,10 @@ impl PerformCrud for CreateComment {
       let parent = blocking(context.pool(), move |conn| Comment::read(conn, parent_id))
         .await?
         .map_err(|_| ApiError::err("couldnt_create_comment"))?;
+
+      check_person_block(local_user_view.person.id, parent.creator_id, context.pool()).await?;
+
+      // Strange issue where sometimes the post ID is incorrect
       if parent.post_id != post_id {
         return Err(ApiError::err("couldnt_create_comment").into());
       }
@@ -83,9 +99,13 @@ impl PerformCrud for CreateComment {
       .await?
       .map_err(|_| ApiError::err("couldnt_create_comment"))?;
 
-    updated_comment
-      .send_create(&local_user_view.person, context)
-      .await?;
+    CreateOrUpdateComment::send(
+      &updated_comment,
+      &local_user_view.person,
+      CreateOrUpdateType::Create,
+      context,
+    )
+    .await?;
 
     // Scan the comment for user mentions, add those rows
     let post_id = post.id;
@@ -113,41 +133,35 @@ impl PerformCrud for CreateComment {
       return Err(ApiError::err("couldnt_like_comment").into());
     }
 
-    updated_comment
-      .send_like(&local_user_view.person, context)
-      .await?;
-
-    let person_id = local_user_view.person.id;
-    let mut comment_view = blocking(context.pool(), move |conn| {
-      CommentView::read(conn, inserted_comment.id, Some(person_id))
-    })
-    .await??;
+    let object = PostOrComment::Comment(Box::new(updated_comment));
+    Vote::send(
+      &object,
+      &local_user_view.person,
+      community_id,
+      VoteType::Like,
+      context,
+    )
+    .await?;
 
     // If its a comment to yourself, mark it as read
-    let comment_id = comment_view.comment.id;
-    if local_user_view.person.id == comment_view.get_recipient_id() {
+    if local_user_view.person.id == inserted_comment.creator_id {
+      let comment_id = inserted_comment.id;
       blocking(context.pool(), move |conn| {
         Comment::update_read(conn, comment_id, true)
       })
       .await?
       .map_err(|_| ApiError::err("couldnt_update_comment"))?;
-      comment_view.comment.read = true;
     }
 
-    let mut res = CommentResponse {
-      comment_view,
-      recipient_ids,
-      form_id: data.form_id.to_owned(),
-    };
-
-    context.chat_server().do_send(SendComment {
-      op: UserOperationCrud::CreateComment,
-      comment: res.clone(),
+    send_comment_ws_message(
+      inserted_comment.id,
+      UserOperationCrud::CreateComment,
       websocket_id,
-    });
-
-    res.recipient_ids = Vec::new(); // Necessary to avoid doubles
-
-    Ok(res)
+      data.form_id.to_owned(),
+      Some(local_user_view.person.id),
+      recipient_ids,
+      context,
+    )
+    .await
   }
 }

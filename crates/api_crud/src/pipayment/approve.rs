@@ -23,7 +23,7 @@ use lemmy_utils::{
   claims::Claims,
   request::*,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_username},
+  utils::{check_slurs, is_valid_actor_name},
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};

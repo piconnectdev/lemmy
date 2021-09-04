@@ -19,6 +19,7 @@ use lemmy_db_schema::{
     community_person_ban,
     person,
     person_alias_1,
+    person_block,
     person_mention,
     post,
   },
@@ -26,6 +27,7 @@ use lemmy_db_schema::{
     comment::{Comment, CommentSaved},
     community::{Community, CommunityFollower, CommunityPersonBan, CommunitySafe},
     person::{Person, PersonAlias1, PersonSafe, PersonSafeAlias1},
+    person_block::PersonBlock,
     person_mention::PersonMention,
     post::Post,
   },
@@ -47,6 +49,7 @@ pub struct PersonMentionView {
   pub creator_banned_from_community: bool, // Left Join to CommunityPersonBan
   pub subscribed: bool,                    // Left join to CommunityFollower
   pub saved: bool,                         // Left join to CommentSaved
+  pub creator_blocked: bool,               // Left join to PersonBlock
   pub my_vote: Option<i16>,                // Left join to CommentLike
 }
 
@@ -61,6 +64,7 @@ type PersonMentionViewTuple = (
   Option<CommunityPersonBan>,
   Option<CommunityFollower>,
   Option<CommentSaved>,
+  Option<PersonBlock>,
   Option<i16>,
 );
 
@@ -85,6 +89,7 @@ impl PersonMentionView {
       creator_banned_from_community,
       subscribed,
       saved,
+      creator_blocked,
       my_vote,
     ) = person_mention::table
       .find(person_mention_id)
@@ -116,6 +121,13 @@ impl PersonMentionView {
         ),
       )
       .left_join(
+        person_block::table.on(
+          comment::creator_id
+            .eq(person_block::target_id)
+            .and(person_block::person_id.eq(person_id_join)),
+        ),
+      )
+      .left_join(
         comment_like::table.on(
           comment::id
             .eq(comment_like::comment_id)
@@ -133,6 +145,7 @@ impl PersonMentionView {
         community_person_ban::all_columns.nullable(),
         community_follower::all_columns.nullable(),
         comment_saved::all_columns.nullable(),
+        person_block::all_columns.nullable(),
         comment_like::score.nullable(),
       ))
       .first::<PersonMentionViewTuple>(conn)?;
@@ -148,6 +161,7 @@ impl PersonMentionView {
       creator_banned_from_community: creator_banned_from_community.is_some(),
       subscribed: subscribed.is_some(),
       saved: saved.is_some(),
+      creator_blocked: creator_blocked.is_some(),
       my_vote,
     })
   }
@@ -242,6 +256,13 @@ impl<'a> PersonMentionQueryBuilder<'a> {
         ),
       )
       .left_join(
+        person_block::table.on(
+          comment::creator_id
+            .eq(person_block::target_id)
+            .and(person_block::person_id.eq(person_id_join)),
+        ),
+      )
+      .left_join(
         comment_like::table.on(
           comment::id
             .eq(comment_like::comment_id)
@@ -259,6 +280,7 @@ impl<'a> PersonMentionQueryBuilder<'a> {
         community_person_ban::all_columns.nullable(),
         community_follower::all_columns.nullable(),
         comment_saved::all_columns.nullable(),
+        person_block::all_columns.nullable(),
         comment_like::score.nullable(),
       ))
       .into_boxed();
@@ -320,7 +342,8 @@ impl ViewToVec for PersonMentionView {
         creator_banned_from_community: a.7.is_some(),
         subscribed: a.8.is_some(),
         saved: a.9.is_some(),
-        my_vote: a.10,
+        creator_blocked: a.10.is_some(),
+        my_vote: a.11,
       })
       .collect::<Vec<Self>>()
   }

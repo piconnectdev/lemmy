@@ -4,17 +4,29 @@ use lemmy_api_common::{
   blocking,
   check_community_ban,
   check_downvotes_enabled,
+  check_person_block,
   get_local_user_view_from_jwt,
   is_mod_or_admin,
   mark_post_as_read,
   post::*,
 };
-use lemmy_apub::{ApubLikeableType, ApubObjectType};
+use lemmy_apub::{
+  activities::{
+    post::create_or_update::CreateOrUpdatePost,
+    voting::{
+      undo_vote::UndoVote,
+      vote::{Vote, VoteType},
+    },
+    CreateOrUpdateType,
+  },
+  PostOrComment,
+};
 use lemmy_db_queries::{source::post::Post_, Crud, Likeable, Saveable};
 use lemmy_db_schema::source::{moderator::*, post::*};
 use lemmy_db_views::post_view::PostView;
-use lemmy_utils::{ApiError, ConnectionId, LemmyError};
-use lemmy_websocket::{messages::SendPost, LemmyContext, UserOperation};
+use lemmy_utils::{request::fetch_site_metadata, ApiError, ConnectionId, LemmyError};
+use lemmy_websocket::{send::send_post_ws_message, LemmyContext, UserOperation};
+use std::convert::TryInto;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for CreatePostLike {
@@ -37,6 +49,8 @@ impl Perform for CreatePostLike {
 
     check_community_ban(local_user_view.person.id, post.community_id, context.pool()).await?;
 
+    check_person_block(local_user_view.person.id, post.creator_id, context.pool()).await?;
+
     let like_form = PostLikeForm {
       post_id: data.post_id,
       person_id: local_user_view.person.id,
@@ -50,6 +64,9 @@ impl Perform for CreatePostLike {
     })
     .await??;
 
+    let community_id = post.community_id;
+    let object = PostOrComment::Post(Box::new(post));
+
     // Only add the like if the score isnt 0
     let do_add = like_form.score != 0 && (like_form.score == 1 || like_form.score == -1);
     if do_add {
@@ -59,37 +76,37 @@ impl Perform for CreatePostLike {
         return Err(ApiError::err("couldnt_like_post").into());
       }
 
-      if like_form.score == 1 {
-        post.send_like(&local_user_view.person, context).await?;
-      } else if like_form.score == -1 {
-        post.send_dislike(&local_user_view.person, context).await?;
-      }
+      Vote::send(
+        &object,
+        &local_user_view.person,
+        community_id,
+        like_form.score.try_into()?,
+        context,
+      )
+      .await?;
     } else {
-      post
-        .send_undo_like(&local_user_view.person, context)
-        .await?;
+      // API doesn't distinguish between Undo/Like and Undo/Dislike
+      UndoVote::send(
+        &object,
+        &local_user_view.person,
+        community_id,
+        VoteType::Like,
+        context,
+      )
+      .await?;
     }
 
     // Mark the post as read
     mark_post_as_read(person_id, post_id, context.pool()).await?;
 
-    let post_id = data.post_id;
-    let person_id = local_user_view.person.id;
-    let post_view = blocking(context.pool(), move |conn| {
-      PostView::read(conn, post_id, Some(person_id))
-    })
-    .await?
-    .map_err(|_| ApiError::err("couldnt_find_post"))?;
-
-    let res = PostResponse { post_view };
-
-    context.chat_server().do_send(SendPost {
-      op: UserOperation::CreatePostLike,
-      post: res.clone(),
+    send_post_ws_message(
+      data.post_id,
+      UserOperation::CreatePostLike,
       websocket_id,
-    });
-
-    Ok(res)
+      Some(local_user_view.person.id),
+      context,
+    )
+    .await
   }
 }
 
@@ -140,26 +157,22 @@ impl Perform for LockPost {
     blocking(context.pool(), move |conn| ModLockPost::create(conn, &form)).await??;
 
     // apub updates
-    updated_post
-      .send_update(&local_user_view.person, context)
-      .await?;
+    CreateOrUpdatePost::send(
+      &updated_post,
+      &local_user_view.person,
+      CreateOrUpdateType::Update,
+      context,
+    )
+    .await?;
 
-    // Refetch the post
-    let post_id = data.post_id;
-    let post_view = blocking(context.pool(), move |conn| {
-      PostView::read(conn, post_id, Some(local_user_view.person.id))
-    })
-    .await??;
-
-    let res = PostResponse { post_view };
-
-    context.chat_server().do_send(SendPost {
-      op: UserOperation::LockPost,
-      post: res.clone(),
+    send_post_ws_message(
+      data.post_id,
+      UserOperation::LockPost,
       websocket_id,
-    });
-
-    Ok(res)
+      Some(local_user_view.person.id),
+      context,
+    )
+    .await
   }
 }
 
@@ -214,26 +227,22 @@ impl Perform for StickyPost {
 
     // Apub updates
     // TODO stickied should pry work like locked for ease of use
-    updated_post
-      .send_update(&local_user_view.person, context)
-      .await?;
+    CreateOrUpdatePost::send(
+      &updated_post,
+      &local_user_view.person,
+      CreateOrUpdateType::Update,
+      context,
+    )
+    .await?;
 
-    // Refetch the post
-    let post_id = data.post_id;
-    let post_view = blocking(context.pool(), move |conn| {
-      PostView::read(conn, post_id, Some(local_user_view.person.id))
-    })
-    .await??;
-
-    let res = PostResponse { post_view };
-
-    context.chat_server().do_send(SendPost {
-      op: UserOperation::StickyPost,
-      post: res.clone(),
+    send_post_ws_message(
+      data.post_id,
+      UserOperation::StickyPost,
       websocket_id,
-    });
-
-    Ok(res)
+      Some(local_user_view.person.id),
+      context,
+    )
+    .await
   }
 }
 
@@ -277,5 +286,22 @@ impl Perform for SavePost {
     mark_post_as_read(person_id, post_id, context.pool()).await?;
 
     Ok(PostResponse { post_view })
+  }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Perform for GetSiteMetadata {
+  type Response = GetSiteMetadataResponse;
+
+  async fn perform(
+    &self,
+    context: &Data<LemmyContext>,
+    _websocket_id: Option<ConnectionId>,
+  ) -> Result<GetSiteMetadataResponse, LemmyError> {
+    let data: &Self = self;
+
+    let metadata = fetch_site_metadata(context.client(), &data.url).await?;
+
+    Ok(GetSiteMetadataResponse { metadata })
   }
 }

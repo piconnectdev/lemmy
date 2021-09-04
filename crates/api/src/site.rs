@@ -4,7 +4,6 @@ use anyhow::Context;
 use lemmy_api_common::{
   blocking,
   build_federated_instances,
-  get_local_user_settings_view_from_jwt,
   get_local_user_view_from_jwt,
   get_local_user_view_from_jwt_opt,
   is_admin,
@@ -40,6 +39,7 @@ use lemmy_db_views_moderator::{
   mod_remove_community_view::ModRemoveCommunityView,
   mod_remove_post_view::ModRemovePostView,
   mod_sticky_post_view::ModStickyPostView,
+  mod_transfer_community_view::ModTransferCommunityView,
 };
 use lemmy_utils::{
   location_info,
@@ -50,7 +50,6 @@ use lemmy_utils::{
   LemmyError,
 };
 use lemmy_websocket::LemmyContext;
-use log::debug;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for GetModlog {
@@ -97,6 +96,11 @@ impl Perform for GetModlog {
     })
     .await??;
 
+    let transferred_to_community = blocking(context.pool(), move |conn| {
+      ModTransferCommunityView::list(conn, community_id, mod_person_id, page, limit)
+    })
+    .await??;
+
     // These arrays are only for the full modlog, when a community isn't given
     let (removed_communities, banned, added) = if data.community_id.is_none() {
       blocking(context.pool(), move |conn| {
@@ -122,6 +126,7 @@ impl Perform for GetModlog {
       banned,
       added_to_community,
       added,
+      transferred_to_community,
     })
   }
 }
@@ -136,11 +141,6 @@ impl Perform for Search {
     _websocket_id: Option<ConnectionId>,
   ) -> Result<SearchResponse, LemmyError> {
     let data: &Search = self;
-
-    match search_by_apub_id(&data.q, context).await {
-      Ok(r) => return Ok(r),
-      Err(e) => debug!("Failed to resolve search query as activitypub ID: {}", e),
-    }
 
     let local_user_view = get_local_user_view_from_jwt_opt(&data.auth, context.pool()).await?;
 
@@ -367,6 +367,23 @@ impl Perform for Search {
 }
 
 #[async_trait::async_trait(?Send)]
+impl Perform for ResolveObject {
+  type Response = ResolveObjectResponse;
+
+  async fn perform(
+    &self,
+    context: &Data<LemmyContext>,
+    _websocket_id: Option<ConnectionId>,
+  ) -> Result<ResolveObjectResponse, LemmyError> {
+    let local_user_view = get_local_user_view_from_jwt_opt(&self.auth, context.pool()).await?;
+    let res = search_by_apub_id(&self.q, local_user_view, context)
+      .await
+      .map_err(|_| ApiError::err("couldnt_find_object"))?;
+    Ok(res)
+  }
+}
+
+#[async_trait::async_trait(?Send)]
 impl Perform for TransferSite {
   type Response = GetSiteResponse;
 
@@ -415,15 +432,13 @@ impl Perform for TransferSite {
     let banned = blocking(context.pool(), move |conn| PersonViewSafe::banned(conn)).await??;
     let federated_instances = build_federated_instances(context.pool()).await?;
 
-    let my_user = Some(get_local_user_settings_view_from_jwt(&data.auth, context.pool()).await?);
-
     Ok(GetSiteResponse {
       site_view: Some(site_view),
       admins,
       banned,
       online: 0,
       version: version::VERSION.to_string(),
-      my_user,
+      my_user: None,
       federated_instances,
     })
   }

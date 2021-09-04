@@ -9,7 +9,9 @@ use std::{
   io::{Error as IoError, ErrorKind},
 };
 
-impl Crud<ActivityForm, ActivityId> for Activity {
+impl Crud for Activity {
+  type Form = ActivityForm;
+  type IdType = ActivityId;
   fn read(conn: &PgConnection, activity_id: ActivityId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::activity::dsl::*;
     activity.find(activity_id).first::<Self>(conn)

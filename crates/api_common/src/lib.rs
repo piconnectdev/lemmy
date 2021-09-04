@@ -11,6 +11,7 @@ use diesel::PgConnection;
 use lemmy_db_queries::{
   source::{
     community::{CommunityModerator_, Community_},
+    person_block::PersonBlock_,
     site::Site_,
   },
   Crud, DbPool, Readable,
@@ -20,6 +21,7 @@ use lemmy_db_schema::{
     comment::Comment,
     community::{Community, CommunityModerator},
     person::Person,
+    person_block::PersonBlock,
     person_mention::{PersonMention, PersonMentionForm},
     post::{Post, PostRead, PostReadForm},
     site::Site,
@@ -35,25 +37,7 @@ use lemmy_utils::{
   LemmyError,
 };
 use log::error;
-use serde::{Deserialize, Serialize};
 use url::Url;
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WebFingerLink {
-  pub rel: Option<String>,
-  #[serde(rename(serialize = "type", deserialize = "type"))]
-  pub type_: Option<String>,
-  pub href: Option<Url>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub template: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WebFingerResponse {
-  pub subject: String,
-  pub aliases: Vec<Url>,
-  pub links: Vec<WebFingerLink>,
-}
 
 pub async fn blocking<F, T>(pool: &DbPool, f: F) -> Result<T, LemmyError>
 where
@@ -189,7 +173,7 @@ pub fn send_email_to_user(
     let subject = &format!(
       "{} - {} {}",
       subject_text,
-      Settings::get().hostname(),
+      Settings::get().hostname,
       local_user_view.person.name,
     );
     let html = &format!(
@@ -261,6 +245,11 @@ pub async fn get_local_user_view_from_jwt(
   // Check for a site ban
   if local_user_view.person.banned {
     return Err(ApiError::err("site_ban").into());
+  }
+
+  // Check for user deletion
+  if local_user_view.person.deleted {
+    return Err(ApiError::err("deleted").into());
   }
 
   check_validator_time(&local_user_view.local_user.validator_time, &claims)?;
@@ -339,6 +328,19 @@ pub async fn check_community_ban(
   }
 }
 
+pub async fn check_person_block(
+  my_id: PersonId,
+  potential_blocker_id: PersonId,
+  pool: &DbPool,
+) -> Result<(), LemmyError> {
+  let is_blocked = move |conn: &'_ _| PersonBlock::read(conn, potential_blocker_id, my_id).is_ok();
+  if blocking(pool, is_blocked).await? {
+    Err(ApiError::err("person_block").into())
+  } else {
+    Ok(())
+  }
+}
+
 pub async fn check_downvotes_enabled(score: i16, pool: &DbPool) -> Result<(), LemmyError> {
   if score == -1 {
     let site = blocking(pool, move |conn| Site::read_simple(conn)).await??;
@@ -377,14 +379,14 @@ pub async fn collect_moderated_communities(
 pub async fn build_federated_instances(
   pool: &DbPool,
 ) -> Result<Option<FederatedInstances>, LemmyError> {
-  if Settings::get().federation().enabled {
+  if Settings::get().federation.enabled {
     let distinct_communities = blocking(pool, move |conn| {
       Community::distinct_federated_communities(conn)
     })
     .await??;
 
-    let allowed = Settings::get().get_allowed_instances();
-    let blocked = Settings::get().get_blocked_instances();
+    let allowed = Settings::get().federation.allowed_instances;
+    let blocked = Settings::get().federation.blocked_instances;
 
     let mut linked = distinct_communities
       .iter()
@@ -396,7 +398,7 @@ pub async fn build_federated_instances(
     }
 
     if let Some(blocked) = blocked.as_ref() {
-      linked.retain(|a| !blocked.contains(a) && !a.eq(&Settings::get().hostname()));
+      linked.retain(|a| !blocked.contains(a) && !a.eq(&Settings::get().hostname));
     }
 
     // Sort and remove dupes

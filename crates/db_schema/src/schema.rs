@@ -182,6 +182,17 @@ table! {
 }
 
 table! {
+    mod_transfer_community (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        community_id -> Uuid,
+        removed -> Nullable<Bool>,
+        when_ -> Timestamp,
+    }
+}
+
+table! {
     mod_ban (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -455,6 +466,24 @@ table! {
     }
 }
 
+table! {
+    person_block (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        target_id -> Uuid,
+        published -> Timestamp,
+    }
+}
+
+table! {
+    community_block (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        community_id -> Uuid,
+        published -> Timestamp,
+    }
+}
+
 // These are necessary since diesel doesn't have self joins / aliases
 table! {
     comment_alias_1 (id) {
@@ -567,6 +596,9 @@ joinable!(comment -> person_alias_1 (creator_id));
 joinable!(post_report -> person_alias_2 (resolver_id));
 joinable!(comment_report -> person_alias_2 (resolver_id));
 
+joinable!(person_block -> person (person_id));
+joinable!(person_block -> person_alias_1 (target_id));
+
 joinable!(comment -> person (creator_id));
 joinable!(comment -> post (post_id));
 joinable!(comment_aggregates -> comment (comment_id));
@@ -577,6 +609,8 @@ joinable!(comment_report -> comment (comment_id));
 joinable!(comment_saved -> comment (comment_id));
 joinable!(comment_saved -> person (person_id));
 joinable!(community_aggregates -> community (community_id));
+joinable!(community_block -> community (community_id));
+joinable!(community_block -> person (person_id));
 joinable!(community_follower -> community (community_id));
 joinable!(community_follower -> person (person_id));
 joinable!(community_moderator -> community (community_id));
@@ -585,6 +619,7 @@ joinable!(community_person_ban -> community (community_id));
 joinable!(community_person_ban -> person (person_id));
 joinable!(local_user -> person (person_id));
 joinable!(mod_add_community -> community (community_id));
+joinable!(mod_transfer_community -> community (community_id));
 joinable!(mod_ban_from_community -> community (community_id));
 joinable!(mod_lock_post -> person (mod_person_id));
 joinable!(mod_lock_post -> post (post_id));
@@ -618,6 +653,7 @@ allow_tables_to_appear_in_same_query!(
   activity,
   comment,
   comment_aggregates,
+  community_block,
   comment_like,
   comment_report,
   comment_saved,
@@ -629,6 +665,7 @@ allow_tables_to_appear_in_same_query!(
   local_user,
   mod_add,
   mod_add_community,
+  mod_transfer_community,
   mod_ban,
   mod_ban_from_community,
   mod_lock_post,
@@ -640,6 +677,7 @@ allow_tables_to_appear_in_same_query!(
   person,
   person_aggregates,
   person_ban,
+  person_block,
   person_mention,
   post,
   post_aggregates,

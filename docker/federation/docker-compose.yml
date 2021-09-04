@@ -2,7 +2,7 @@ version: '3.3'
 
 services:
   nginx:
-    image: nginx:1.17-alpine
+    image: nginx:1-alpine
     ports:
       - "8540:8540"
       - "8550:8550"
@@ -14,7 +14,6 @@ services:
     restart: on-failure
     depends_on:
       - pictrs
-      - iframely
       - lemmy-alpha-ui
       - lemmy-beta-ui
       - lemmy-gamma-ui
@@ -43,7 +42,7 @@ services:
     environment:
       - LEMMY_TEST_SEND_SYNC=1
       - RUST_BACKTRACE=1
-      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_apub_receive=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
+      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
     depends_on:
       - postgres_alpha
     ports: 
@@ -72,7 +71,7 @@ services:
     environment:
       - LEMMY_TEST_SEND_SYNC=1
       - RUST_BACKTRACE=1
-      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_apub_receive=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
+      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
     depends_on:
       - postgres_beta
     ports: 
@@ -101,7 +100,7 @@ services:
     environment:
       - LEMMY_TEST_SEND_SYNC=1
       - RUST_BACKTRACE=1
-      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_apub_receive=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
+      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
     depends_on:
       - postgres_gamma
     ports: 
@@ -131,7 +130,7 @@ services:
     environment:
       - LEMMY_TEST_SEND_SYNC=1
       - RUST_BACKTRACE=1
-      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_apub_receive=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
+      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
     depends_on:
       - postgres_delta
     ports: 
@@ -161,7 +160,7 @@ services:
     environment:
       - LEMMY_TEST_SEND_SYNC=1
       - RUST_BACKTRACE=1
-      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_apub_receive=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
+      - RUST_LOG="warn,lemmy_server=debug,lemmy_api=debug,lemmy_api_common=debug,lemmy_api_crud=debug,lemmy_apub=debug,lemmy_db_queries=debug,lemmy_db_schema=debug,lemmy_db_views=debug,lemmy_db_views_actor=debug,lemmy_db_views_moderator=debug,lemmy_routes=debug,lemmy_utils=debug,lemmy_websocket=debug"
     depends_on:
       - postgres_epsilon
     ports: 
@@ -174,9 +173,3 @@ services:
       - POSTGRES_DB=lemmy
     volumes:
       - ./volumes/postgres_epsilon:/var/lib/postgresql/data
-
-  iframely:
-    image: dogbin/iframely:latest
-    volumes:
-      - ../iframely.config.local.js:/iframely/config.local.js:ro
-    restart: always

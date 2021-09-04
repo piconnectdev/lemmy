@@ -9,6 +9,7 @@ use crate::{
     mod_remove_community,
     mod_remove_post,
     mod_sticky_post,
+    mod_transfer_community,
   },
   CommentId,
   CommunityId,
@@ -23,6 +24,7 @@ use crate::{
   ModAddCommunityId,
   ModBanId,
   ModAddId,
+  ModTransferCommunityId,
 };
 use serde::Serialize;
 
@@ -184,6 +186,26 @@ pub struct ModAddCommunity {
 #[derive(Insertable, AsChangeset)]
 #[table_name = "mod_add_community"]
 pub struct ModAddCommunityForm {
+  pub mod_person_id: PersonId,
+  pub other_person_id: PersonId,
+  pub community_id: CommunityId,
+  pub removed: Option<bool>,
+}
+
+#[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
+#[table_name = "mod_transfer_community"]
+pub struct ModTransferCommunity {
+  pub id: ModTransferCommunityId,
+  pub mod_person_id: PersonId,
+  pub other_person_id: PersonId,
+  pub community_id: CommunityId,
+  pub removed: Option<bool>,
+  pub when_: chrono::NaiveDateTime,
+}
+
+#[derive(Insertable, AsChangeset)]
+#[table_name = "mod_transfer_community"]
+pub struct ModTransferCommunityForm {
   pub mod_person_id: PersonId,
   pub other_person_id: PersonId,
   pub community_id: CommunityId,

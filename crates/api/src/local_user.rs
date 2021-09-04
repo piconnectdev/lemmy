@@ -7,7 +7,6 @@ use chrono::Duration;
 use lemmy_api_common::{
   blocking,
   collect_moderated_communities,
-  community::{GetFollowedCommunities, GetFollowedCommunitiesResponse},
   get_local_user_view_from_jwt,
   is_admin,
   password_length_check,
@@ -19,6 +18,7 @@ use lemmy_db_queries::{
   from_opt_str_to_opt_enum,
   source::{
     comment::Comment_,
+    community::Community_,
     local_user::LocalUser_,
     password_reset_request::PasswordResetRequest_,
     person::Person_,
@@ -26,6 +26,7 @@ use lemmy_db_queries::{
     post::Post_,
     private_message::PrivateMessage_,
   },
+  Blockable,
   Crud,
   SortType,
 };
@@ -33,10 +34,12 @@ use lemmy_db_schema::{
   naive_now,
   source::{
     comment::Comment,
+    community::Community,
     local_user::{LocalUser, LocalUserForm},
     moderator::*,
     password_reset_request::*,
     person::*,
+    person_block::{PersonBlock, PersonBlockForm},
     person_mention::*,
     post::Post,
     private_message::PrivateMessage,
@@ -50,7 +53,7 @@ use lemmy_db_views::{
   post_report_view::PostReportView,
 };
 use lemmy_db_views_actor::{
-  community_follower_view::CommunityFollowerView,
+  community_moderator_view::CommunityModeratorView,
   person_mention_view::{PersonMentionQueryBuilder, PersonMentionView},
   person_view::PersonViewSafe,
 };
@@ -115,7 +118,7 @@ impl Perform for GetCaptcha {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<Self::Response, LemmyError> {
-    let captcha_settings = Settings::get().captcha();
+    let captcha_settings = Settings::get().captcha;
 
     if !captcha_settings.enabled {
       return Ok(GetCaptchaResponse { ok: None });
@@ -409,8 +412,24 @@ impl Perform for BanPerson {
 
       // Communities
       // Remove all communities where they're the top mod
-      // TODO couldn't get group by's working in diesel,
       // for now, remove the communities manually
+      let first_mod_communities = blocking(context.pool(), move |conn: &'_ _| {
+        CommunityModeratorView::get_community_first_mods(conn)
+      })
+      .await??;
+
+      // Filter to only this banned users top communities
+      let banned_user_first_communities: Vec<CommunityModeratorView> = first_mod_communities
+        .into_iter()
+        .filter(|fmc| fmc.moderator.id == banned_person_id)
+        .collect();
+
+      for first_mod_community in banned_user_first_communities {
+        blocking(context.pool(), move |conn: &'_ _| {
+          Community::update_removed(conn, first_mod_community.community.id, true)
+        })
+        .await??;
+      }
 
       // Comments
       blocking(context.pool(), move |conn: &'_ _| {
@@ -448,6 +467,59 @@ impl Perform for BanPerson {
       response: res.clone(),
       websocket_id,
     });
+
+    Ok(res)
+  }
+}
+
+#[async_trait::async_trait(?Send)]
+impl Perform for BlockPerson {
+  type Response = BlockPersonResponse;
+
+  async fn perform(
+    &self,
+    context: &Data<LemmyContext>,
+    _websocket_id: Option<ConnectionId>,
+  ) -> Result<BlockPersonResponse, LemmyError> {
+    let data: &BlockPerson = self;
+    let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
+
+    let target_id = data.person_id;
+    let person_id = local_user_view.person.id;
+
+    // Don't let a person block themselves
+    if target_id == person_id {
+      return Err(ApiError::err("cant_block_yourself").into());
+    }
+
+    let person_block_form = PersonBlockForm {
+      person_id,
+      target_id,
+    };
+
+    if data.block {
+      let block = move |conn: &'_ _| PersonBlock::block(conn, &person_block_form);
+      if blocking(context.pool(), block).await?.is_err() {
+        return Err(ApiError::err("person_block_already_exists").into());
+      }
+    } else {
+      let unblock = move |conn: &'_ _| PersonBlock::unblock(conn, &person_block_form);
+      if blocking(context.pool(), unblock).await?.is_err() {
+        return Err(ApiError::err("person_block_already_exists").into());
+      }
+    }
+
+    // TODO does any federated stuff need to be done here?
+
+    let person_view = blocking(context.pool(), move |conn| {
+      PersonViewSafe::read(conn, target_id)
+    })
+    .await??;
+
+    let res = BlockPersonResponse {
+      person_view,
+      blocked: data.block,
+    };
 
     Ok(res)
   }
@@ -758,29 +830,5 @@ impl Perform for GetReportCount {
     });
 
     Ok(res)
-  }
-}
-
-#[async_trait::async_trait(?Send)]
-impl Perform for GetFollowedCommunities {
-  type Response = GetFollowedCommunitiesResponse;
-
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<GetFollowedCommunitiesResponse, LemmyError> {
-    let data: &GetFollowedCommunities = self;
-    let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
-
-    let person_id = local_user_view.person.id;
-    let communities = blocking(context.pool(), move |conn| {
-      CommunityFollowerView::for_person(conn, person_id)
-    })
-    .await?
-    .map_err(|_| ApiError::err("system_err_login"))?;
-
-    // Return the jwt
-    Ok(GetFollowedCommunitiesResponse { communities })
   }
 }

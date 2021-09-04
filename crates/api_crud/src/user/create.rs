@@ -30,7 +30,7 @@ use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_username},
+  utils::{check_slurs, is_valid_actor_name},
   ApiError,
   ConnectionId,
   LemmyError,
@@ -72,7 +72,7 @@ impl PerformCrud for Register {
     .await??;
 
     // If its not the admin, check the captcha
-    if !no_admins && Settings::get().captcha().enabled {
+    if !no_admins && Settings::get().captcha.enabled {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
@@ -94,7 +94,7 @@ impl PerformCrud for Register {
     check_slurs(&data.username)?;
 
     let actor_keypair = generate_actor_keypair()?;
-    if !is_valid_username(&data.username) {
+    if !is_valid_actor_name(&data.username) {
       return Err(ApiError::err("invalid_username").into());
     }
     let actor_id = generate_apub_endpoint(EndpointType::Person, &data.username)?;

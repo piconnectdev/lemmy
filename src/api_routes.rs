@@ -35,6 +35,11 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           .wrap(rate_limit.message())
           .route(web::get().to(route_get::<Search>)),
       )
+      .service(
+        web::resource("/resolve_object")
+          .wrap(rate_limit.message())
+          .route(web::get().to(route_get::<ResolveObject>)),
+      )
       // Community
       .service(
         web::resource("/community")
@@ -49,6 +54,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           .route("", web::put().to(route_post_crud::<EditCommunity>))
           .route("/list", web::get().to(route_get_crud::<ListCommunities>))
           .route("/follow", web::post().to(route_post::<FollowCommunity>))
+          .route("/block", web::post().to(route_post::<BlockCommunity>))
           .route(
             "/delete",
             web::post().to(route_post_crud::<DeleteCommunity>),
@@ -90,7 +96,11 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
             "/report/resolve",
             web::put().to(route_post::<ResolvePostReport>),
           )
-          .route("/report/list", web::get().to(route_get::<ListPostReports>)),
+          .route("/report/list", web::get().to(route_get::<ListPostReports>))
+          .route(
+            "/site_metadata",
+            web::get().to(route_get::<GetSiteMetadata>),
+          ),
       )
       // Comment
       .service(
@@ -153,13 +163,10 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
             web::post().to(route_post::<MarkPersonMentionAsRead>),
           )
           .route("/replies", web::get().to(route_get::<GetReplies>))
-          .route(
-            "/followed_communities",
-            web::get().to(route_get::<GetFollowedCommunities>),
-          )
           .route("/join", web::post().to(route_post::<UserJoin>))
           // Admin action. I don't like that it's in /user
           .route("/ban", web::post().to(route_post::<BanPerson>))
+          .route("/block", web::post().to(route_post::<BlockPerson>))
           // Account actions. I don't like that they're in /user maybe /accounts
           .route("/login", web::post().to(route_post::<Login>))
           .route("/get_captcha", web::get().to(route_get::<GetCaptcha>))

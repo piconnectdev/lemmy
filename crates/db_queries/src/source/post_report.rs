@@ -3,6 +3,8 @@ use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{naive_now, source::post_report::*, PersonId, PostReportId};
 
 impl Reportable<PostReportForm, PostReportId> for PostReport {
+  //type Form = PostReportForm;
+  //type IdType = PostReportId;
   /// creates a post report and returns it
   ///
   /// * `conn` - the postgres connection

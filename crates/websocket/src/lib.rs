@@ -13,6 +13,7 @@ pub mod chat_server;
 pub mod handlers;
 pub mod messages;
 pub mod routes;
+pub mod send;
 
 pub struct LemmyContext {
   pub pool: DbPool,
@@ -100,7 +101,6 @@ pub enum UserOperation {
   ListPostReports,
   GetReportCount,
   FollowCommunity,
-  GetFollowedCommunities,
   GetReplies,
   GetPersonMentions,
   MarkPersonMentionAsRead,
@@ -110,6 +110,7 @@ pub enum UserOperation {
   AddAdmin,
   BanPerson,
   Search,
+  ResolveObject,
   MarkAllAsRead,
   SaveUserSettings,
   TransferCommunity,
@@ -124,6 +125,9 @@ pub enum UserOperation {
   CommunityJoin,
   ModJoin,
   ChangePassword,
+  GetSiteMetadata,
+  BlockCommunity,
+  BlockPerson,
 }
 
 #[derive(EnumString, ToString, Debug, Clone)]

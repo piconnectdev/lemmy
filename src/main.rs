@@ -38,7 +38,7 @@ async fn main() -> Result<(), LemmyError> {
   };
   let manager = ConnectionManager::<PgConnection>::new(&db_url);
   let pool = Pool::builder()
-    .max_size(settings.database().pool_size())
+    .max_size(settings.database.pool_size)
     .build(manager)
     .unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
 
@@ -62,11 +62,11 @@ async fn main() -> Result<(), LemmyError> {
 
   println!(
     "Starting http server at {}:{}",
-    settings.bind(),
-    settings.port()
+    settings.bind, settings.port
   );
 
   let activity_queue = create_activity_queue();
+
   let chat_server = ChatServer::startup(
     pool.clone(),
     rate_limiter.clone(),
@@ -91,13 +91,13 @@ async fn main() -> Result<(), LemmyError> {
       .app_data(Data::new(context))
       // The routes
       .configure(|cfg| api_routes::config(cfg, &rate_limiter))
-      .configure(lemmy_apub_receive::routes::config)
+      .configure(lemmy_apub::http::routes::config)
       .configure(feeds::config)
       .configure(|cfg| images::config(cfg, &rate_limiter))
       .configure(nodeinfo::config)
       .configure(webfinger::config)
   })
-  .bind((settings.bind(), settings.port()))?
+  .bind((settings.bind, settings.port))?
   .run()
   .await?;
 

@@ -318,6 +318,15 @@ impl fmt::Display for ModAddId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
+pub struct ModTransferCommunityId(pub Uuid);
+
+impl fmt::Display for ModTransferCommunityId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
 pub struct PasswordResetId(pub Uuid);
 
 impl fmt::Display for PasswordResetId {
@@ -360,6 +369,22 @@ impl fmt::Display for PiUserId {
   }
 }
 
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
+pub struct PersonBlockId(pub Uuid);
+impl fmt::Display for PersonBlockId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
+pub struct CommunityBlockId(pub Uuid);
+impl fmt::Display for CommunityBlockId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
 #[repr(transparent)]
 #[derive(Clone, PartialEq, Serialize, Deserialize, Debug, AsExpression, FromSqlRow)]
 #[sql_type = "Text"]
@@ -385,6 +410,7 @@ where
 }
 
 impl DbUrl {
+  // TODO: remove this method and just use into()
   pub fn into_inner(self) -> Url {
     self.0
   }
@@ -392,7 +418,7 @@ impl DbUrl {
 
 impl Display for DbUrl {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    self.to_owned().into_inner().fmt(f)
+    self.to_owned().0.fmt(f)
   }
 }
 

@@ -1,12 +1,9 @@
-use crate::ActorType;
-use activitystreams::unparsed::UnparsedMutExt;
-use activitystreams_ext::UnparsedExtension;
 use actix_web::HttpRequest;
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use http::{header::HeaderName, HeaderMap, HeaderValue};
 use http_signature_normalization_actix::Config as ConfigActix;
 use http_signature_normalization_reqwest::prelude::{Config, SignExt};
-use lemmy_utils::{location_info, LemmyError};
+use lemmy_utils::LemmyError;
 use log::debug;
 use openssl::{
   hash::MessageDigest,
@@ -65,8 +62,7 @@ pub(crate) async fn sign_and_send(
 }
 
 /// Verifies the HTTP signature on an incoming inbox request.
-pub fn verify_signature(request: &HttpRequest, actor: &dyn ActorType) -> Result<(), LemmyError> {
-  let public_key = actor.public_key().context(location_info!())?;
+pub(crate) fn verify_signature(request: &HttpRequest, public_key: &str) -> Result<(), LemmyError> {
   let verified = CONFIG2
     .begin_verify(
       request.method(),
@@ -92,45 +88,10 @@ pub fn verify_signature(request: &HttpRequest, actor: &dyn ActorType) -> Result<
   }
 }
 
-/// Extension for actor public key, which is needed on person and community for HTTP signatures.
-///
-/// Taken from: https://docs.rs/activitystreams/0.5.0-alpha.17/activitystreams/ext/index.html
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PublicKeyExtension {
-  pub public_key: PublicKey,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PublicKey {
   pub id: String,
   pub owner: Url,
   pub public_key_pem: String,
-}
-
-impl PublicKey {
-  pub fn to_ext(&self) -> PublicKeyExtension {
-    PublicKeyExtension {
-      public_key: self.to_owned(),
-    }
-  }
-}
-
-impl<U> UnparsedExtension<U> for PublicKeyExtension
-where
-  U: UnparsedMutExt,
-{
-  type Error = serde_json::Error;
-
-  fn try_from_unparsed(unparsed_mut: &mut U) -> Result<Self, Self::Error> {
-    Ok(PublicKeyExtension {
-      public_key: unparsed_mut.remove("publicKey")?,
-    })
-  }
-
-  fn try_into_unparsed(self, unparsed_mut: &mut U) -> Result<(), Self::Error> {
-    unparsed_mut.insert("publicKey", self.public_key)?;
-    Ok(())
-  }
 }

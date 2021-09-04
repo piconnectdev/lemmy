@@ -12,8 +12,11 @@ use lemmy_db_queries::{
   ViewToVec,
 };
 use lemmy_db_schema::{
-  schema::{community, community_aggregates, community_follower},
-  source::community::{Community, CommunityFollower, CommunitySafe},
+  schema::{community, community_aggregates, community_block, community_follower},
+  source::{
+    community::{Community, CommunityFollower, CommunitySafe},
+    community_block::CommunityBlock,
+  },
   CommunityId,
   PersonId,
 };
@@ -24,6 +27,7 @@ use uuid::Uuid;
 pub struct CommunityView {
   pub community: CommunitySafe,
   pub subscribed: bool,
+  pub blocked: bool,
   pub counts: CommunityAggregates,
 }
 
@@ -31,6 +35,7 @@ type CommunityViewTuple = (
   CommunitySafe,
   CommunityAggregates,
   Option<CommunityFollower>,
+  Option<CommunityBlock>,
 );
 
 impl CommunityView {
@@ -46,7 +51,7 @@ impl CommunityView {
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = my_person_id.unwrap_or(PersonId(uuid));
 
-    let (community, counts, follower) = community::table
+    let (community, counts, follower, blocked) = community::table
       .find(community_id)
       .inner_join(community_aggregates::table)
       .left_join(
@@ -56,16 +61,25 @@ impl CommunityView {
             .and(community_follower::person_id.eq(person_id_join)),
         ),
       )
+      .left_join(
+        community_block::table.on(
+          community::id
+            .eq(community_block::community_id)
+            .and(community_block::person_id.eq(person_id_join)),
+        ),
+      )
       .select((
         Community::safe_columns_tuple(),
         community_aggregates::all_columns,
         community_follower::all_columns.nullable(),
+        community_block::all_columns.nullable(),
       ))
       .first::<CommunityViewTuple>(conn)?;
 
     Ok(CommunityView {
       community,
       subscribed: follower.is_some(),
+      blocked: blocked.is_some(),
       counts,
     })
   }
@@ -172,10 +186,18 @@ impl<'a> CommunityQueryBuilder<'a> {
             .and(community_follower::person_id.eq(person_id_join)),
         ),
       )
+      .left_join(
+        community_block::table.on(
+          community::id
+            .eq(community_block::community_id)
+            .and(community_block::person_id.eq(person_id_join)),
+        ),
+      )
       .select((
         Community::safe_columns_tuple(),
         community_aggregates::all_columns,
         community_follower::all_columns.nullable(),
+        community_block::all_columns.nullable(),
       ))
       .into_boxed();
 
@@ -217,6 +239,11 @@ impl<'a> CommunityQueryBuilder<'a> {
       };
     }
 
+    // Don't show blocked communities
+    if self.my_person_id.is_some() {
+      query = query.filter(community_block::person_id.is_null());
+    }
+
     let (limit, offset) = limit_and_offset(self.page, self.limit);
     let res = query
       .limit(limit)
@@ -238,6 +265,7 @@ impl ViewToVec for CommunityView {
         community: a.0.to_owned(),
         counts: a.1.to_owned(),
         subscribed: a.2.is_some(),
+        blocked: a.3.is_some(),
       })
       .collect::<Vec<Self>>()
   }

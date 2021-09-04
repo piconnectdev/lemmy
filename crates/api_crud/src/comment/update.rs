@@ -7,8 +7,11 @@ use lemmy_api_common::{
   get_local_user_view_from_jwt,
   send_local_notifs,
 };
-use lemmy_apub::ApubObjectType;
-use lemmy_db_queries::{source::comment::Comment_, DeleteableOrRemoveable};
+use lemmy_apub::activities::{
+  comment::create_or_update::CreateOrUpdateComment,
+  CreateOrUpdateType,
+};
+use lemmy_db_queries::source::comment::Comment_;
 use lemmy_db_schema::source::comment::*;
 use lemmy_db_views::comment_view::CommentView;
 use lemmy_utils::{
@@ -17,7 +20,7 @@ use lemmy_utils::{
   ConnectionId,
   LemmyError,
 };
-use lemmy_websocket::{messages::SendComment, LemmyContext, UserOperationCrud};
+use lemmy_websocket::{send::send_comment_ws_message, LemmyContext, UserOperationCrud};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditComment {
@@ -37,6 +40,7 @@ impl PerformCrud for EditComment {
     })
     .await??;
 
+    // TODO is this necessary? It should really only need to check on create
     check_community_ban(
       local_user_view.person.id,
       orig_comment.community.id,
@@ -59,9 +63,13 @@ impl PerformCrud for EditComment {
     .map_err(|_| ApiError::err("couldnt_update_comment"))?;
 
     // Send the apub update
-    updated_comment
-      .send_update(&local_user_view.person, context)
-      .await?;
+    CreateOrUpdateComment::send(
+      &updated_comment,
+      &local_user_view.person,
+      CreateOrUpdateType::Update,
+      context,
+    )
+    .await?;
 
     // Do the mentions / recipients
     let updated_comment_content = updated_comment.content.to_owned();
@@ -76,30 +84,15 @@ impl PerformCrud for EditComment {
     )
     .await?;
 
-    let comment_id = data.comment_id;
-    let person_id = local_user_view.person.id;
-    let mut comment_view = blocking(context.pool(), move |conn| {
-      CommentView::read(conn, comment_id, Some(person_id))
-    })
-    .await??;
-
-    // Blank out deleted or removed info
-    if comment_view.comment.deleted || comment_view.comment.removed {
-      comment_view.comment = comment_view.comment.blank_out_deleted_or_removed_info();
-    }
-
-    let res = CommentResponse {
-      comment_view,
-      recipient_ids,
-      form_id: data.form_id.to_owned(),
-    };
-
-    context.chat_server().do_send(SendComment {
-      op: UserOperationCrud::EditComment,
-      comment: res.clone(),
+    send_comment_ws_message(
+      data.comment_id,
+      UserOperationCrud::EditComment,
       websocket_id,
-    });
-
-    Ok(res)
+      data.form_id.to_owned(),
+      None,
+      recipient_ids,
+      context,
+    )
+    .await
   }
 }

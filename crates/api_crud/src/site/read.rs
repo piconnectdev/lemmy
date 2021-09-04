@@ -8,8 +8,14 @@ use lemmy_api_common::{
   site::*,
 };
 use lemmy_db_views::site_view::SiteView;
-use lemmy_db_views_actor::person_view::PersonViewSafe;
-use lemmy_utils::{settings::structs::Settings, version, ConnectionId, LemmyError};
+use lemmy_db_views_actor::{
+  community_block_view::CommunityBlockView,
+  community_follower_view::CommunityFollowerView,
+  community_moderator_view::CommunityModeratorView,
+  person_block_view::PersonBlockView,
+  person_view::PersonViewSafe,
+};
+use lemmy_utils::{settings::structs::Settings, version, ApiError, ConnectionId, LemmyError};
 use lemmy_websocket::{messages::GetUsersOnline, LemmyContext};
 use log::info;
 
@@ -28,7 +34,7 @@ impl PerformCrud for GetSite {
       Ok(site_view) => Some(site_view),
       // If the site isn't created yet, check the setup
       Err(_) => {
-        if let Some(setup) = Settings::get().setup().as_ref() {
+        if let Some(setup) = Settings::get().setup.as_ref() {
           let register = Register {
             username: setup.admin_username.to_owned(),
             email: setup.admin_email.to_owned(),
@@ -43,15 +49,15 @@ impl PerformCrud for GetSite {
 
           let create_site = CreateSite {
             name: setup.site_name.to_owned(),
-            sidebar: None,
-            description: None,
-            icon: None,
-            banner: None,
-            enable_downvotes: None,
-            open_registration: None,
-            enable_nsfw: None,
+            sidebar: setup.sidebar.to_owned(),
+            description: setup.description.to_owned(),
+            icon: setup.icon.to_owned(),
+            banner: setup.banner.to_owned(),
+            enable_downvotes: setup.enable_downvotes,
+            open_registration: setup.open_registration,
+            enable_nsfw: setup.enable_nsfw,
+            community_creation_admin_only: setup.community_creation_admin_only,
             auth: login_response.jwt,
-            community_creation_admin_only: None,
           };
           create_site.perform(context, websocket_id).await?;
           info!("Site {} created", setup.site_name);
@@ -83,7 +89,48 @@ impl PerformCrud for GetSite {
       .await
       .unwrap_or(1);
 
-    let my_user = get_local_user_settings_view_from_jwt_opt(&data.auth, context.pool()).await?;
+    // Build the local user
+    let my_user = if let Some(local_user_view) =
+      get_local_user_settings_view_from_jwt_opt(&data.auth, context.pool()).await?
+    {
+      let person_id = local_user_view.person.id;
+      let follows = blocking(context.pool(), move |conn| {
+        CommunityFollowerView::for_person(conn, person_id)
+      })
+      .await?
+      .map_err(|_| ApiError::err("system_err_login"))?;
+
+      let person_id = local_user_view.person.id;
+      let community_blocks = blocking(context.pool(), move |conn| {
+        CommunityBlockView::for_person(conn, person_id)
+      })
+      .await?
+      .map_err(|_| ApiError::err("system_err_login"))?;
+
+      let person_id = local_user_view.person.id;
+      let person_blocks = blocking(context.pool(), move |conn| {
+        PersonBlockView::for_person(conn, person_id)
+      })
+      .await?
+      .map_err(|_| ApiError::err("system_err_login"))?;
+
+      let moderates = blocking(context.pool(), move |conn| {
+        CommunityModeratorView::for_person(conn, person_id)
+      })
+      .await?
+      .map_err(|_| ApiError::err("system_err_login"))?;
+
+      Some(MyUserInfo {
+        local_user_view,
+        follows,
+        moderates,
+        community_blocks,
+        person_blocks,
+      })
+    } else {
+      None
+    };
+
     let federated_instances = build_federated_instances(context.pool()).await?;
 
     Ok(GetSiteResponse {

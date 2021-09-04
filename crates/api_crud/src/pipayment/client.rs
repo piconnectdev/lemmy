@@ -19,7 +19,7 @@ use lemmy_utils::{
   claims::Claims,
   request::*,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_username},
+  utils::{check_slurs, is_valid_actor_name},
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{
@@ -188,7 +188,7 @@ pub async fn pi_update_payment(
   let mut payment_form = PiPaymentForm {
     person_id: None,
     ref_id: refid,
-    testnet: Settings::get().pi_testnet(),
+    testnet: Settings::get().pi_testnet,
     finished: false,
     updated: None,
     pi_uid: _pi_uid,

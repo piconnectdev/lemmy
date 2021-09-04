@@ -4,15 +4,23 @@ use lemmy_api_common::{
   blocking,
   check_community_ban,
   check_downvotes_enabled,
+  check_person_block,
   comment::*,
   get_local_user_view_from_jwt,
 };
-use lemmy_apub::ApubLikeableType;
+use lemmy_apub::{
+  activities::voting::{
+    undo_vote::UndoVote,
+    vote::{Vote, VoteType},
+  },
+  PostOrComment,
+};
 use lemmy_db_queries::{source::comment::Comment_, Likeable, Saveable};
 use lemmy_db_schema::{source::comment::*, LocalUserId};
 use lemmy_db_views::{comment_view::CommentView, local_user_view::LocalUserView};
 use lemmy_utils::{ApiError, ConnectionId, LemmyError};
-use lemmy_websocket::{messages::SendComment, LemmyContext, UserOperation};
+use lemmy_websocket::{send::send_comment_ws_message, LemmyContext, UserOperation};
+use std::convert::TryInto;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for MarkCommentAsRead {
@@ -144,6 +152,13 @@ impl Perform for CreateCommentLike {
     )
     .await?;
 
+    check_person_block(
+      local_user_view.person.id,
+      orig_comment.get_recipient_id(),
+      context.pool(),
+    )
+    .await?;
+
     // Add parent user to recipients
     let recipient_id = orig_comment.get_recipient_id();
     if let Ok(local_recipient) = blocking(context.pool(), move |conn| {
@@ -170,6 +185,7 @@ impl Perform for CreateCommentLike {
 
     // Only add the like if the score isnt 0
     let comment = orig_comment.comment;
+    let object = PostOrComment::Comment(Box::new(comment));
     let do_add = like_form.score != 0 && (like_form.score == 1 || like_form.score == -1);
     if do_add {
       let like_form2 = like_form.clone();
@@ -178,39 +194,35 @@ impl Perform for CreateCommentLike {
         return Err(ApiError::err("couldnt_like_comment").into());
       }
 
-      if like_form.score == 1 {
-        comment.send_like(&local_user_view.person, context).await?;
-      } else if like_form.score == -1 {
-        comment
-          .send_dislike(&local_user_view.person, context)
-          .await?;
-      }
+      Vote::send(
+        &object,
+        &local_user_view.person,
+        orig_comment.community.id,
+        like_form.score.try_into()?,
+        context,
+      )
+      .await?;
     } else {
-      comment
-        .send_undo_like(&local_user_view.person, context)
-        .await?;
+      // API doesn't distinguish between Undo/Like and Undo/Dislike
+      UndoVote::send(
+        &object,
+        &local_user_view.person,
+        orig_comment.community.id,
+        VoteType::Like,
+        context,
+      )
+      .await?;
     }
 
-    // Have to refetch the comment to get the current state
-    let comment_id = data.comment_id;
-    let person_id = local_user_view.person.id;
-    let liked_comment = blocking(context.pool(), move |conn| {
-      CommentView::read(conn, comment_id, Some(person_id))
-    })
-    .await??;
-
-    let res = CommentResponse {
-      comment_view: liked_comment,
-      recipient_ids,
-      form_id: None,
-    };
-
-    context.chat_server().do_send(SendComment {
-      op: UserOperation::CreateCommentLike,
-      comment: res.clone(),
+    send_comment_ws_message(
+      data.comment_id,
+      UserOperation::CreateCommentLike,
       websocket_id,
-    });
-
-    Ok(res)
+      None,
+      Some(local_user_view.person.id),
+      recipient_ids,
+      context,
+    )
+    .await
   }
 }

@@ -11,7 +11,9 @@ use lemmy_utils::{
 
 use uuid::Uuid;
 
-impl Crud<PiPaymentForm, PaymentId> for PiPayment {
+impl Crud for PiPayment {
+  type Form = PiPaymentForm;
+  type IdType = PaymentId;
   fn read(conn: &PgConnection, pipayment_id: PaymentId) -> Result<Self, Error> {
     use lemmy_db_schema::schema::pipayment::dsl::*;
     pipayment.find(pipayment_id).first::<Self>(conn)
@@ -66,7 +68,7 @@ mod tests {
     let new_payment = PiPaymentForm {
       person_id: None,
       ref_id: Some(uid),
-      testnet: Settings::get().pi_testnet(),
+      testnet: Settings::get().pi_testnet,
 
       finished: false,
       updated: None,
@@ -99,7 +101,7 @@ mod tests {
       id: inserted_payment.id,
       person_id: None,
       ref_id: Some(uid),
-      testnet: Settings::get().pi_testnet(),
+      testnet: Settings::get().pi_testnet,
       published: inserted_payment.published.clone(),
       finished: false,
       updated: None,
