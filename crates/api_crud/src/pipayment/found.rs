@@ -114,7 +114,7 @@ impl PerformCrud for PiPaymentFound {
         return Err(ApiError::err(&err_type).into());
       }
 
-      if (!approved) {
+      if !approved {
         dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
           Ok(c) => {
             Some(c)
@@ -127,7 +127,7 @@ impl PerformCrud for PiPaymentFound {
           }
         };
       } else {
-        if (!completed) {
+        if !completed {
           tx = dto_read.transaction.clone();
           match tx {
               Some(tx_) => {

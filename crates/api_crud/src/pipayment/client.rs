@@ -136,8 +136,8 @@ pub async fn pi_update_payment(
 
   let mut dto: Option<PiPaymentDto> = None;
 
-  if (_payment.is_some()) {
-    if (!approved) {
+  if _payment.is_some() {
+    if !approved {
       let dto = match pi_approve(context.client(), payment_id).await {
         Ok(c) => Some(c),
         Err(_e) => None,

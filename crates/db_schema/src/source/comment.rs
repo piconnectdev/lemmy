@@ -33,6 +33,7 @@ pub struct Comment {
   pub deleted: bool,
   pub ap_id: DbUrl,
   pub local: bool,
+  //pub private_id: CommentId,
 }
 
 #[derive(Clone, Queryable, Associations, Identifiable, PartialEq, Debug, Serialize)]

@@ -6,7 +6,8 @@ use lemmy_websocket::{
   messages::{JoinCommunityRoom, JoinModRoom, JoinPostRoom, JoinUserRoom},
   LemmyContext,
 };
-
+use lemmy_db_schema::{CommunityId,};
+use uuid::Uuid;
 #[async_trait::async_trait(?Send)]
 impl Perform for UserJoin {
   type Response = UserJoinResponse;
@@ -42,8 +43,34 @@ impl Perform for CommunityJoin {
     let data: &CommunityJoin = self;
 
     if let Some(ws_id) = websocket_id {
+      // let community_id = match Uuid::parse_str(&data.community_id.clone()) {
+      //   Ok(uid) => {
+      //       CommunityId(uid)
+      //   },
+      //   Err(e) => {
+      //     let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+      //     CommunityId(xid)
+      //   }
+      // };
+
+      let community_id = match &data.community_id {
+        Some(id) => {
+          let uuid = Uuid::parse_str(&id.clone());
+          match uuid {
+            Ok(u) => CommunityId(u),
+            Err(e) => {
+              let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+              CommunityId(xid)
+            }
+          }
+        },
+        None => {
+          let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+          CommunityId(xid)
+        }
+      };
       context.chat_server().do_send(JoinCommunityRoom {
-        community_id: data.community_id,
+        community_id: community_id,
         id: ws_id,
       });
     }

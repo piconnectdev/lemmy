@@ -32,6 +32,7 @@ pub struct Post {
   pub thumbnail_url: Option<DbUrl>,
   pub ap_id: DbUrl,
   pub local: bool,
+  //pub private_id: PostId,
 }
 
 #[derive(Insertable, AsChangeset, Default)]

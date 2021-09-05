@@ -45,7 +45,6 @@ begin
     inner join person pe on p.creator_id = pe.id
     where p.published > ('now'::timestamp - i::interval)
     and u.local = true
-    and pe.bot_account = false
   ) a;
   return count_;
 end;

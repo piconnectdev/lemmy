@@ -29,6 +29,8 @@ pub struct Person {
   pub admin: bool,
   pub bot_account: bool,
   pub extra_user_id: Option<String>,
+  //pub private_seeds: Option<String>,
+  //pub pi_address: Option<String>,
 }
 
 /// A safe representation of person, without the sensitive info
@@ -52,6 +54,7 @@ pub struct PersonSafe {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  //pub pi_address: Option<String>,
 }
 
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]

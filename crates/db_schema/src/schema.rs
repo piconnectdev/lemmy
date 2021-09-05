@@ -24,6 +24,7 @@ table! {
         deleted -> Bool,
         ap_id -> Varchar,
         local -> Bool,
+        //private_id -> Uuid,
     }
 }
 
@@ -303,6 +304,8 @@ table! {
         admin -> Bool,
         bot_account -> Bool,
         extra_user_id -> Nullable<Text>,
+        //private_seeds -> Nullable<Text>,
+        //pi_address -> Nullable<Text>,
     }
 }
 
@@ -356,6 +359,7 @@ table! {
         thumbnail_url -> Nullable<Text>,
         ap_id -> Varchar,
         local -> Bool,
+        //private_id -> Uuid,
     }
 }
 

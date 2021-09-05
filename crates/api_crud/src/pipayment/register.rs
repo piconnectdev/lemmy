@@ -115,7 +115,7 @@ impl PerformCrud for PiRegister {
     let mut completed = false;
     let mut finished = false;
     let mut payment_id: PaymentId;
-    let mut person_id: PersonId;
+    let person_id: PersonId;
     let mut pi_exist = false;
     let mut dto: Option<PiPaymentDto> = None;
 
@@ -139,12 +139,12 @@ impl PerformCrud for PiRegister {
       }
     };
 
-    if (_payment.is_none()) {
+    if _payment.is_none() {
       // Why here ????
       let err_type = format!("Payment {} was not insert/approved", data.paymentid);
       return Err(ApiError::err(&err_type).into());
     } else {
-      if (finished) {
+      if finished {
         let err_type = format!("Payment {} was finished", data.paymentid);
         return Err(ApiError::err(&err_type).into());
       }
@@ -175,7 +175,7 @@ impl PerformCrud for PiRegister {
         pi_exist = true;
         match person {
           Some(per) => {
-            if (pi.name != per.name) {
+            if pi.name != per.name {
               let err_type = format!(
                 "User {} is exist and belong other Pi account",
                 &data.info.username
@@ -207,7 +207,7 @@ impl PerformCrud for PiRegister {
     }
     
     
-    if (!completed) {
+    if !completed {
       dto = match pi_complete(
         context.client(),
         &data.paymentid.clone(),
@@ -304,8 +304,8 @@ impl PerformCrud for PiRegister {
         return Err(ApiError::err(&err_type).into());
       }
     };
-    if (change_password) {
-       let mut local_user_id;
+    if change_password {
+       let local_user_id;
        let _local_user1 = match blocking(context.pool(), move |conn| {
          LocalUserView::read_from_name(&conn, &_new_user2)
        })

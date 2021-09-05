@@ -128,16 +128,18 @@ pub trait Readable {
     Self: Sized;
 }
 
-pub trait Reportable<Form, IdType> {
-  fn report(conn: &PgConnection, form: &Form) -> Result<Self, Error>
+pub trait Reportable {
+  type Form;
+  type IdType;
+  fn report(conn: &PgConnection, form: &Self::Form) -> Result<Self, Error>
   where
     Self: Sized;
-  fn resolve(conn: &PgConnection, report_id: IdType, resolver_id: PersonId) -> Result<usize, Error>
+  fn resolve(conn: &PgConnection, report_id: Self::IdType, resolver_id: PersonId) -> Result<usize, Error>
   where
     Self: Sized;
   fn unresolve(
     conn: &PgConnection,
-    report_id: IdType,
+    report_id: Self::IdType,
     resolver_id: PersonId,
   ) -> Result<usize, Error>
   where
