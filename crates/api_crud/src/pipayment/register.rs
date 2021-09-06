@@ -37,13 +37,13 @@ use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegister {
-  type Response = PiRegisterResponse;
+  type Response = LoginResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<PiRegisterResponse, LemmyError> {
+  ) -> Result<LoginResponse, LemmyError> {
     let data: &PiRegister = &self;
 
     // Make sure site has open registration
@@ -115,7 +115,7 @@ impl PerformCrud for PiRegister {
     let mut completed = false;
     let mut finished = false;
     let mut payment_id: PaymentId;
-    let person_id: PersonId;
+    let mut person_id: PersonId;
     let mut pi_exist = false;
     let mut dto: Option<PiPaymentDto> = None;
 
@@ -336,9 +336,8 @@ impl PerformCrud for PiRegister {
            return Err(ApiError::err(&err_type).into());
          }
        };
-        return Ok(PiRegisterResponse {
+        return Ok(LoginResponse {
             jwt: Claims::jwt(local_user_id.0)?,
-            extra: Some(_pi_username3),
             })
     }
     // We have to create both a person, and local_user
@@ -473,9 +472,9 @@ impl PerformCrud for PiRegister {
     }
 
     // Return the jwt
-    Ok(PiRegisterResponse {
+    Ok(LoginResponse {
       jwt: Claims::jwt(inserted_local_user.id.0)?,
-      extra: Some(_pi_username3),
+      //extra: Some(_pi_username3),
     })
   }
 }

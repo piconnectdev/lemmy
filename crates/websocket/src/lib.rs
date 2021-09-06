@@ -165,6 +165,12 @@ pub enum UserOperationCrud {
   GetPrivateMessages,
   EditPrivateMessage,
   DeletePrivateMessage,
+  // PiPayment
+  PiAgreeRegister,
+  PiRegister,
+  PiApprove,
+  PiTip,
+  PiPaymentFound,
 }
 
 pub trait OperationType {}

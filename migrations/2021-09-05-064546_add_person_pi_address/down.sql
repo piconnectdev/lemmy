@@ -1,1 +1,1 @@
-drop table pipayment;
+-- drop table pipayment;

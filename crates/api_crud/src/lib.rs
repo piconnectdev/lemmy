@@ -1,5 +1,5 @@
 use actix_web::{web, web::Data};
-use lemmy_api_common::{comment::*, community::*, person::*, post::*, site::*};
+use lemmy_api_common::{comment::*, community::*, person::*, post::*, site::*, pipayment::*};
 use lemmy_utils::{ConnectionId, LemmyError};
 use lemmy_websocket::{serialize_websocket_message, LemmyContext, UserOperationCrud};
 use serde::Deserialize;
@@ -111,6 +111,21 @@ pub async fn match_websocket_operation_crud(
     }
     UserOperationCrud::GetComments => {
       do_websocket_operation::<GetComments>(context, id, op, data).await
+    }
+    UserOperationCrud::PiAgreeRegister => {
+      do_websocket_operation::<PiAgreeRegister>(context, id, op, data).await
+    }
+    UserOperationCrud::PiRegister => {
+      do_websocket_operation::<PiRegister>(context, id, op, data).await
+    }
+    UserOperationCrud::PiApprove => {
+      do_websocket_operation::<PiApprove>(context, id, op, data).await
+    }
+    UserOperationCrud::PiTip => {
+      do_websocket_operation::<PiTip>(context, id, op, data).await
+    }
+    UserOperationCrud::PiPaymentFound => {
+      do_websocket_operation::<PiPaymentFound>(context, id, op, data).await
     }
   }
 }
