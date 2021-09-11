@@ -606,6 +606,8 @@ mod tests {
         ap_id: inserted_comment.ap_id,
         updated: None,
         local: true,
+        cert: None,
+        tx: None,
       },
       creator: PersonSafe {
         id: inserted_person.id,
@@ -625,6 +627,13 @@ mod tests {
         inbox_url: inserted_person.inbox_url.to_owned(),
         shared_inbox_url: None,
         matrix_user_id: None,
+        verified: false,
+        pi_address: None,
+        web3_address: None,
+        sol_address: None,
+        dap_address: None,
+        cert: None,
+        tx: None,
       },
       recipient: None,
       post: Post {
@@ -647,6 +656,8 @@ mod tests {
         thumbnail_url: None,
         ap_id: inserted_post.ap_id.to_owned(),
         local: true,
+        cert: None,
+        tx: None,
       },
       community: CommunitySafe {
         id: inserted_community.id,
@@ -662,6 +673,8 @@ mod tests {
         updated: None,
         banner: None,
         published: inserted_community.published,
+        cert: None,
+        tx: None,
       },
       counts: CommentAggregates {
         id: agg.id,

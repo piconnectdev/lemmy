@@ -176,6 +176,14 @@ impl FromApub for DbPerson {
       shared_inbox_url: Some(shared_inbox),
       matrix_user_id: Some(person.matrix_user_id.clone()),
       extra_user_id: None,
+      verified: false,
+      private_seeds: None,
+      pi_address: None,
+      web3_address: None,
+      sol_address: None,
+      dap_address: None,
+      cert: None,
+      tx : None,
     };
     let person = blocking(context.pool(), move |conn| {
       DbPerson::upsert(conn, &person_form)

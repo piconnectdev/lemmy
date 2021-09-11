@@ -34,6 +34,8 @@ pub struct Comment {
   pub ap_id: DbUrl,
   pub local: bool,
   //pub private_id: CommentId,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Clone, Queryable, Associations, Identifiable, PartialEq, Debug, Serialize)]
@@ -52,6 +54,8 @@ pub struct CommentAlias1 {
   pub deleted: bool,
   pub ap_id: DbUrl,
   pub local: bool,
+  //pub cert: Option<String>,
+  //pub tx : Option<String>,
 }
 
 #[derive(Insertable, AsChangeset, Clone, Default)]
@@ -68,6 +72,8 @@ pub struct CommentForm {
   pub deleted: Option<bool>,
   pub ap_id: Option<DbUrl>,
   pub local: Option<bool>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug, Clone)]

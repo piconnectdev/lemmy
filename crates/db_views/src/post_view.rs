@@ -644,6 +644,8 @@ mod tests {
         thumbnail_url: None,
         ap_id: inserted_post.ap_id.to_owned(),
         local: true,
+        cert: None,
+        tx: None,
       },
       my_vote: None,
       creator: PersonSafe {
@@ -664,6 +666,13 @@ mod tests {
         inbox_url: inserted_person.inbox_url.to_owned(),
         shared_inbox_url: None,
         matrix_user_id: None,
+        verified: false,
+        pi_address: None,
+        web3_address: None,
+        sol_address: None,
+        dap_address: None,
+        cert: None,
+        tx: None,
       },
       creator_banned_from_community: false,
       community: CommunitySafe {
@@ -680,6 +689,8 @@ mod tests {
         updated: None,
         banner: None,
         published: inserted_community.published,
+        cert: None,
+        tx: None,
       },
       counts: PostAggregates {
         id: agg.id,

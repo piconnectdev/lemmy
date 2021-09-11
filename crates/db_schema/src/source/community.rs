@@ -32,6 +32,8 @@ pub struct Community {
   pub followers_url: DbUrl,
   pub inbox_url: DbUrl,
   pub shared_inbox_url: Option<DbUrl>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 /// A safe representation of community, without the sensitive info
@@ -51,6 +53,8 @@ pub struct CommunitySafe {
   pub local: bool,
   pub icon: Option<DbUrl>,
   pub banner: Option<DbUrl>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Insertable, AsChangeset, Debug, Default)]
@@ -74,6 +78,8 @@ pub struct CommunityForm {
   pub followers_url: Option<DbUrl>,
   pub inbox_url: Option<DbUrl>,
   pub shared_inbox_url: Option<Option<DbUrl>>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]

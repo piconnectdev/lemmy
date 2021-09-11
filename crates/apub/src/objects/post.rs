@@ -217,6 +217,8 @@ impl FromApub for Post {
       thumbnail_url: pictrs_thumbnail.map(|u| u.into()),
       ap_id,
       local: Some(false),
+      cert: None,
+      tx: None,
     };
     Ok(blocking(context.pool(), move |conn| Post::upsert(conn, &form)).await??)
   }

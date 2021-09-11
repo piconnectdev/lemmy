@@ -192,6 +192,9 @@ mod tests {
       published: inserted_private_message.published,
       ap_id: inserted_private_message.ap_id.to_owned(),
       local: true,
+      secured: None,
+      cert: None,
+      tx: None,
     };
 
     let read_private_message = PrivateMessage::read(&conn, inserted_private_message.id).unwrap();

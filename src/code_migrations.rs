@@ -104,6 +104,8 @@ fn community_updates_2020_04_02(conn: &PgConnection) -> Result<(), LemmyError> {
       followers_url: None,
       inbox_url: None,
       shared_inbox_url: None,
+      cert: None,
+      tx: None,
     };
 
     Community::update(conn, ccommunity.id, &form)?;

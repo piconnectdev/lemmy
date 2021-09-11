@@ -19,7 +19,7 @@ use lemmy_db_queries::{
   SearchType,
   SortType,
 };
-use lemmy_db_schema::source::{moderator::*, site::Site};
+use lemmy_db_schema::{PersonId, CommunityId, source::{moderator::*, site::Site, }};
 use lemmy_db_views::{
   comment_view::CommentQueryBuilder,
   post_view::PostQueryBuilder,
@@ -50,6 +50,7 @@ use lemmy_utils::{
   LemmyError,
 };
 use lemmy_websocket::LemmyContext;
+use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for GetModlog {
@@ -167,13 +168,42 @@ impl Perform for Search {
     let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
     let listing_type: Option<ListingType> = from_opt_str_to_opt_enum(&data.listing_type);
     let search_type: SearchType = from_opt_str_to_opt_enum(&data.type_).unwrap_or(SearchType::All);
-    let community_id = data.community_id;
+    //let community_id = data.community_id;
+    let community_id = match &data.community_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => Some(CommunityId(u)),
+          Err(_e) => {
+            None
+          }
+        }
+      },
+      None => {
+        None
+      }
+    };
+
     let community_actor_id = data
       .community_name
       .as_ref()
       .map(|t| build_actor_id_from_shortname(EndpointType::Community, t).ok())
       .unwrap_or(None);
-    let creator_id = data.creator_id;
+    //let creator_id = data.creator_id;
+    let creator_id = match &data.creator_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => Some(PersonId(u)),
+          Err(_e) => {
+            None
+          }
+        }
+      },
+      None => {
+        None
+      }
+    };
     match search_type {
       SearchType::Posts => {
         posts = blocking(context.pool(), move |conn| {

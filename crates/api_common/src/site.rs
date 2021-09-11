@@ -30,9 +30,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Debug)]
 pub struct Search {
   pub q: String,
-  pub community_id: Option<CommunityId>,
+  pub community_id: Option<String>,
   pub community_name: Option<String>,
-  pub creator_id: Option<PersonId>,
+  pub creator_id: Option<String>,
   pub type_: Option<String>,
   pub sort: Option<String>,
   pub listing_type: Option<String>,

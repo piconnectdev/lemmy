@@ -245,6 +245,8 @@ impl FromApub for Comment {
       deleted: None,
       ap_id,
       local: Some(false),
+      cert: None,
+      tx: None,
     };
     Ok(blocking(context.pool(), move |conn| Comment::upsert(conn, &form)).await??)
   }

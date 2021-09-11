@@ -29,8 +29,14 @@ pub struct Person {
   pub admin: bool,
   pub bot_account: bool,
   pub extra_user_id: Option<String>,
-  //pub private_seeds: Option<String>,
-  //pub pi_address: Option<String>,
+  pub verified: bool,
+  pub private_seeds: Option<String>,
+  pub pi_address: Option<String>,
+  pub web3_address: Option<String>,
+  pub sol_address: Option<String>,
+  pub dap_address: Option<String>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 /// A safe representation of person, without the sensitive info
@@ -54,7 +60,13 @@ pub struct PersonSafe {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
-  //pub pi_address: Option<String>,
+  pub verified: bool,
+  pub pi_address: Option<String>,
+  pub web3_address: Option<String>,
+  pub sol_address: Option<String>,
+  pub dap_address: Option<String>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
@@ -80,6 +92,14 @@ pub struct PersonAlias1 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub verified: bool,
+  //pub private_seeds: Option<String>,
+  pub pi_address: Option<String>,
+  pub web3_address: Option<String>,
+  pub sol_address: Option<String>,
+  pub dap_address: Option<String>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
@@ -102,6 +122,13 @@ pub struct PersonSafeAlias1 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub verified: bool,
+  pub pi_address: Option<String>,
+  pub web3_address: Option<String>,
+  pub sol_address: Option<String>,
+  pub dap_address: Option<String>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
@@ -127,6 +154,14 @@ pub struct PersonAlias2 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub verified: bool,
+  //pub private_seeds: Option<String>,
+  pub pi_address: Option<String>,
+  pub web3_address: Option<String>,
+  pub sol_address: Option<String>,
+  pub dap_address: Option<String>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
@@ -149,6 +184,13 @@ pub struct PersonSafeAlias2 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub verified: bool,
+  pub pi_address: Option<String>,
+  pub web3_address: Option<String>,
+  pub sol_address: Option<String>,
+  pub dap_address: Option<String>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Insertable, AsChangeset, Clone, Default)]
@@ -174,4 +216,12 @@ pub struct PersonForm {
   pub admin: Option<bool>,
   pub bot_account: Option<bool>,
   pub extra_user_id: Option<String>,
+  pub verified: bool,
+  pub private_seeds: Option<Option<String>>,
+  pub pi_address: Option<Option<String>>,
+  pub web3_address: Option<Option<String>>,
+  pub sol_address: Option<Option<String>>,
+  pub dap_address: Option<Option<String>>,
+  pub cert: Option<Option<String>>,
+  pub tx : Option<Option<String>>,
 }

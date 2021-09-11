@@ -36,6 +36,8 @@ mod safe_type {
     local,
     icon,
     banner,
+    cert,
+    tx,
   );
 
   impl ToSafe for Community {
@@ -55,6 +57,8 @@ mod safe_type {
         local,
         icon,
         banner,
+        cert,
+        tx,
       )
     }
   }
@@ -382,6 +386,8 @@ mod tests {
       followers_url: inserted_community.followers_url.to_owned(),
       inbox_url: inserted_community.inbox_url.to_owned(),
       shared_inbox_url: None,
+      cert: None,
+      tx: None,
     };
 
     let community_follower_form = CommunityFollowerForm {

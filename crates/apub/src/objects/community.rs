@@ -104,6 +104,8 @@ impl Group {
       followers_url: Some(group.followers.clone().into()),
       inbox_url: Some(group.inbox.clone().into()),
       shared_inbox_url: Some(shared_inbox),
+      cert: None,
+      tx: None,
     })
   }
 }

@@ -135,6 +135,9 @@ impl FromApub for PrivateMessage {
       read: None,
       ap_id,
       local: Some(false),
+      secured: None,
+      cert: None,
+      tx: None,
     };
     Ok(
       blocking(context.pool(), move |conn| {

@@ -33,6 +33,8 @@ pub struct Post {
   pub ap_id: DbUrl,
   pub local: bool,
   //pub private_id: PostId,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Insertable, AsChangeset, Default)]
@@ -56,6 +58,8 @@ pub struct PostForm {
   pub thumbnail_url: Option<DbUrl>,
   pub ap_id: Option<DbUrl>,
   pub local: Option<bool>,
+  pub cert: Option<String>,
+  pub tx : Option<String>,
 }
 
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]

@@ -14,6 +14,9 @@ pub struct PrivateMessage {
   pub updated: Option<chrono::NaiveDateTime>,
   pub ap_id: DbUrl,
   pub local: bool,
+  pub secured: Option<String>,
+  pub cert: Option<String>,
+  pub tx: Option<String>,
 }
 
 #[derive(Insertable, AsChangeset, Default)]
@@ -28,4 +31,7 @@ pub struct PrivateMessageForm {
   pub updated: Option<chrono::NaiveDateTime>,
   pub ap_id: Option<DbUrl>,
   pub local: Option<bool>,
+  pub secured: Option<String>,
+  pub cert: Option<String>,
+  pub tx: Option<String>,
 }

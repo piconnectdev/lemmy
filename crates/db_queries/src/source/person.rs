@@ -30,6 +30,13 @@ mod safe_type {
     matrix_user_id,
     admin,
     bot_account,
+    verified,
+    pi_address,
+    web3_address,
+    sol_address,
+    dap_address,
+    cert,
+    tx,
   );
 
   impl ToSafe for Person {
@@ -53,6 +60,13 @@ mod safe_type {
         matrix_user_id,
         admin,
         bot_account,
+        verified,
+        pi_address,
+        web3_address,
+        sol_address,
+        dap_address,
+        cert,
+        tx,
       )
     }
   }
@@ -80,6 +94,13 @@ mod safe_type_alias_1 {
     matrix_user_id,
     admin,
     bot_account,
+    verified,
+    pi_address,
+    web3_address,
+    sol_address,
+    dap_address,
+    cert,
+    tx,
   );
 
   impl ToSafe for PersonAlias1 {
@@ -103,6 +124,13 @@ mod safe_type_alias_1 {
         matrix_user_id,
         admin,
         bot_account,
+        verified,
+        pi_address,
+        web3_address,
+        sol_address,
+        dap_address,
+        cert,
+        tx,
       )
     }
   }
@@ -130,6 +158,13 @@ mod safe_type_alias_2 {
     matrix_user_id,
     admin,
     bot_account,
+    verified,
+    pi_address,
+    web3_address,
+    sol_address,
+    dap_address,
+    cert,
+    tx,
   );
 
   impl ToSafe for PersonAlias2 {
@@ -153,6 +188,13 @@ mod safe_type_alias_2 {
         matrix_user_id,
         admin,
         bot_account,
+        verified,
+        pi_address,
+        web3_address,
+        sol_address,
+        dap_address,
+        cert,
+        tx,
       )
     }
   }
@@ -305,6 +347,14 @@ mod tests {
       shared_inbox_url: None,
       matrix_user_id: None,
       extra_user_id: None,
+      verified: false,
+      private_seeds: None,
+      pi_address: None,
+      web3_address: None,
+      sol_address: None,
+      dap_address: None,
+      cert: None,
+      tx : None,
     };
 
     let read_person = Person::read(&conn, inserted_person.id).unwrap();

@@ -61,6 +61,10 @@ pub struct SaveUserSettings {
   pub show_bot_accounts: Option<bool>,
   pub show_read_posts: Option<bool>,
   pub show_new_post_notifs: Option<bool>,
+  pub pi_address: Option<String>,
+  pub web3_address: Option<String>,
+  pub sol_address: Option<String>,
+  pub dap_address: Option<String>,
   pub auth: String,
 }
 

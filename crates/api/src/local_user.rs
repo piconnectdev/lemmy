@@ -168,10 +168,15 @@ impl Perform for SaveUserSettings {
 
     let avatar = diesel_option_overwrite_to_url(&data.avatar)?;
     let banner = diesel_option_overwrite_to_url(&data.banner)?;
-    let email = diesel_option_overwrite(&data.email);
+    //let email = diesel_option_overwrite(&data.email);
+    let email = diesel_option_overwrite(&None);
     let bio = diesel_option_overwrite(&data.bio);
     let display_name = diesel_option_overwrite(&data.display_name);
     let matrix_user_id = diesel_option_overwrite(&data.matrix_user_id);
+    let pi_address = diesel_option_overwrite(&data.pi_address);
+    let web3_address = diesel_option_overwrite(&data.web3_address);
+    let sol_address = diesel_option_overwrite(&data.sol_address);
+    let dap_address = diesel_option_overwrite(&data.dap_address);
     let bot_account = data.bot_account;
 
     if let Some(Some(bio)) = &bio {
@@ -219,6 +224,14 @@ impl Perform for SaveUserSettings {
       matrix_user_id,
       bot_account,
       extra_user_id: None,
+      verified: false,
+      private_seeds: None,
+      pi_address,
+      web3_address,
+      sol_address,
+      dap_address,
+      cert: None,
+      tx : None,
     };
 
     let person_res = blocking(context.pool(), move |conn| {

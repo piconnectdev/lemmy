@@ -25,6 +25,8 @@ table! {
         ap_id -> Varchar,
         local -> Bool,
         //private_id -> Uuid,
+        cert -> Nullable<Text>,
+        tx -> Nullable<Text>,
     }
 }
 
@@ -94,6 +96,8 @@ table! {
         followers_url -> Varchar,
         inbox_url -> Varchar,
         shared_inbox_url -> Nullable<Varchar>,
+        cert -> Nullable<Text>,
+        tx -> Nullable<Text>,
     }
 }
 
@@ -304,8 +308,14 @@ table! {
         admin -> Bool,
         bot_account -> Bool,
         extra_user_id -> Nullable<Text>,
-        //private_seeds -> Nullable<Text>,
-        //pi_address -> Nullable<Text>,
+        verified -> Bool,
+        private_seeds -> Nullable<Text>,
+        pi_address -> Nullable<Text>,
+        web3_address -> Nullable<Text>,
+        sol_address -> Nullable<Text>,
+        dap_address -> Nullable<Text>,   
+        cert -> Nullable<Text>,
+        tx -> Nullable<Text>,
     }
 }
 
@@ -360,6 +370,8 @@ table! {
         ap_id -> Varchar,
         local -> Bool,
         //private_id -> Uuid,
+        cert -> Nullable<Text>,
+        tx -> Nullable<Text>,
     }
 }
 
@@ -434,6 +446,9 @@ table! {
         updated -> Nullable<Timestamp>,
         ap_id -> Varchar,
         local -> Bool,
+        secured -> Nullable<Text>,
+        cert -> Nullable<Text>,
+        tx -> Nullable<Text>,
     }
 }
 
@@ -451,7 +466,7 @@ table! {
         icon -> Nullable<Varchar>,
         banner -> Nullable<Varchar>,
         description -> Nullable<Text>,
-        community_creation_admin_only -> Bool,
+        community_creation_admin_only -> Bool,        
     }
 }
 
@@ -528,6 +543,15 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
+        //extra_user_id -> Nullable<Text>,
+        verified -> Bool,
+        //private_seeds -> Nullable<Text>,
+        pi_address -> Nullable<Text>,
+        web3_address -> Nullable<Text>,
+        sol_address -> Nullable<Text>,
+        dap_address -> Nullable<Text>,   
+        cert -> Nullable<Text>,
+        tx -> Nullable<Text>,
     }
 }
 
@@ -553,6 +577,15 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
+        //extra_user_id -> Nullable<Text>,
+        verified -> Bool,
+        //private_seeds -> Nullable<Text>,
+        pi_address -> Nullable<Text>,
+        web3_address -> Nullable<Text>,
+        sol_address -> Nullable<Text>,
+        dap_address -> Nullable<Text>,   
+        cert -> Nullable<Text>,
+        tx -> Nullable<Text>,
     }
 }
 
