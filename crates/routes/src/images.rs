@@ -58,7 +58,8 @@ async fn upload(
   let mut client_req = client.request_from(format!("{}/image", pictrs_url()?), req.head());
 
   if let Some(addr) = req.head().peer_addr {
-    client_req = client_req.insert_header(("X-Forwarded-For", addr.to_string()))
+    client_req = client_req.insert_header(("X-Forwarded-For", addr.to_string()));
+    client_req = client_req.insert_header(("Accept-Encoding", "identity"));
   };
 
   let mut res = client_req
@@ -66,6 +67,7 @@ async fn upload(
     .await
     .map_err(error::ErrorBadRequest)?;
 
+  println!("body = {:?}", res);
   let images = res.json::<Images>().await.map_err(error::ErrorBadRequest)?;
 
   Ok(HttpResponse::build(res.status()).json(images))
