@@ -188,7 +188,8 @@ pub async fn pi_update_payment(
     Err(_e) => {
       let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
       &pi_username, &_payment_dto.identifier.clone(), _payment_dto.created_at, _e.to_string() );
-      return Err(ApiError::err(&err_type).into());  
+      //return Err(ApiError::err(&err_type).into());  
+      None
     }
   };
 
