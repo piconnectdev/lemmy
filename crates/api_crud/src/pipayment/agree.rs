@@ -181,7 +181,7 @@ impl PerformCrud for PiAgreeRegister {
       Ok(c) => Some(c),
       Err(_e) => {
         // Pi Server error
-        let err_type = format!("Pi Server: Error while approve: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+        let err_type = format!("Pi Server Error: approve user {}, paymentid {}, error: {}", &data.info.username,  &data.paymentid, _e.to_string());
         //let err_type = _e.to_string();
         return Err(ApiError::err(&err_type).into());
       }
@@ -207,8 +207,8 @@ impl PerformCrud for PiAgreeRegister {
     let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
       Ok(dt) => Some(dt),
       Err(_e) => {
-        let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
-        &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
+        let err_type = format!("Pi Server Error: get payment datetime error: user {}, paymentid {} {} {}", 
+        &data.info.username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
         return Err(ApiError::err(&err_type).into());  
       }
     };
@@ -268,7 +268,7 @@ impl PerformCrud for PiAgreeRegister {
           // } else {
           //   "couldnt_create_post"
           // };
-          let err_type = format!("Error insert payment for agree: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+          let err_type = format!("Error insert payment for agree: user {}, paymentid {} error: {}", &data.info.username,  &data.paymentid, _e.to_string());
           return Err(ApiError::err(&err_type).into());
         }
       };

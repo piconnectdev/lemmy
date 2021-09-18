@@ -167,15 +167,22 @@ pub async fn pi_update_payment(
     _payment_dto = dto.unwrap();
   }
 
-  let _info = info.unwrap();
-  let refid = match _info.captcha_uuid {
-    Some(uid) => match Uuid::parse_str(&uid) {
-      Ok(uidx) => Some(uidx),
-      Err(_e) => None,
-    },
-    None => None,
-  };
-
+  // let refid = match info {
+  //   Some(inf) => {
+  //     let _info = info.unwrap();
+  //     match _info.captcha_uuid {
+  //       Some(uid) => match Uuid::parse_str(&uid) {
+  //         Ok(uidx) => Some(uidx),
+  //         Err(_e) => None
+  //       },
+  //       None => None
+  //     }
+  //   },
+  //   None => {
+  //     None
+  //   }
+  // };
+  let refid = None;
   let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
     Ok(dt) => Some(dt),
     Err(_e) => {

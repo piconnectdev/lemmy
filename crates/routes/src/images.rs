@@ -67,7 +67,6 @@ async fn upload(
     .await
     .map_err(error::ErrorBadRequest)?;
 
-  println!("body = {:?}", res);
   let images = res.json::<Images>().await.map_err(error::ErrorBadRequest)?;
 
   Ok(HttpResponse::build(res.status()).json(images))
