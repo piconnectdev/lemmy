@@ -100,7 +100,7 @@ pub async fn pi_update_payment(
   payment_id: &str,
   pi_username: &str,
   pi_uid: Option<PiUserId>,
-  info: Option<Register>,
+  info: Option<String>,
 ) -> Result<PiPayment, LemmyError> {
   // Hide PiUserName
   let mut sha256 = Sha256::new();
@@ -143,9 +143,10 @@ pub async fn pi_update_payment(
         Err(_e) => None,
       };
     } else if !completed {
-      let dto = match pi_complete(context.client(), payment_id).await {
+      let dto = match pi_complete(context.client(), payment_id, &info.unwrap()).await {
         Ok(c) => Some(c),
         Err(_e) => None,
+      };
     }
   } else {
     dto = match pi_approve(context.client(), payment_id).await {

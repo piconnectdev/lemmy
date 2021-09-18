@@ -28,6 +28,7 @@ impl PerformCrud for PiTip {
     let _payment_id = data.paymentid.to_owned();
     let _pi_username = data.pi_username.to_owned();
     let _pi_uid = data.pi_uid.clone();
+    let _tx = Some(data.txid.clone());
 
     //let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
 
@@ -63,7 +64,7 @@ impl PerformCrud for PiTip {
     */
     //let site_view = blocking(context.pool(), move |conn| SiteView::read(conn)).await??;
     let _payment =
-      match pi_update_payment(context, &_payment_id, &_pi_username, _pi_uid, None).await {
+      match pi_update_payment(context, &_payment_id, &_pi_username, _pi_uid, _tx).await {
         Ok(c) => c,
         Err(e) => {
           let err_type = e.to_string();
