@@ -142,6 +142,10 @@ pub async fn pi_update_payment(
         Ok(c) => Some(c),
         Err(_e) => None,
       };
+    } else if !completed {
+      let dto = match pi_complete(context.client(), payment_id).await {
+        Ok(c) => Some(c),
+        Err(_e) => None,
     }
   } else {
     dto = match pi_approve(context.client(), payment_id).await {
