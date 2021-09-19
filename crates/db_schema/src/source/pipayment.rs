@@ -10,12 +10,12 @@ use uuid::Uuid;
 pub struct PiPayment {
   pub id: PaymentId,
   pub person_id: Option<PersonId>,
-  pub ref_id: Option<Uuid>,
+  pub ref_id: Option<Uuid>, //Receiptor id
   pub testnet: bool,
   pub finished: bool,
   pub published: chrono::NaiveDateTime,
   pub updated: Option<chrono::NaiveDateTime>,
-  pub comment: Option<String>,
+  pub comment: Option<String>, // username, post_id, comment_id
 
   pub pi_uid: Option<PiUserId>,
   pub pi_username: String,
@@ -23,7 +23,7 @@ pub struct PiPayment {
   pub identifier: String,
   pub user_uid: String,
   pub amount: f64,
-  pub memo: String,
+  pub memo: String, // wepi:account, wepi:tip, wepi:post, wepi:comment
   pub to_address: String,
   pub created_at: Option<chrono::NaiveDateTime>,
 

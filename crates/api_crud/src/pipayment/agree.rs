@@ -221,13 +221,13 @@ impl PerformCrud for PiAgreeRegister {
       updated: None,
       pi_uid: data.pi_uid,
       pi_username: "".to_string(), //data.pi_username.clone(), => Hide user info
-      comment: data.comment.clone(),
+      comment: data.comment.clone(), // Peer address
 
       identifier: data.paymentid.clone(),
       user_uid: _payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
-      to_address: _payment_dto.to_address,
+      to_address: _payment_dto.to_address,  // Site address
       created_at: create_at,
       approved: _payment_dto.status.developer_approved,
       verified: _payment_dto.status.transaction_verified,

@@ -97,11 +97,15 @@ pub async fn pi_complete(
 
 pub async fn pi_update_payment(
   context: &Data<LemmyContext>,
-  payment_id: &str,
-  pi_username: &str,
-  pi_uid: Option<PiUserId>,
-  info: Option<String>,
+  approve: &PiApprove,
+  tx: Option<String>,
 ) -> Result<PiPayment, LemmyError> {
+  let payment_id = approve.paymentid.clone();
+  let pi_username = approve.pi_username.clone();
+  let pi_uid = approve.pi_uid.clone();
+  let person_id = approve.person_id.clone();
+  let comment = approve.comment.clone();
+  
   // Hide PiUserName
   let mut sha256 = Sha256::new();
   sha256.update(pi_username.to_owned());
@@ -138,18 +142,18 @@ pub async fn pi_update_payment(
 
   if _payment.is_some() {
     if !approved {
-      let dto = match pi_approve(context.client(), payment_id).await {
+      let dto = match pi_approve(context.client(), &payment_id).await {
         Ok(c) => Some(c),
         Err(_e) => None,
       };
     } else if !completed {
-      let dto = match pi_complete(context.client(), payment_id, &info.unwrap()).await {
+      let dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
         Ok(c) => Some(c),
         Err(_e) => None,
       };
     }
   } else {
-    dto = match pi_approve(context.client(), payment_id).await {
+    dto = match pi_approve(context.client(), &payment_id).await {
       Ok(c) => Some(c),
       Err(_e) => None,
     };

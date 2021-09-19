@@ -38,7 +38,7 @@ impl PerformCrud for PiApprove {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiApproveResponse, LemmyError> {
-    let data: &PiApprove = self;
+    let data = &self;
 
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.username)?;
@@ -105,7 +105,7 @@ impl PerformCrud for PiApprove {
     let inserted_payment_id = inserted_payment.id;
     */
     let _payment =
-      match pi_update_payment(context, &_payment_id, &_pi_username, _pi_uid, None).await {
+      match pi_update_payment(context, &data, None).await {
         Ok(c) => c,
         Err(e) => {
           let err_type = e.to_string();
