@@ -226,7 +226,7 @@ pub async fn pi_update_payment(
     tx_link: "".to_string(),
     tx_id: "".to_string(),
     tx_verified: false,
-    metadata: _payment_dto.metadata,
+    metadata: None, //_payment_dto.metadata,
     extras: None,
     //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
     //..PiPaymentForm::default()
