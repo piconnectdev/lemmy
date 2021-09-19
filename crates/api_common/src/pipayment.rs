@@ -2,6 +2,7 @@ use lemmy_db_schema::{PersonId, PaymentId, PiUserId, source::pipayment::*};
 use crate::person::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct PiPaymentFound {
@@ -57,7 +58,7 @@ pub struct PiApprove {
   pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
-  pub person_id: Option<PersonId>,
+  pub person_id: Option<Uuid>,
   pub comment: Option<String>,
   pub auth: Option<String>,
 }
@@ -73,7 +74,7 @@ pub struct PiTip {
   pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
-  pub person_id: Option<PersonId>,
+  pub person_id: Option<Uuid>,
   pub comment: Option<String>,
   pub txid: String,
   pub auth: Option<String>,

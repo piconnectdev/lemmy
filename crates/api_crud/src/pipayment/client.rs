@@ -109,8 +109,8 @@ pub async fn pi_update_payment(
   // Hide PiUserName
   let mut sha256 = Sha256::new();
   sha256.update(pi_username.to_owned());
-  let _pi_username: String = format!("{:X}", sha256.finalize());
-  //let _pi_username = pi_username;
+  let _pi_user_alias: String = format!("{:X}", sha256.finalize());
+  //let _pi_user_alias = pi_username;
 
   let mut _payment_id = format!("{}", payment_id); //payment_id.to_string();
   let mut _payment_id2 = payment_id.to_string();
@@ -142,20 +142,20 @@ pub async fn pi_update_payment(
 
   if _payment.is_some() {
     if !approved {
-      let dto = match pi_approve(context.client(), &payment_id).await {
-        Ok(c) => Some(c),
-        Err(_e) => None,
+      dto = match pi_approve(context.client(), &payment_id).await {
+          Ok(c) => Some(c),
+          Err(_e) => None,
       };
     } else if !completed {
-      let dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
-        Ok(c) => Some(c),
-        Err(_e) => None,
+        dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
+          Ok(c) => Some(c),
+          Err(_e) => None,
       };
     }
   } else {
-    dto = match pi_approve(context.client(), &payment_id).await {
-      Ok(c) => Some(c),
-      Err(_e) => None,
+      dto = match pi_approve(context.client(), &payment_id).await {
+        Ok(c) => Some(c),
+        Err(_e) => None,
     };
   }
 
@@ -191,7 +191,7 @@ pub async fn pi_update_payment(
   //     None
   //   }
   // };
-  let refid = None;
+  let refid = person_id;
   let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
     Ok(dt) => Some(dt),
     Err(_e) => {
@@ -204,13 +204,13 @@ pub async fn pi_update_payment(
 
   let mut payment_form = PiPaymentForm {
     person_id: None,
-    ref_id: refid,
+    ref_id: person_id,
     testnet: Settings::get().pi_testnet,
     finished: false,
     updated: None,
     pi_uid: _pi_uid,
-    pi_username: _pi_username.clone(),
-    comment: Some(_pi_username.clone()),
+    pi_username: _pi_user_alias.clone(),    
+    comment: comment,
 
     identifier: _payment_dto.identifier.into(),
     user_uid: _payment_dto.user_uid,
@@ -226,7 +226,7 @@ pub async fn pi_update_payment(
     tx_link: "".to_string(),
     tx_id: "".to_string(),
     tx_verified: false,
-    metadata: None,
+    metadata: _payment_dto.metadata,
     extras: None,
     //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
     //..PiPaymentForm::default()
@@ -237,10 +237,10 @@ pub async fn pi_update_payment(
       payment_form.tx_link = tx._link;
       payment_form.tx_verified = tx.verified;
       payment_form.tx_id = tx.txid;
+      //payment_form.finished = true;
     }
     None => {}
   }
-
   if !exist {
     _payment = match blocking(context.pool(), move |conn| {
       PiPayment::create(&conn, &payment_form)
@@ -258,6 +258,10 @@ pub async fn pi_update_payment(
     };
     pmt = _payment.unwrap();
   } else {
+    payment_form.updated = Some(naive_now());
+    if completed {
+      payment_form.finished = true;
+    }
     pmt = _payment.unwrap();
     pid = pmt.id;
     let inserted_payment = match blocking(context.pool(), move |conn| {
