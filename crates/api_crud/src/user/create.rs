@@ -49,8 +49,6 @@ impl PerformCrud for Register {
   ) -> Result<LoginResponse, LemmyError> {
     let data: &Register = self;
     
-    //return Err(ApiError::err("registration_disabled").into());
-
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
       if !site.open_registration {
@@ -70,6 +68,10 @@ impl PerformCrud for Register {
       PersonViewSafe::admins(conn).map(|a| a.is_empty())
     })
     .await??;
+
+    if !no_admins {
+      return Err(ApiError::err("registration_disabled").into());
+    }
 
     // If its not the admin, check the captcha
     if !no_admins && Settings::get().captcha.enabled {

@@ -100,16 +100,16 @@ impl PerformCrud for PiRegister {
     let mut sha256 = Sha256::new();
     sha256.update(Settings::get().pi_seed());
     sha256.update(data.pi_username.to_owned());
-    let _pi_username: String = format!("{:X}", sha256.finalize());
-    let _pi_username2 = _pi_username.clone();
-    let _pi_username3 = _pi_username.clone();
-    //let _pi_username = data.pi_username.to_owned();
+    let _pi_alias: String = format!("{:X}", sha256.finalize());
+    let _pi_alias2 = _pi_alias.clone();
+    let _pi_alias3 = _pi_alias.clone();
+    //let _pi_alias = data.pi_username.to_owned();
 
+    let _pi_uid = data.pi_uid.clone();
     let _payment_id = data.paymentid.to_owned();
     let _new_user = data.info.username.to_owned();
     let _new_user2 = data.info.username.to_owned();
     let _new_password = data.info.password.to_owned();
-    let _pi_uid = data.pi_uid.clone();
 
     let mut approved = false;
     let mut completed = false;
@@ -129,29 +129,28 @@ impl PerformCrud for PiRegister {
         completed = c.completed;
         payment_id = c.id;
         finished = c.finished;
-        payment_id = c.id;
         Some(c)
       }
       Err(_e) => {
         //let err_type = format!("Payment {} was not approved", data.paymentid);
-        let err_type = format!("Payment {} was not approved, err: {}", data.paymentid, _e.to_string());
+        let err_type = format!("Register: Payment {} was not approved, err: {}", data.paymentid, _e.to_string());
         return Err(ApiError::err(&err_type).into());
       }
     };
 
     if _payment.is_none() {
       // Why here ????
-      let err_type = format!("Payment {} was not insert/approved", data.paymentid);
+      let err_type = format!("Register: Payment {} was not insert/approved", data.paymentid);
       return Err(ApiError::err(&err_type).into());
     } else {
       if finished {
-        let err_type = format!("Payment {} was finished", data.paymentid);
+        let err_type = format!("Register: Payment {} was finished", data.paymentid);
         return Err(ApiError::err(&err_type).into());
       }
     }
 
     let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_username)
+      Person::find_by_pi_name(&conn, &_pi_alias)
     })
     .await?
     {
@@ -177,7 +176,7 @@ impl PerformCrud for PiRegister {
           Some(per) => {
             if pi.name != per.name {
               let err_type = format!(
-                "User {} is exist and belong other Pi account",
+                "Register: WePi user {} is exist and belong to other Pi account",
                 &data.info.username
               );
               return Err(ApiError::err(&err_type).into());
@@ -188,7 +187,7 @@ impl PerformCrud for PiRegister {
           }
           None => {
             // Not allow change username
-            let err_type = format!("Account already have user name {}", pi.name);
+            let err_type = format!("Register: Account already have user name {}", pi.name);
             return Err(ApiError::err(&err_type).into());
           }
         };
@@ -196,7 +195,7 @@ impl PerformCrud for PiRegister {
       None => {
         match person {
           Some(per) => {
-            let err_type = format!("User {} is exist", &data.info.username);
+            let err_type = format!("Register: WePi user {} is exist", &data.info.username);
             return Err(ApiError::err(&err_type).into());
           }
           None => {
@@ -218,7 +217,7 @@ impl PerformCrud for PiRegister {
         Ok(c) => Some(c),
         Err(_e) => {
           // Server error
-          let err_type = format!("Call Pi Server API for approve {} error: {}", &data.paymentid, _e.to_string());
+          let err_type = format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
           //let err_type = _e.to_string();
           return Err(ApiError::err(&err_type).into());
         }
@@ -247,7 +246,7 @@ impl PerformCrud for PiRegister {
     let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
       Ok(dt) => Some(dt),
       Err(_e) => {
-        let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
+        let err_type = format!("Register: Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
         &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
         //return Err(ApiError::err(&err_type).into());
         None  
@@ -301,7 +300,7 @@ impl PerformCrud for PiRegister {
     {
       Ok(payment) => payment,
       Err(_e) => {
-        let err_type = _e.to_string();
+        let err_type = format!("Register: Update payment complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
         return Err(ApiError::err(&err_type).into());
       }
     };
@@ -314,7 +313,7 @@ impl PerformCrud for PiRegister {
        {
          Ok(lcu) => Some(lcu), 
          Err(_e) => {
-           let err_type = _e.to_string();
+           let err_type = format!("Register: Update local user not found {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
            return Err(ApiError::err(&err_type).into());
          }
        };
@@ -333,7 +332,7 @@ impl PerformCrud for PiRegister {
            // } else {
            //   "couldnt_create_post"
            // };
-           let err_type = _e.to_string();
+           let err_type = format!("Register: Update local user password error {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
            return Err(ApiError::err(&err_type).into());
          }
        };
@@ -352,12 +351,12 @@ impl PerformCrud for PiRegister {
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
       admin: Some(no_admins),
-      extra_user_id: Some(_pi_username2),
+      extra_user_id: Some(_pi_alias2),
       ..PersonForm::default()
     };
 
     // insert the person
-    let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_username3);
+    // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
     let inserted_person1 = match blocking(context.pool(), move |conn| {
       Person::create(conn, &person_form)
     })
@@ -365,8 +364,8 @@ impl PerformCrud for PiRegister {
     {
       Ok(p) => Some(p),
       Err(_e) => {
-      let err_type = format!("user_already_exists: {} {}, exists{}, change:{}, err:{}", 
-                             &data.info.username, _pi_username3, pi_exist, change_password, _e.to_string());
+      let err_type = format!("Register: user_already_exists: {} {}, exists{},  err:{}", 
+                             &data.info.username, _pi_alias3, pi_exist, _e.to_string());
       return Err(ApiError::err(&err_type).into());
       },
     };
@@ -401,9 +400,9 @@ impl PerformCrud for PiRegister {
         let err_type = if _e.to_string()
           == "duplicate key value violates unique constraint \"local_user_email_key\""
         {
-          "email_already_exists"
+          "Register: email_already_exists"
         } else {
-          "user_already_exists"
+          "Register: user_already_exists"
         };
 
         // If the local user creation errored, then delete that person
@@ -456,7 +455,7 @@ impl PerformCrud for PiRegister {
 
     let follow = move |conn: &'_ _| CommunityFollower::follow(conn, &community_follower_form);
     if blocking(context.pool(), follow).await?.is_err() {
-      return Err(ApiError::err("community_follower_already_exists").into());
+      //return Err(ApiError::err("Register: community_follower_already_exists").into());
     };
 
     // If its an admin, add them as a mod and follower to main

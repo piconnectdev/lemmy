@@ -81,13 +81,13 @@ impl PerformCrud for PiAgreeRegister {
     let mut sha256 = Sha256::new();
     sha256.update(Settings::get().pi_seed());
     sha256.update(data.pi_username.to_owned());
-    let _pi_username: String = format!("{:X}", sha256.finalize());
-    let _pi_username2 = _pi_username.clone();
-    //let _pi_username = data.pi_username.to_owned();
+    let _pi_alias: String = format!("{:X}", sha256.finalize());
+    let _pi_alias2 = _pi_alias.clone();
+    //let _pi_alias = data.pi_username.to_owned();
 
     let _payment_id = data.paymentid.to_owned();
-    let _new_user = data.info.username.to_owned();
     let _pi_uid = data.pi_uid.clone();
+    let _new_user = data.info.username.to_owned();
 
     let mut approved = false;
     let mut completed = false;
@@ -114,7 +114,16 @@ impl PerformCrud for PiAgreeRegister {
     if _payment.is_some() {
       // Why here ????
       let err_type = format!("Payment {} was approved", data.paymentid);
-      return Err(ApiError::err(&err_type).into());
+      return Ok(PiAgreeResponse {
+        //id: _payment.id,
+        id: _payment.unwrap().id,
+        //id: _payment.map(|x| x.id),
+        paymentid: data.paymentid.to_owned(),
+        payment: None, //_payment,
+        extra: Some(_pi_alias),
+      });
+
+      //return Err(ApiError::err(&err_type).into());
       // if (!approved) {
       //   let dto = match pi_approve(context.client(), &data.paymentid.clone())
       //   .await
@@ -123,11 +132,10 @@ impl PerformCrud for PiAgreeRegister {
       //     Err(_e) => None,
       //   };
       // }
-    } else {
     }
 
     let mut pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_username)
+      Person::find_by_pi_name(&conn, &_pi_alias)
     })
     .await?
     {
@@ -149,7 +157,7 @@ impl PerformCrud for PiAgreeRegister {
           Some(per) => {
             if pi.name != per.name {
               let err_type = format!(
-                "User {} is exist and belong other Pi account",
+                "WePi user {} is exist and belong to other Pi Network account",
                 &data.info.username
               );
               return Err(ApiError::err(&err_type).into());
@@ -159,7 +167,7 @@ impl PerformCrud for PiAgreeRegister {
           }
           None => {
             // Not allow change username
-            let err_type = format!("Account already have user name {}", pi.name);
+            let err_type = format!("Your Pi Network account already has WePi user name {}", pi.name);
             return Err(ApiError::err(&err_type).into());
           }
         };
@@ -167,7 +175,7 @@ impl PerformCrud for PiAgreeRegister {
       None => {
         match person {
           Some(per) => {
-            let err_type = format!("User {} is exist", &data.info.username);
+            let err_type = format!("WePi user {} is exist", &data.info.username);
             return Err(ApiError::err(&err_type).into());
           }
           None => {
@@ -207,8 +215,8 @@ impl PerformCrud for PiAgreeRegister {
     let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
       Ok(dt) => Some(dt),
       Err(_e) => {
-        let err_type = format!("Pi Server Error: get payment datetime error: user {}, paymentid {} {} {}", 
-        &data.info.username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
+        let err_type = format!("Pi Server Error: get payment datetime error: user {}, paymentid {} {}", 
+        &data.info.username, &data.paymentid, _payment_dto.created_at );
         //return Err(ApiError::err(&err_type).into());  
         None
       }
@@ -228,7 +236,7 @@ impl PerformCrud for PiAgreeRegister {
       user_uid: _payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
-      to_address: _payment_dto.to_address,  // Site address
+      to_address: _payment_dto.to_address,  // Site's own address
       created_at: create_at,
       approved: _payment_dto.status.developer_approved,
       verified: _payment_dto.status.transaction_verified,
@@ -296,14 +304,14 @@ impl PerformCrud for PiAgreeRegister {
       };
     }
     */
-    //_payment = pi_update_payment(context, payment_id, &_pi_username, _pi_uid, Some(data.info)).await?;
+    //_payment = pi_update_payment(context, payment_id, &_pi_alias, _pi_uid, Some(data.info)).await?;
     // Return the jwt
     Ok(PiAgreeResponse {
       id: pid,
       //id: _payment.map(|x| x.id),
       paymentid: data.paymentid.to_owned(),
       payment: None, //_payment,
-      extra: Some(_pi_username2),
+      extra: Some(_pi_alias2),
     })
   }
 }
