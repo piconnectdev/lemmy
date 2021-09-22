@@ -30,9 +30,9 @@ pub struct PiAgreeRegister {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiAgreeResponse {
-  pub id: PaymentId,
+  pub success: bool,
+  pub id: Option<PaymentId>,
   pub paymentid: String,
-  pub payment: Option<PiPayment>,
   pub extra: Option<String>,
 }
 
