@@ -33,7 +33,7 @@ impl PerformCrud for PiAgreeRegister {
     let data: &PiAgreeRegister = self;
 
     let mut result_string = "".to_string();
-    let mut result = false;
+    let mut result = true;
     let mut completed = false;
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
@@ -151,20 +151,15 @@ impl PerformCrud for PiAgreeRegister {
           Some(per) => {
             if pi.extra_user_id != per.extra_user_id {
               let err_type = format!(
-                "WePi user {} is exist and belong to other Pi Network account",
+                "User {} is exist and belong to other Pi Network account",
                 &data.info.username
               );
-              println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+              //println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
               result_string = err_type.clone();
-              //return Err(ApiError::err(&err_type).into());
-              // return Ok(PiAgreeResponse {
-              //   success: false,
-              //   id: None,
-              //   paymentid: data.paymentid.to_owned(),
-              //   extra: Some(err_type),
-              // });
+              result = false
             } else {
-              // Same name and account: change password ???              
+              // Same name and account: change password ???   
+              result = true;           
             }
           }
           None => {
@@ -172,30 +167,17 @@ impl PerformCrud for PiAgreeRegister {
             let err_type = format!("Your account already exist: {}", pi.name);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result_string = err_type.clone();
-            result =  true;
-            //return Err(ApiError::err(&err_type).into());
-            // return Ok(PiAgreeResponse {
-            //   success: false,
-            //   id: None,
-            //   paymentid: data.paymentid.to_owned(),
-            //   extra: Some(err_type),
-            // });
+            result =  false;
           }
         };
       }
       None => {
         match person {
           Some(per) => {
-            let err_type = format!("User {} is exist, create same user name is not allow", &data.info.username);
+            let err_type = format!("User {} is exist, create same user name is not allow!", &data.info.username);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result_string = err_type.clone();
-            //return Err(ApiError::err(&err_type).into());
-            // return Ok(PiAgreeResponse {
-            //   success: false,
-            //   id: None,
-            //   paymentid: data.paymentid.to_owned(),
-            //   extra: Some(err_type),
-            // });
+            result = false;
           }
           None => {
             // No account, we approved this tx
@@ -292,44 +274,13 @@ impl PerformCrud for PiAgreeRegister {
             Some(payment)
         },
         Err(_e) => {
-          // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-          //   "post_title_too_long"
-          // } else {
-          //   "couldnt_create_post"
-          // };
           let err_type = format!("Error insert payment for agree: user {}, paymentid {} error: {}", &data.info.username,  &data.paymentid, _e.to_string());
           return Err(ApiError::err(&err_type).into());
         }
-      };
-      /*
-      //pid = _payment.unwrap().id;
-    } else {
-      let pmt = _payment.unwrap();
-      pid = pmt.id;
-      let _payment = match blocking(context.pool(), move |conn| {
-        PiPayment::update(&conn, pid, &payment_form)
-      })
-      .await?
-      {
-        Ok(payment) => payment,
-        Err(_e) => {
-          // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-          //   "post_title_too_long"
-          // } else {
-          //   "couldnt_create_post"
-          // };
-          let err_type = e.to_string();
-          return Err(ApiError::err(&err_type).into());
-        }
-      };
-    }
-    */
-    //_payment = pi_update_payment(context, payment_id, &_pi_alias, _pi_uid, Some(data.info)).await?;
-    // Return the jwt
+      };      
     Ok(PiAgreeResponse {
       success: result,
       id: Some(pid),
-      //id: _payment.map(|x| x.id),
       paymentid: data.paymentid.to_owned(),
       extra: Some(result_string),
     })

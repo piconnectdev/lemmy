@@ -47,6 +47,7 @@ impl PerformCrud for PiRegister {
   ) -> Result<PiRegisterResponse, LemmyError> {
     let data: &PiRegister = &self;
 
+    let mut result = true;
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
       if !site.open_registration {
@@ -151,8 +152,6 @@ impl PerformCrud for PiRegister {
       }
     }
 
-
-
     let pi_person = match blocking(context.pool(), move |conn| {
       Person::find_by_pi_name(&conn, &_pi_alias)
     })
@@ -180,11 +179,9 @@ impl PerformCrud for PiRegister {
         match person {
           Some(per) => {
             if pi.extra_user_id != per.extra_user_id {
-              let err_type = format!(
-                "Register: WePi user {} is exist and belong to other Pi account ",
-                &data.info.username
-              );
+              let err_type = format!("Register: User {} is exist and belong to other Pi Account ", &data.info.username);
               println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+              result = false;
               return Err(ApiError::err(&err_type).into());
               // return Ok(PiRegisterResponse {
               //   success: false,
@@ -200,8 +197,9 @@ impl PerformCrud for PiRegister {
             change_password = true;
             change_username = true;
             // Not allow change username
-            let err_type = format!("Register: Account already have user name {}", pi.name);
+            let err_type = format!("Register: You already have user name {}", pi.name);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            result = false;
             //return Err(ApiError::err(&err_type).into());
             // return Ok(PiRegisterResponse {
             //   success: false,
@@ -214,8 +212,9 @@ impl PerformCrud for PiRegister {
       None => {
         match person {
           Some(per) => {
-            let err_type = format!("Register: WePi user {} is exist and belong other user", &data.info.username);
+            let err_type = format!("Register: User {} is exist and belong to other user", &data.info.username);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            result = false;
             return Err(ApiError::err(&err_type).into());
             // return Ok(PiRegisterResponse {
             //   success: false,
