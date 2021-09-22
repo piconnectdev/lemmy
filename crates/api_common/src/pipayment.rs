@@ -48,6 +48,7 @@ pub struct PiRegister {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiRegisterResponse {
+  pub success: bool,
   pub jwt: String,
   pub extra: Option<String>,
 }

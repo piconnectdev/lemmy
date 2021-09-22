@@ -122,68 +122,58 @@ impl PerformCrud for PiAgreeRegister {
         payment: None, //_payment,
         extra: Some(_pi_alias),
       });
-
-      //return Err(ApiError::err(&err_type).into());
-      // if (!approved) {
-      //   let dto = match pi_approve(context.client(), &data.paymentid.clone())
-      //   .await
-      //   {
-      //     Ok(c) => Some(c),
-      //     Err(_e) => None,
-      //   };
-      // }
     }
 
-    let mut pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_alias)
-    })
-    .await?
-    {
-      Ok(c) => Some(c),
-      Err(_e) => None,
-    };
+    // let mut pi_person = match blocking(context.pool(), move |conn| {
+    //   Person::find_by_pi_name(&conn, &_pi_alias)
+    // })
+    // .await?
+    // {
+    //   Ok(c) => Some(c),
+    //   Err(_e) => None,
+    // };
 
-    let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &_new_user)
-    })
-    .await?
-    {
-      Ok(c) => Some(c),
-      Err(_e) => None,
-    };
-    match pi_person {
-      Some(pi) => {
-        match person {
-          Some(per) => {
-            if pi.name != per.name {
-              let err_type = format!(
-                "WePi user {} is exist and belong to other Pi Network account",
-                &data.info.username
-              );
-              return Err(ApiError::err(&err_type).into());
-            } else {
-              // Same name and account: change password ???
-            }
-          }
-          None => {
-            // Not allow change username
-            let err_type = format!("Your Pi Network account already has WePi user name {}", pi.name);
-            return Err(ApiError::err(&err_type).into());
-          }
-        };
-      }
-      None => {
-        match person {
-          Some(per) => {
-            let err_type = format!("WePi user {} is exist", &data.info.username);
-            return Err(ApiError::err(&err_type).into());
-          }
-          None => {
-            // No account, we approved this tx
-          }
-        };
-      }
-    }
+    // let person = match blocking(context.pool(), move |conn| {
+    //   Person::find_by_name(&conn, &_new_user)
+    // })
+    // .await?
+    // {
+    //   Ok(c) => Some(c),
+    //   Err(_e) => None,
+    // };
+    // match pi_person {
+    //   Some(pi) => {
+    //     match person {
+    //       Some(per) => {
+    //         if pi.name != per.name {
+    //           let err_type = format!(
+    //             "WePi user {} is exist and belong to other Pi Network account",
+    //             &data.info.username
+    //           );
+    //           return Err(ApiError::err(&err_type).into());
+    //         } else {
+    //           // Same name and account: change password ???
+    //         }
+    //       }
+    //       None => {
+    //         // Not allow change username
+    //         let err_type = format!("Your Pi Network account already has WePi user name {}", pi.name);
+    //         return Err(ApiError::err(&err_type).into());
+    //       }
+    //     };
+    //   }
+    //   None => {
+    //     match person {
+    //       Some(per) => {
+    //         let err_type = format!("WePi user {} is exist", &data.info.username);
+    //         return Err(ApiError::err(&err_type).into());
+    //       }
+    //       None => {
+    //         // No account, we approved this tx
+    //       }
+    //     };
+    //   }
+    // }
     
     dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
       Ok(c) => Some(c),

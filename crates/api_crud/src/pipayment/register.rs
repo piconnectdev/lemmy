@@ -1,3 +1,4 @@
+use bcrypt::{hash, DEFAULT_COST};
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
@@ -37,13 +38,13 @@ use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegister {
-  type Response = LoginResponse;
+  type Response = PiRegisterResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  ) -> Result<PiRegisterResponse, LemmyError> {
     let data: &PiRegister = &self;
 
     // Make sure site has open registration
@@ -149,6 +150,29 @@ impl PerformCrud for PiRegister {
       }
     }
 
+    if !completed {
+      dto = match pi_complete(
+        context.client(),
+        &data.paymentid.clone(),
+        &data.txid.clone(),
+      )
+      .await
+      {
+        Ok(c) => Some(c),
+        Err(_e) => {
+          // Server error
+          let err_type = format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
+          //let err_type = _e.to_string();
+          //return Err(ApiError::err(&err_type).into());
+          return Ok(PiRegisterResponse {
+            success: false,
+            jwt: format!(""),
+            extra: Some(format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string())),
+            });
+        }
+      };
+    }
+
     let pi_person = match blocking(context.pool(), move |conn| {
       Person::find_by_pi_name(&conn, &_pi_alias)
     })
@@ -168,35 +192,53 @@ impl PerformCrud for PiRegister {
     };
 
     let mut change_password = false;
+    let mut change_username = false;
     match pi_person {
       Some(pi) => {
         person_id = pi.id;
         pi_exist = true;
         match person {
           Some(per) => {
-            if pi.name != per.name {
+            if pi.extra_user_id != per.extra_user_id {
               let err_type = format!(
-                "Register: WePi user {} is exist and belong to other Pi account",
-                &data.info.username
+                "Register: WePi user {} is exist and belong to other Pi account {}",
+                &data.info.username,  &_pi_alias2
               );
-              return Err(ApiError::err(&err_type).into());
+              //return Err(ApiError::err(&err_type).into());
+              return Ok(PiRegisterResponse {
+                success: false,
+                jwt: format!(""),
+                extra: Some(format!("{}",err_type)),
+                });
             } else {
               // Same name and account: change password ???
               change_password = true;
             }
           }
           None => {
+            change_password = true;
+            change_username = true;
             // Not allow change username
-            let err_type = format!("Register: Account already have user name {}", pi.name);
-            return Err(ApiError::err(&err_type).into());
+            let err_type = format!("Register: Account already have user name {} {}", pi.name, &_pi_alias2);
+            //return Err(ApiError::err(&err_type).into());
+            return Ok(PiRegisterResponse {
+              success: false,
+              jwt: format!(""),
+              extra: Some(format!("{}",err_type)),
+              });
           }
         };
       }
       None => {
         match person {
           Some(per) => {
-            let err_type = format!("Register: WePi user {} is exist", &data.info.username);
-            return Err(ApiError::err(&err_type).into());
+            let err_type = format!("Register: WePi user {} is exist {}", &data.info.username,  &_pi_alias2);
+            //return Err(ApiError::err(&err_type).into());
+            return Ok(PiRegisterResponse {
+              success: false,
+              jwt: format!(""),
+              extra: Some(format!("{}",err_type)),
+              });
           }
           None => {
             // No account, we must completed this and create new user
@@ -205,26 +247,6 @@ impl PerformCrud for PiRegister {
       }
     }
     
-    
-    if !completed {
-      dto = match pi_complete(
-        context.client(),
-        &data.paymentid.clone(),
-        &data.txid.clone(),
-      )
-      .await
-      {
-        Ok(c) => Some(c),
-        Err(_e) => {
-          // Server error
-          let err_type = format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-          //let err_type = _e.to_string();
-          return Err(ApiError::err(&err_type).into());
-        }
-      };
-    }
-    
-
     let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
     };
@@ -301,24 +323,38 @@ impl PerformCrud for PiRegister {
       Ok(payment) => payment,
       Err(_e) => {
         let err_type = format!("Register: Update payment complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-        return Err(ApiError::err(&err_type).into());
+        //return Err(ApiError::err(&err_type).into());
+        return Ok(PiRegisterResponse {
+          success: false,
+          jwt: format!(""),
+          extra: Some(format!("{}",err_type)),
+          });
       }
     };
+    
     if change_password {
+
+      let password_hash = hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
+      
        let local_user_id;
-       let _local_user1 = match blocking(context.pool(), move |conn| {
+       let _local_user = match blocking(context.pool(), move |conn| {
          LocalUserView::read_from_name(&conn, &_new_user2)
        })
        .await?
        {
-         Ok(lcu) => Some(lcu), 
+         Ok(lcu) => lcu, 
          Err(_e) => {
            let err_type = format!("Register: Update local user not found {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-           return Err(ApiError::err(&err_type).into());
+           //return Err(ApiError::err(&err_type).into());
+           return Ok(PiRegisterResponse {
+            success: false,
+            jwt: format!(""),
+            extra: Some(format!("{}",err_type)),
+            });
          }
        };
-       let _local_user = _local_user1.unwrap();
-       local_user_id = _local_user.local_user.id;
+       local_user_id = _local_user.local_user.id.clone();
+
        let updated_local_user = match blocking(context.pool(), move |conn| {
          LocalUser::update_password(&conn, local_user_id, &_new_password)
        })
@@ -326,18 +362,19 @@ impl PerformCrud for PiRegister {
        {
          Ok(chp) => chp,
          Err(_e) => {
-           // Update password failured
-           // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-           //   "post_title_too_long"
-           // } else {
-           //   "couldnt_create_post"
-           // };
            let err_type = format!("Register: Update local user password error {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-           return Err(ApiError::err(&err_type).into());
-         }
+           //return Err(ApiError::err(&err_type).into());
+           return Ok(PiRegisterResponse {
+            success: false,
+            jwt: format!(""),
+            extra: Some(format!("{}",err_type)),
+            });
+            }
        };
-        return Ok(LoginResponse {
+        return Ok(PiRegisterResponse {
+            success: true,
             jwt: Claims::jwt(local_user_id.0)?,
+            extra: None,
             })
     }
     // We have to create both a person, and local_user
@@ -472,9 +509,10 @@ impl PerformCrud for PiRegister {
     }
 
     // Return the jwt
-    Ok(LoginResponse {
+    Ok(PiRegisterResponse {
+      success: true,
       jwt: Claims::jwt(inserted_local_user.id.0)?,
-      //extra: Some(_pi_username3),
+      extra: None,
     })
   }
 }
