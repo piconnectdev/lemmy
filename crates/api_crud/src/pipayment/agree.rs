@@ -72,6 +72,7 @@ impl PerformCrud for PiAgreeRegister {
     check_slurs(&data.info.username)?;
 
     if !is_valid_actor_name(&data.info.username) {
+      println!("Invalid username {}", &data.info.username);
       return Err(ApiError::err("agree:invalid_username").into());
     }
     //check_slurs_opt(&data.paymentid.unwrap())?;
@@ -88,6 +89,7 @@ impl PerformCrud for PiAgreeRegister {
     let _payment_id = data.paymentid.to_owned();
     let _pi_uid = data.pi_uid.clone();
     let _new_user = data.info.username.to_owned();
+    let _new_user2 = _new_user.clone();
 
     let mut approved = false;
     let mut completed = false;
@@ -124,56 +126,60 @@ impl PerformCrud for PiAgreeRegister {
       });
     }
 
-    // let mut pi_person = match blocking(context.pool(), move |conn| {
-    //   Person::find_by_pi_name(&conn, &_pi_alias)
-    // })
-    // .await?
-    // {
-    //   Ok(c) => Some(c),
-    //   Err(_e) => None,
-    // };
+    let mut pi_person = match blocking(context.pool(), move |conn| {
+      Person::find_by_pi_name(&conn, &_pi_alias)
+    })
+    .await?
+    {
+      Ok(c) => Some(c),
+      Err(_e) => None,
+    };
 
-    // let person = match blocking(context.pool(), move |conn| {
-    //   Person::find_by_name(&conn, &_new_user)
-    // })
-    // .await?
-    // {
-    //   Ok(c) => Some(c),
-    //   Err(_e) => None,
-    // };
-    // match pi_person {
-    //   Some(pi) => {
-    //     match person {
-    //       Some(per) => {
-    //         if pi.name != per.name {
-    //           let err_type = format!(
-    //             "WePi user {} is exist and belong to other Pi Network account",
-    //             &data.info.username
-    //           );
-    //           return Err(ApiError::err(&err_type).into());
-    //         } else {
-    //           // Same name and account: change password ???
-    //         }
-    //       }
-    //       None => {
-    //         // Not allow change username
-    //         let err_type = format!("Your Pi Network account already has WePi user name {}", pi.name);
-    //         return Err(ApiError::err(&err_type).into());
-    //       }
-    //     };
-    //   }
-    //   None => {
-    //     match person {
-    //       Some(per) => {
-    //         let err_type = format!("WePi user {} is exist", &data.info.username);
-    //         return Err(ApiError::err(&err_type).into());
-    //       }
-    //       None => {
-    //         // No account, we approved this tx
-    //       }
-    //     };
-    //   }
-    // }
+    let person = match blocking(context.pool(), move |conn| {
+      Person::find_by_name(&conn, &_new_user)
+    })
+    .await?
+    {
+      Ok(c) => Some(c),
+      Err(_e) => None,
+    };
+
+    match pi_person {
+      Some(pi) => {
+        match person {
+          Some(per) => {
+            if pi.extra_user_id != per.extra_user_id {
+              let err_type = format!(
+                "WePi user {} is exist and belong to other Pi Network account",
+                &data.info.username
+              );
+              println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+              return Err(ApiError::err(&err_type).into());
+            } else {
+              // Same name and account: change password ???
+            }
+          }
+          None => {
+            // Not allow change username ???
+            let err_type = format!("Your Pi Network account already has WePi user name {}", pi.name);
+            println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            //return Err(ApiError::err(&err_type).into());
+          }
+        };
+      }
+      None => {
+        match person {
+          Some(per) => {
+            let err_type = format!("WePi user {} is exist, create same user name not allow", &data.info.username);
+            println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            return Err(ApiError::err(&err_type).into());
+          }
+          None => {
+            // No account, we approved this tx
+          }
+        };
+      }
+    }
     
     dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
       Ok(c) => Some(c),
@@ -221,7 +227,7 @@ impl PerformCrud for PiAgreeRegister {
       pi_uid: data.pi_uid,
       pi_username: "".to_string(), //data.pi_username.clone(), => Hide user info
       comment: data.comment.clone(), // Peer address
-
+      
       identifier: data.paymentid.clone(),
       user_uid: _payment_dto.user_uid,
       amount: _payment_dto.amount,
