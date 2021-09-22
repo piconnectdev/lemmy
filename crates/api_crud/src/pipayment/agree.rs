@@ -32,6 +32,9 @@ impl PerformCrud for PiAgreeRegister {
   ) -> Result<PiAgreeResponse, LemmyError> {
     let data: &PiAgreeRegister = self;
 
+    let mut result_string = "".to_string();
+    let mut result = false;
+    let mut completed = false;
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
       if !site.open_registration {
@@ -152,46 +155,51 @@ impl PerformCrud for PiAgreeRegister {
                 &data.info.username
               );
               println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+              result_string = err_type.clone();
               //return Err(ApiError::err(&err_type).into());
-              return Ok(PiAgreeResponse {
-                success: false,
-                id: None,
-                paymentid: data.paymentid.to_owned(),
-                extra: Some(err_type),
-              });
+              // return Ok(PiAgreeResponse {
+              //   success: false,
+              //   id: None,
+              //   paymentid: data.paymentid.to_owned(),
+              //   extra: Some(err_type),
+              // });
             } else {
               // Same name and account: change password ???              
             }
           }
           None => {
             // Not allow change username ???
-            let err_type = format!("Your Pi Network account already has WePi user name {}", pi.name);
+            let err_type = format!("Your account already exist: {}", pi.name);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            result_string = err_type.clone();
+            result =  true;
             //return Err(ApiError::err(&err_type).into());
-            return Ok(PiAgreeResponse {
-              success: false,
-              id: None,
-              paymentid: data.paymentid.to_owned(),
-              extra: Some(err_type),
-            });
+            // return Ok(PiAgreeResponse {
+            //   success: false,
+            //   id: None,
+            //   paymentid: data.paymentid.to_owned(),
+            //   extra: Some(err_type),
+            // });
           }
         };
       }
       None => {
         match person {
           Some(per) => {
-            let err_type = format!("WePi user {} is exist, create same user name not allow", &data.info.username);
+            let err_type = format!("User {} is exist, create same user name is not allow", &data.info.username);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            result_string = err_type.clone();
             //return Err(ApiError::err(&err_type).into());
-            return Ok(PiAgreeResponse {
-              success: false,
-              id: None,
-              paymentid: data.paymentid.to_owned(),
-              extra: Some(err_type),
-            });
+            // return Ok(PiAgreeResponse {
+            //   success: false,
+            //   id: None,
+            //   paymentid: data.paymentid.to_owned(),
+            //   extra: Some(err_type),
+            // });
           }
           None => {
             // No account, we approved this tx
+            result =  true;
           }
         };
       }
@@ -319,11 +327,11 @@ impl PerformCrud for PiAgreeRegister {
     //_payment = pi_update_payment(context, payment_id, &_pi_alias, _pi_uid, Some(data.info)).await?;
     // Return the jwt
     Ok(PiAgreeResponse {
-      success: true,
+      success: result,
       id: Some(pid),
       //id: _payment.map(|x| x.id),
       paymentid: data.paymentid.to_owned(),
-      extra: Some(_pi_alias2),
+      extra: Some(result_string),
     })
   }
 }
