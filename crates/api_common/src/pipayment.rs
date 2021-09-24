@@ -57,7 +57,7 @@ pub struct PiRegisterResponse {
 pub struct PiLogin {
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
-  pub pi_token: Option<String>,
+  pub pi_token: String,
   pub info: Option<Register>,
 }
 
