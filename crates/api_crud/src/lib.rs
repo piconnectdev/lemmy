@@ -127,6 +127,9 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::PiPaymentFound => {
       do_websocket_operation::<PiPaymentFound>(context, id, op, data).await
     }
+    UserOperationCrud::PiLogin => {
+      do_websocket_operation::<PiLogin>(context, id, op, data).await
+    }
   }
 }
 

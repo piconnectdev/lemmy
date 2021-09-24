@@ -53,6 +53,14 @@ pub struct PiRegisterResponse {
   pub extra: Option<String>,
 }
 
+#[derive(Deserialize)]
+pub struct PiLogin {
+  pub pi_username: String,
+  pub pi_uid: Option<PiUserId>,
+  pub pi_token: Option<String>,
+  pub info: Option<Register>,
+}
+
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {

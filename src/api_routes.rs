@@ -212,6 +212,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           .route("/register", web::post().to(route_post_crud::<PiRegister>))
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
           .route("/complete", web::post().to(route_post_crud::<PiTip>))
+          .route("/login", web::post().to(route_post_crud::<PiLogin>))
           //.route("/payment", web::get().to(route_get_crud::<GetPayment>)),
           //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
       ),

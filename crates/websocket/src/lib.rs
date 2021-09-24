@@ -171,6 +171,7 @@ pub enum UserOperationCrud {
   PiApprove,
   PiTip,
   PiPaymentFound,
+  PiLogin,
 }
 
 pub trait OperationType {}
