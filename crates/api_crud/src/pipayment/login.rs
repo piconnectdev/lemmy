@@ -147,15 +147,14 @@ impl PerformCrud for PiLogin {
       }
       None => {
         if !create_new {
-          let err_type = format!("{}, you must register before login.", &username);
+          let err_type = format!("Hi {}, you must register before login.", &username);
           println!("{} {}", _pi_uid.clone(), err_type);
           return Err(ApiError::err(&err_type).into());
         }
       }
     }
     
-    if pi_exist {
-      
+    if pi_exist {      
        let local_user_id;
        let _local_user = match blocking(context.pool(), move |conn| {
          LocalUserView::read_from_name(&conn, &username.clone())
@@ -189,9 +188,22 @@ impl PerformCrud for PiLogin {
       //      return Err(ApiError::err(&err_type).into());
       //     }
       //  };
-      let err_type = format!("PiLogin must valid auth {}", &_new_user.clone());
-      println!("{} {}", _pi_uid.clone(), err_type);
-      return Err(ApiError::err(&err_type).into());
+
+      let _pi_uid_search = _pi_uid.clone();
+      let  _payment = match blocking(context.pool(), move |conn| {
+        PiPayment::find_by_pi_uid(&conn, &_pi_uid_search)
+      })
+      .await?
+      {
+        Ok(c) => {
+          Some(c)
+        }
+        Err(_e) => {
+          let err_type = format!("Invalid pi user id {}", &_new_user.clone());
+          println!("{} {}", _pi_uid.clone(), err_type);
+          return Err(ApiError::err(&err_type).into());    
+        },
+      };
 
       return Ok(LoginResponse {
           jwt: Claims::jwt(local_user_id.0)?,

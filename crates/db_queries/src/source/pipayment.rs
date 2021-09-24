@@ -45,6 +45,7 @@ impl Crud for PiPayment {
 
 pub trait PiPayment_ {
   fn find_by_pipayment_id(conn: &PgConnection, payment_id: &str) -> Result<PiPayment, Error>;
+  fn find_by_pi_uid(conn: &PgConnection, pi_uid: &PiUserId) -> Result<PiPayment, Error>;
 }
 
 impl PiPayment_ for PiPayment { 
@@ -54,6 +55,14 @@ impl PiPayment_ for PiPayment {
       .filter(identifier.eq(payment_id))
       .first::<Self>(conn)
   }
+
+  fn find_by_pi_uid(conn: &PgConnection, uid: &PiUserId) -> Result<Self, Error> {
+    use lemmy_db_schema::schema::pipayment::dsl::*;
+    pipayment
+      .filter(pi_uid.eq(uid))
+      .first::<Self>(conn)
+  }
+
 }
 
 
