@@ -95,6 +95,29 @@ pub async fn pi_complete(
   Ok(res)
 }
 
+pub async fn pi_me(
+  client: &Client,
+  key: &str,
+) -> Result<PiUserDto, LemmyError> {
+  let fetch_url = format!("{}/me", Settings::get().pi_api_host());
+
+  let response = retry(|| {
+    client
+      .get(&fetch_url)
+      .header("Authorization", format!("Bearer {}", &key.clone()))
+      .header("Content-Type", format!("application/json"))
+      .send()
+  })
+  .await?;
+
+  let res: PiUserDto = response
+    .json::<PiUserDto>()
+    .await
+    .map_err(|e| RecvError(e.to_string()))?;
+  Ok(res)
+}
+
+
 pub async fn pi_update_payment(
   context: &Data<LemmyContext>,
   approve: &PiApprove,

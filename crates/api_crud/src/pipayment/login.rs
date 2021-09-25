@@ -1,5 +1,5 @@
 use bcrypt::{hash, DEFAULT_COST};
-//use crate::pipayment::client::*;
+use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
@@ -54,21 +54,69 @@ impl PerformCrud for PiLogin {
       }
     }
 
-    if data.info.is_some() {
-      // let mut info = data.info.unwrap();
+    // Hide Pi user name, not store pi_uid
+    let mut _pi_username = data.pi_username.clone();
+    let mut _pi_uid = data.pi_uid.clone();
+    let _pi_token = data.pi_token.clone();
 
-      // password_length_check(&info.password)?;
+    println!("PiLogin is processing for {} {} {} ", _pi_uid.clone(), _pi_username.clone(), _pi_token.clone());
 
+    // First, valid user token
+    let userDto = match pi_me(context.client(), &data.pi_token.clone()).await {
+      Ok(dto) => {
+        _pi_username = dto.username.clone();
+        _pi_uid = dto.uid.clone();
+        Some(dto)
+      }
+      Err(_e) => {
+        // Pi Server error
+        let err_type = format!("Pi Server Error: User not found: {}, error: {}", &data.pi_username,  _e.to_string());
+        return Err(ApiError::err(&err_type).into());
+      }
+    };
+
+    let mut sha256 = Sha256::new();
+    sha256.update(Settings::get().pi_seed());
+    sha256.update(_pi_username.clone());
+    let _pi_alias: String = format!("{:X}", sha256.finalize());
+    let _pi_alias2 = _pi_alias.clone();
+    let _pi_alias3 = _pi_alias.clone();
+    //let _pi_alias = data.pi_username.to_owned();
+
+    let mut username = _pi_username.clone();
+    let mut _new_user = username.clone();
+    let mut _new_password = "".to_string(); //info.password.to_owned();
+
+    let mut person_id: PersonId;
+    let mut pi_exist = false;
+    let mut result = true;
+    let mut create_new = false;
+
+    match &data.info {
+      Some(info) => {
+        create_new =  true;
+        _new_user = info.username_or_email.clone();
+        _new_password =  info.password.clone();
+      },
+      None =>{
+        
+      }
+    }
+
+    // Check if there are admins. False if admins exist
+    let no_admins = blocking(context.pool(), move |conn| {
+         PersonViewSafe::admins(conn).map(|a| a.is_empty())
+    })
+    .await??;
+
+
+    if create_new {
+      password_length_check(&_new_password)?;
       // // Make sure passwords match
       // if info.password != info.password_verify {
       //   return Err(ApiError::err("passwords_dont_match").into());
       // }
 
-      // // Check if there are admins. False if admins exist
-      // let no_admins = blocking(context.pool(), move |conn| {
-      //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
-      // })
-      // .await??;
 
       // // If its not the admin, check the captcha
       // if !no_admins && Settings::get().captcha.enabled {
@@ -92,40 +140,11 @@ impl PerformCrud for PiLogin {
       //   }
       // }
 
-      // check_slurs(&info.username)?;
-      // if !is_valid_actor_name(&info.username) {
-      //   //println!("Invalid username {} {}", data.pi_username.to_owned(), &data.info.username);
-      //   return Err(ApiError::err("register:invalid_username").into());
-      // }
-  
-  }
-
-    // Hide Pi user name, not store pi_uid
-    let _pi_username = data.pi_username.clone();
-    let _pi_uid = data.pi_uid.unwrap();
-    let _pi_token = data.pi_token.clone();
-
-    println!("PiLogin is processing for {} {} {} ", _pi_uid.clone(), _pi_username.clone(), _pi_token.clone());
-
-    let mut sha256 = Sha256::new();
-    sha256.update(Settings::get().pi_seed());
-    sha256.update(data.pi_username.to_owned());
-    let _pi_alias: String = format!("{:X}", sha256.finalize());
-    let _pi_alias2 = _pi_alias.clone();
-    let _pi_alias3 = _pi_alias.clone();
-    //let _pi_alias = data.pi_username.to_owned();
-
-    let mut username = _pi_username.clone();
-    let mut _new_user = username.clone();
-    //let _new_user2 = username.clone();
-    let _new_password = "".to_string(); //info.password.to_owned();
-
-    let mut person_id: PersonId;
-    let mut pi_exist = false;
-    let mut result = true;
-    let create_new = false;
+      
+    }
 
 
+    // Find user exist ?
     let pi_person = match blocking(context.pool(), move |conn| {
       Person::find_by_pi_name(&conn, &_pi_alias)
     })
@@ -139,10 +158,9 @@ impl PerformCrud for PiLogin {
     let mut extra_user_id = None;
     match pi_person {
       Some(pi) => {
-        person_id = pi.id;
         pi_exist = true;
+        person_id = pi.id;
         username = pi.name.clone();
-        _new_user = username.clone();
         extra_user_id = pi.extra_user_id;
       }
       None => {
@@ -156,14 +174,15 @@ impl PerformCrud for PiLogin {
     
     if pi_exist {      
        let local_user_id;
+       let username2 = username.clone();
        let _local_user = match blocking(context.pool(), move |conn| {
-         LocalUserView::read_from_name(&conn, &username.clone())
+         LocalUserView::read_from_name(&conn, &username2.clone())
        })
        .await?
        {
          Ok(lcu) => lcu, 
          Err(_e) => {
-           let err_type = format!("PiLogin local user not found {} {}", &_new_user.clone(),  _e.to_string());
+           let err_type = format!("PiLogin local user not found {} {} {}", _pi_username.clone(), username.clone(),  _e.to_string());
            println!("{} {}", _pi_uid.clone(), err_type);
            return Err(ApiError::err(&err_type).into());
           //  return Ok(PiRegisterResponse {
@@ -177,33 +196,34 @@ impl PerformCrud for PiLogin {
        local_user_id = _local_user.local_user.id.clone();
 
       //  let password_hash = hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
-      //  let updated_local_user = match blocking(context.pool(), move |conn| {
-      //    LocalUser::update_password(&conn, local_user_id, &_new_password)
-      //  })
-      //  .await
-      //  {
-      //    Ok(chp) => chp,
-      //    Err(_e) => {
-      //      let err_type = format!("Register: Update local user password error {} {}", &username, _e.to_string());
-      //      return Err(ApiError::err(&err_type).into());
-      //     }
-      //  };
-
-      let _pi_uid_search = _pi_uid.clone();
-      let  _payment = match blocking(context.pool(), move |conn| {
-        PiPayment::find_by_pi_uid(&conn, &_pi_uid_search)
-      })
-      .await?
-      {
-        Ok(c) => {
-          Some(c)
-        }
-        Err(_e) => {
-          let err_type = format!("Invalid pi user id {}", &_new_user.clone());
-          println!("{} {}", _pi_uid.clone(), err_type);
-          return Err(ApiError::err(&err_type).into());    
-        },
-      };
+      if create_new {
+        let updated_local_user = match blocking(context.pool(), move |conn| {
+          LocalUser::update_password(&conn, local_user_id.clone(), &_new_password)
+        })
+        .await
+        {
+          Ok(lcu) => lcu,
+          Err(_e) => {
+            let err_type = format!("PiLogin: Update local user password error {} {}", &username.clone(), _e.to_string());
+            return Err(ApiError::err(&err_type).into());
+            }
+        };
+      }
+      // let _pi_uid_search = _pi_uid.clone();
+      // let  _payment = match blocking(context.pool(), move |conn| {
+      //   PiPayment::find_by_pi_uid(&conn, &_pi_uid_search)
+      // })
+      // .await?
+      // {
+      //   Ok(c) => {
+      //     Some(c)
+      //   }
+      //   Err(_e) => {
+      //     let err_type = format!("Invalid pi user id {}", &_new_user.clone());
+      //     println!("{} {}", _pi_uid.clone(), err_type);
+      //     return Err(ApiError::err(&err_type).into());    
+      //   },
+      // };
 
       return Ok(LoginResponse {
           jwt: Claims::jwt(local_user_id.0)?,
@@ -218,10 +238,17 @@ impl PerformCrud for PiLogin {
       return Err(ApiError::err(&err_type).into());
     }
 
+    check_slurs(&_new_user.clone())?;
+    if !is_valid_actor_name(&_new_user.clone()) {
+        //println!("Invalid username {} {}", _pi_username.to_owned(), &_new_user.clone());
+        return Err(ApiError::err("register:invalid_username").into());
+    }  
+
     let mut change_password = false;
 
+    let _new_user2 = _new_user.clone();
     let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &username.clone())
+      Person::find_by_name(&conn, &_new_user2.clone())
     })
     .await?
     {
@@ -232,8 +259,8 @@ impl PerformCrud for PiLogin {
     match person {
       Some(per) => {
         if extra_user_id != per.extra_user_id {
-          let err_type = format!("Register: User {} is exist and belong to other Pi Account ", &_new_user.clone());
-          println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+          let err_type = format!("User {} is exist and belong to other Pi Account ", &_new_user.clone());
+          println!("{} {} {}", _pi_username.clone(), err_type, &_pi_alias2);
           result = false;
           return Err(ApiError::err(&err_type).into());
           // return Ok(PiRegisterResponse {
@@ -250,9 +277,9 @@ impl PerformCrud for PiLogin {
         change_password = true;
         //change_username = true;
         // Not allow change username
-        let err_type = format!("Register: You already have user name {}", _new_user.clone());
-        println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
-        result = false;
+        //let err_type = format!("Register: You already have user name {}", _new_user.clone());
+        //println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+        //result = false;
         //return Err(ApiError::err(&err_type).into());
         // return Ok(PiRegisterResponse {
         //   success: false,
@@ -280,26 +307,26 @@ impl PerformCrud for PiLogin {
 
     // insert the person
     // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
-    let inserted_person1 = match blocking(context.pool(), move |conn| {
+    let inserted_tmp = match blocking(context.pool(), move |conn| {
       Person::create(conn, &person_form)
     })
     .await?
     {
       Ok(p) => Some(p),
       Err(_e) => {
-      let err_type = format!("Register: user_already_exists: {} {}, exists{},  err:{}", 
+      let err_type = format!("PiLogin: user_already_exists: {} {}, exists{},  err:{}", 
                              &_new_user.clone(), _pi_alias3, pi_exist, _e.to_string());
       return Err(ApiError::err(&err_type).into());
       },
     };
 
 
-    let inserted_person = inserted_person1.unwrap();
+    let inserted_person = inserted_tmp.unwrap();
     // Create the local user
     let local_user_form = LocalUserForm {
       person_id: inserted_person.id,
       email: None, //Some(info.email.to_owned()),
-      password_encrypted: _pi_alias3.to_owned(),
+      password_encrypted: _new_password.to_owned(),
       show_nsfw: Some(true), //Some(info.show_nsfw),
       show_bot_accounts: Some(true),
       theme: Some("browser".into()),

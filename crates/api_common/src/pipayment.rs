@@ -56,9 +56,9 @@ pub struct PiRegisterResponse {
 #[derive(Deserialize)]
 pub struct PiLogin {
   pub pi_username: String,
-  pub pi_uid: Option<PiUserId>,
+  pub pi_uid: PiUserId,
   pub pi_token: String,
-  pub info: Option<Register>,
+  pub info: Option<Login>,
 }
 
 
@@ -147,4 +147,10 @@ pub struct GetPayments {
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub auth: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiUserDto {
+  pub uid: PiUserId,
+  pub username: String,
 }
