@@ -24,7 +24,7 @@ pub trait Comment_ {
   fn update_tx(
     conn: &PgConnection,
     comment_id: CommentId,
-    tx: &String,
+    tx: &Option<String>,
   ) -> Result<Comment, Error>;
   fn permadelete_for_creator(
     conn: &PgConnection,
@@ -72,7 +72,7 @@ impl Comment_ for Comment {
   fn update_tx(
     conn: &PgConnection,
     comment_id: CommentId,
-    tx: &String,
+    tx: &Option<String>,
   ) -> Result<Self, Error> {
     use lemmy_db_schema::schema::comment::dsl::*;
 

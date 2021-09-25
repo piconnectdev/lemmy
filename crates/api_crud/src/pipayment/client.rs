@@ -173,7 +173,10 @@ pub async fn pi_update_payment(
       };
     } else if !completed {
         dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
-          Ok(c) => Some(c),
+          Ok(c) => {
+            completed = true;
+            Some(c)
+          },
           Err(_e) => None,
       };
     }
@@ -227,6 +230,7 @@ pub async fn pi_update_payment(
     }
   };
 
+  completed = _payment_dto.status.developer_completed.clone();
   let mut payment_form = PiPaymentForm {
     person_id: None,
     ref_id: person_id,
@@ -284,10 +288,12 @@ pub async fn pi_update_payment(
     pmt = _payment.unwrap();
   } else {
     payment_form.updated = Some(naive_now());
-    if completed {
+    println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
+    if completed 
+    {
       payment_form.finished = true;
       if (payment_form.memo == "wepi:post") {
-        let link = payment_form.tx_link.clone();
+        let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
         let uuid = Uuid::parse_str(&comment2.clone());
         match uuid {
@@ -299,7 +305,7 @@ pub async fn pi_update_payment(
             .await?
             {
               Ok(p) => {
-                println!("Post: Update blockchain link, post:{} link:{}", p.id, link2.clone());
+                println!("Post: Success update blockchain link, id:{} link:{}", comment2.clone(), link2.clone());
                 Some(p)
               }
               Err(_e) => {
@@ -312,7 +318,7 @@ pub async fn pi_update_payment(
           }
         };
       } else if (payment_form.memo == "wepi:comment") {
-        let link = payment_form.tx_link.clone();
+        let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
         let uuid = Uuid::parse_str(&comment2.clone());
         match uuid {
@@ -324,7 +330,7 @@ pub async fn pi_update_payment(
             .await?
             {
               Ok(c) => {
-                println!("Comment: Update blockchain link, id:{} link:{}", c.id, link2.clone());
+                println!("Comment: Success update blockchain link, id:{} link:{}", c.id, link2.clone());
                 Some(c)
               }
               Err(_e) => {
