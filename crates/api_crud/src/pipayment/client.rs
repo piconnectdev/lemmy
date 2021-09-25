@@ -3,13 +3,15 @@ use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
 use lemmy_api_common::{blocking, person::*};
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::pipayment::*, source::site::*, Crud, Followable,
+  source::local_user::LocalUser_, source::post::*, source::comment::*,source::pipayment::*, source::site::*, Crud, Followable,
   Joinable, ListingType, SortType,
 };
 use lemmy_db_schema::*;
 use lemmy_db_schema::{
   source::{
     local_user::{LocalUser, LocalUserForm},
+    post::*,
+    comment::*,
     pipayment::*,
     site::*,
   },
@@ -128,7 +130,7 @@ pub async fn pi_update_payment(
   let pi_uid = approve.pi_uid.clone();
   let person_id = approve.person_id.clone();
   let comment = approve.comment.clone();
-  
+  let comment2 = approve.comment.clone().unwrap_or("".to_string());
   // Hide PiUserName
   let mut sha256 = Sha256::new();
   sha256.update(pi_username.to_owned());
@@ -284,10 +286,61 @@ pub async fn pi_update_payment(
     payment_form.updated = Some(naive_now());
     if completed {
       payment_form.finished = true;
+      if (payment_form.memo == "wepi:post") {
+        let link = payment_form.tx_link.clone();
+        let link2 = payment_form.tx_link.clone();
+        let uuid = Uuid::parse_str(&comment2.clone());
+        match uuid {
+          Ok(u) => {
+            let post_id = PostId(u);
+            let updated_post = match blocking(context.pool(), move |conn| {
+              Post::update_tx(&conn, post_id, &link.clone())
+            })
+            .await?
+            {
+              Ok(p) => {
+                println!("Post: Update blockchain link, post:{} link:{}", p.id, link2.clone());
+                Some(p)
+              }
+              Err(_e) => {
+                None
+              }
+            };          
+          },
+          Err(e) => {
+            //None
+          }
+        };
+      } else if (payment_form.memo == "wepi:comment") {
+        let link = payment_form.tx_link.clone();
+        let link2 = payment_form.tx_link.clone();
+        let uuid = Uuid::parse_str(&comment2.clone());
+        match uuid {
+          Ok(u) => {
+            let comment_id = CommentId(u);
+            let updated_comment = match blocking(context.pool(), move |conn| {
+              Comment::update_tx(&conn, comment_id, &link.clone())
+            })
+            .await?
+            {
+              Ok(c) => {
+                println!("Comment: Update blockchain link, id:{} link:{}", c.id, link2.clone());
+                Some(c)
+              }
+              Err(_e) => {
+                None
+              }
+            };
+          }
+          Err(e) => {
+          }
+        };
+
+      }   
     }
     pmt = _payment.unwrap();
     pid = pmt.id;
-    let inserted_payment = match blocking(context.pool(), move |conn| {
+    let updated_payment = match blocking(context.pool(), move |conn| {
       PiPayment::update(&conn, pid, &payment_form)
     })
     .await?

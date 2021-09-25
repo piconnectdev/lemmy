@@ -21,6 +21,11 @@ pub trait Comment_ {
     comment_id: CommentId,
     apub_id: DbUrl,
   ) -> Result<Comment, Error>;
+  fn update_tx(
+    conn: &PgConnection,
+    comment_id: CommentId,
+    tx: &String,
+  ) -> Result<Comment, Error>;
   fn permadelete_for_creator(
     conn: &PgConnection,
     for_creator_id: PersonId,
@@ -62,6 +67,17 @@ impl Comment_ for Comment {
 
     diesel::update(comment.find(comment_id))
       .set(ap_id.eq(apub_id))
+      .get_result::<Self>(conn)
+  }
+  fn update_tx(
+    conn: &PgConnection,
+    comment_id: CommentId,
+    tx: &String,
+  ) -> Result<Self, Error> {
+    use lemmy_db_schema::schema::comment::dsl::*;
+
+    diesel::update(comment.find(comment_id))
+      .set(tx.eq(tx))
       .get_result::<Self>(conn)
   }
 

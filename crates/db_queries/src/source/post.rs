@@ -72,6 +72,8 @@ pub trait Post_ {
     new_stickied: bool,
   ) -> Result<Post, Error>;
   fn is_post_creator(person_id: PersonId, post_creator_id: PersonId) -> bool;
+
+  fn update_tx(conn: &PgConnection, post_id: PostId, tx: &String) -> Result<Post, Error>;
 }
 
 impl Post_ for Post {
@@ -93,6 +95,14 @@ impl Post_ for Post {
 
     diesel::update(post.find(post_id))
       .set(ap_id.eq(apub_id))
+      .get_result::<Self>(conn)
+  }
+
+  fn update_tx(conn: &PgConnection, post_id: PostId, tx: &String) -> Result<Self, Error> {
+    use lemmy_db_schema::schema::post::dsl::*;
+
+    diesel::update(post.find(post_id))
+      .set(tx.eq(tx))
       .get_result::<Self>(conn)
   }
 
