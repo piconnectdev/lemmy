@@ -288,7 +288,7 @@ pub async fn pi_update_payment(
     pmt = _payment.unwrap();
   } else {
     payment_form.updated = Some(naive_now());
-    println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
+    //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
     if completed 
     {
       payment_form.finished = true;
@@ -300,7 +300,7 @@ pub async fn pi_update_payment(
           Ok(u) => {
             let post_id = PostId(u);
             let updated_post = match blocking(context.pool(), move |conn| {
-              Post::update_tx(&conn, post_id, &link.unwrap())
+              Post::update_tx(&conn, post_id, &link.unwrap_or("".to_string()))
             })
             .await?
             {
@@ -325,7 +325,7 @@ pub async fn pi_update_payment(
           Ok(u) => {
             let comment_id = CommentId(u);
             let updated_comment = match blocking(context.pool(), move |conn| {
-              Comment::update_tx(&conn, comment_id, &link.clone())
+              Comment::update_tx(&conn, comment_id, &link.unwrap_or("".to_string()))
             })
             .await?
             {
