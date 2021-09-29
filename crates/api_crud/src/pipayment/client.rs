@@ -300,7 +300,7 @@ pub async fn pi_update_payment(
           Ok(u) => {
             let post_id = PostId(u);
             let updated_post = match blocking(context.pool(), move |conn| {
-              Post::update_tx(&conn, post_id, &link.clone())
+              Post::update_tx(&conn, post_id, &link.unwrap())
             })
             .await?
             {

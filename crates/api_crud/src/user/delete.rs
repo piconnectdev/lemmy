@@ -28,7 +28,7 @@ impl PerformCrud for DeleteAccount {
     if !valid {
       return Err(ApiError::err("password_incorrect").into());
     }
-    return Err(ApiError::err("Delete account disabled").into());
+    // return Err(ApiError::err("Delete account disabled").into());
     // Comments
     let person_id = local_user_view.person.id;
     let permadelete = move |conn: &'_ _| Comment::permadelete_for_creator(conn, person_id);
