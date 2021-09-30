@@ -95,7 +95,13 @@ impl PerformCrud for PiRegister {
     let actor_keypair = generate_actor_keypair()?;
     if !is_valid_actor_name(&data.info.username) {
       println!("Invalid username {} {}", data.pi_username.to_owned(), &data.info.username);
-      return Err(ApiError::err("register:invalid_username").into());
+      //return Err(ApiError::err("register:invalid_username").into());
+      let err_type = format!("Register: invalid username");
+      return Ok(PiRegisterResponse {
+        success: false,
+        jwt: format!(""),
+        extra: Some(format!("{}",err_type)),
+        });
     }
     let actor_id = generate_apub_endpoint(EndpointType::Person, &data.info.username)?;
 
@@ -137,7 +143,12 @@ impl PerformCrud for PiRegister {
       Err(_e) => {
         //let err_type = format!("Payment {} was not approved", data.paymentid);
         let err_type = format!("Register: Payment {} was not approved, err: {}", data.paymentid, _e.to_string());
-        return Err(ApiError::err(&err_type).into());
+        //return Err(ApiError::err(&err_type).into());        
+        return Ok(PiRegisterResponse {
+          success: false,
+          jwt: format!(""),
+          extra: Some(format!("{}",err_type)),
+          });
       }
     };
 
@@ -182,12 +193,12 @@ impl PerformCrud for PiRegister {
               let err_type = format!("Register: User {} is exist and belong to other Pi Account ", &data.info.username);
               println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
               result = false;
-              return Err(ApiError::err(&err_type).into());
-              // return Ok(PiRegisterResponse {
-              //   success: false,
-              //   jwt: format!(""),
-              //   extra: Some(format!("{}",err_type)),
-              //   });
+              //return Err(ApiError::err(&err_type).into());
+              return Ok(PiRegisterResponse {
+                success: false,
+                jwt: format!(""),
+                extra: Some(format!("{}",err_type)),
+                });
             } else {
               // Same name and account: change password ???
               change_password = true;
@@ -215,12 +226,12 @@ impl PerformCrud for PiRegister {
             let err_type = format!("Register: User {} is exist and belong to other user", &data.info.username);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result = false;
-            return Err(ApiError::err(&err_type).into());
-            // return Ok(PiRegisterResponse {
-            //   success: false,
-            //   jwt: format!(""),
-            //   extra: Some(format!("{}",err_type)),
-            //   });
+            //return Err(ApiError::err(&err_type).into());
+            return Ok(PiRegisterResponse {
+              success: false,
+              jwt: format!(""),
+              extra: Some(format!("{}",err_type)),
+              });
           }
           None => {
             // No account, we must completed this and create new user
@@ -241,13 +252,12 @@ impl PerformCrud for PiRegister {
         Err(_e) => {
           // Server error
           let err_type = format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-          //let err_type = _e.to_string();
-          return Err(ApiError::err(&err_type).into());
-          // return Ok(PiRegisterResponse {
-          //   success: false,
-          //   jwt: format!(""),
-          //   extra: Some(format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string())),
-          //   });
+          //return Err(ApiError::err(&err_type).into());
+          return Ok(PiRegisterResponse {
+            success: false,
+            jwt: format!(""),
+            extra: Some(format!("{}", err_type)),
+            });
         }
       };
     }
@@ -328,12 +338,12 @@ impl PerformCrud for PiRegister {
       Ok(payment) => payment,
       Err(_e) => {
         let err_type = format!("Register: Update payment complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-        return Err(ApiError::err(&err_type).into());
-        // return Ok(PiRegisterResponse {
-        //   success: false,
-        //   jwt: format!(""),
-        //   extra: Some(format!("{}",err_type)),
-        //   });
+        //return Err(ApiError::err(&err_type).into());
+        return Ok(PiRegisterResponse {
+          success: false,
+          jwt: format!(""),
+          extra: Some(format!("{}",err_type)),
+          });
       }
     };
     
@@ -368,12 +378,12 @@ impl PerformCrud for PiRegister {
          Ok(chp) => chp,
          Err(_e) => {
            let err_type = format!("Register: Update local user password error {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-           return Err(ApiError::err(&err_type).into());
-          //  return Ok(PiRegisterResponse {
-          //   success: false,
-          //   jwt: format!(""),
-          //   extra: Some(format!("{}",err_type)),
-          //   });
+           //return Err(ApiError::err(&err_type).into());
+           return Ok(PiRegisterResponse {
+            success: false,
+            jwt: format!(""),
+            extra: Some(format!("{}", err_type)),
+            });
           }
        };
         return Ok(PiRegisterResponse {
@@ -419,7 +429,7 @@ impl PerformCrud for PiRegister {
       person_id: inserted_person.id,
       email: Some(data.info.email.to_owned()),
       password_encrypted: data.info.password.to_owned(),
-      show_nsfw: Some(data.info.show_nsfw),
+      show_nsfw: Some(false),
       show_bot_accounts: Some(true),
       theme: Some("browser".into()),
       default_sort_type: Some(SortType::Active as i16),

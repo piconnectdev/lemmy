@@ -327,7 +327,7 @@ impl PerformCrud for PiLogin {
       person_id: inserted_person.id,
       email: None, //Some(info.email.to_owned()),
       password_encrypted: _new_password.to_owned(),
-      show_nsfw: Some(true), //Some(info.show_nsfw),
+      show_nsfw: Some(false),
       show_bot_accounts: Some(true),
       theme: Some("browser".into()),
       default_sort_type: Some(SortType::Active as i16),
