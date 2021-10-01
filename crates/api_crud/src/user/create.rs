@@ -70,7 +70,8 @@ impl PerformCrud for Register {
     .await??;
 
     if !no_admins {
-      return Err(ApiError::err("registration_disabled").into());
+      // Uncomment to disable registration
+      // return Err(ApiError::err("registration_disabled").into());
     }
 
     // If its not the admin, check the captcha

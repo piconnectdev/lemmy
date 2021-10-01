@@ -144,14 +144,14 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           ),
       )
       // User
-      // .service(
-      //   // Account action, I don't like that it's in /user maybe /accounts
-      //   // Handle /user/register separately to add the register() rate limitter
-      //   web::resource("/user/register")
-      //     .guard(guard::Post())
-      //     .wrap(rate_limit.register())
-      //     .route(web::post().to(route_post_crud::<Register>)),
-      // )
+      .service(
+        // Account action, I don't like that it's in /user maybe /accounts
+        // Handle /user/register separately to add the register() rate limitter
+        web::resource("/user/register")
+          .guard(guard::Post())
+          .wrap(rate_limit.register())
+          .route(web::post().to(route_post_crud::<Register>)),
+      )
       // User actions
       .service(
         web::scope("/user")
