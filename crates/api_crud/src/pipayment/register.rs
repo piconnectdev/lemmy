@@ -69,26 +69,26 @@ impl PerformCrud for PiRegister {
     .await??;
 
     // If its not the admin, check the captcha
-    if !no_admins && Settings::get().captcha.enabled {
-      let check = context
-        .chat_server()
-        .send(CheckCaptcha {
-          uuid: data
-            .info
-            .captcha_uuid
-            .to_owned()
-            .unwrap_or_else(|| "".to_string()),
-          answer: data
-            .info
-            .captcha_answer
-            .to_owned()
-            .unwrap_or_else(|| "".to_string()),
-        })
-        .await?;
-      if !check {
-        return Err(ApiError::err("captcha_incorrect").into());
-      }
-    }
+    // if !no_admins && Settings::get().captcha.enabled {
+    //   let check = context
+    //     .chat_server()
+    //     .send(CheckCaptcha {
+    //       uuid: data
+    //         .info
+    //         .captcha_uuid
+    //         .to_owned()
+    //         .unwrap_or_else(|| "".to_string()),
+    //       answer: data
+    //         .info
+    //         .captcha_answer
+    //         .to_owned()
+    //         .unwrap_or_else(|| "".to_string()),
+    //     })
+    //     .await?;
+    //   if !check {
+    //     return Err(ApiError::err("captcha_incorrect").into());
+    //   }
+    // }
 
     check_slurs(&data.info.username)?;
 
