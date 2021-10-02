@@ -187,7 +187,7 @@ impl PerformCrud for PiPaymentFound {
       }
     };
 
-    let _comment = format!("UpdatePaymentFound;dto_source:{};pi_pid:{};comment:{};memo:{}", dto_source, data.paymentid.clone(), comment, memo.clone());
+    let _comment = format!("UpdatePaymentFound;dto_source:{};pi_pid:{};memo:{};{}", dto_source, data.paymentid.clone(), memo.clone(), comment);
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: ref_id.clone(),
