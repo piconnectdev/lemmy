@@ -123,8 +123,8 @@ impl PerformCrud for PiRegister {
     let mut approved = false;
     let mut completed = false;
     let mut finished = false;
-    let mut payment_id: PaymentId;
-    let mut person_id: PersonId;
+    let payment_id: PaymentId;
+    let person_id: PersonId;
     let mut pi_exist = false;
     let mut dto: Option<PiPaymentDto> = None;
 
@@ -301,7 +301,7 @@ impl PerformCrud for PiRegister {
       pi_username: "".to_string(), // data.pi_username.clone(), Hide username
       comment: data.comment.clone(),
 
-      identifier: _payment_dto.identifier, //data.paymentid
+      identifier: data.paymentid.clone(),
       user_uid: _payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,

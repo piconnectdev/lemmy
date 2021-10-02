@@ -58,7 +58,7 @@ impl Perform for CommunityJoin {
           let uuid = Uuid::parse_str(&id.clone());
           match uuid {
             Ok(u) => CommunityId(u),
-            Err(e) => {
+            Err(_e) => {
               let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
               CommunityId(xid)
             }

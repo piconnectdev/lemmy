@@ -1,37 +1,24 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
-use lemmy_apub::{
-  generate_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
-  EndpointType,
-};
+use lemmy_api_common::{blocking, pipayment::*};
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::pipayment::*, source::site::*, Crud, Followable, Joinable, ListingType,
-  SortType,
+  source::pipayment::*, Crud, 
 };
 use lemmy_db_schema::{
   naive_now,
   source::{
-    community::*,
-    local_user::{LocalUser, LocalUserForm},
-    person::*,
     pipayment::*,
-    site::*,
   },
   PaymentId
 };
 //use lemmy_db_views_actor::person_view::PersonViewSafe;
 use lemmy_utils::{
-  apub::generate_actor_keypair,
-  claims::Claims,
-  request::*,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_actor_name},
   ApiError, ConnectionId, LemmyError,
 };
-use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use sha2::{Digest, Sha256, Sha512};
+use lemmy_websocket::{LemmyContext};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -55,32 +42,46 @@ impl PerformCrud for PiPaymentFound {
     let _pi_username2 = _pi_username.clone();
 
     let _payment_id = data.paymentid.to_owned();
+    let _payment_id2 = _payment_id.clone();
     let _pi_username = data.pi_username.to_owned();
     let _pi_uid = data.pi_uid.clone();
+
+    let mut exist = false;
+    let mut payment_id: PaymentId;
+    let payment;
+    let mut comment: String = "".to_string();
+    let mut memo: String;
+    let mut ref_id: Option<Uuid> = None;
+    let mut updated: Option<chrono::NaiveDateTime> = None;
+
+    let mut dto_source: i32 = 0;
 
     let mut approved = false;
     let mut completed = false;
     let mut finished = false;
     let mut cancelled = false;
-    let mut exist = false;
-    let mut payment;
     let mut txid: String;
-    let mut payment_id: PaymentId;
+    let txlink: String;
     let mut dto: Option<PiPaymentDto> = None;
-    let mut updated: Option<chrono::NaiveDateTime> = None;
+
     let mut _payment = match blocking(context.pool(), move |conn| {
       PiPayment::find_by_pipayment_id(&conn, &_payment_id)
     })
     .await?
     {
       Ok(c) => {
+        exist = true;
+        payment_id = c.id;
+        comment = c.comment.clone().unwrap();
+        ref_id = c.ref_id;
+
         approved = c.approved;
         completed = c.completed;
-        finished = c.finished;
         cancelled = c.cancelled;
-        payment_id = c.id;
-        payment_id = c.id;
-        //old_comment = c.comment; 
+        finished = c.finished;
+        txid = c.tx_id.clone();
+        txlink = c.tx_link.clone();
+        memo = c.memo.clone();
         Some(c)
       },
       Err(_e) => None,
@@ -89,83 +90,85 @@ impl PerformCrud for PiPaymentFound {
     if _payment.is_some() {
       exist = true;
       updated = Some(naive_now());
-      //payment = _payment.unwrap();
-      //payment_id = payment.id;
       //txid = payment.tx_id.clone();
     } else {
       exist = false;
     }
 
-    let dto_read = pi_payment(context.client(), &data.paymentid.clone()).await?;
-      //   let dto_read = match pi_payment(context.client(), &data.paymentid.clone()).await{
-      //   Ok(c) => Some(c),
-      //   Err(_e) => {
-      //     // Pi Server error
-      //     let err_type = format!("Pi Server: error while check payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
-      //     return Err(ApiError::err(&err_type).into());
-      //   }
-      // };
-      approved = dto_read.status.developer_approved;
-      completed = dto_read.status.developer_completed;
-      cancelled = dto_read.status.cancelled;      
-      let mut tx;
-      if cancelled {
-        let err_type = format!("Pi Server: payment cancelled: user {}, paymentid {}", &data.pi_username, &data.paymentid);
+    //let dto_read = pi_payment(context.client(), &data.paymentid.clone()).await?;
+    let dto_read = match pi_payment(context.client(), &data.paymentid.clone()).await {
+      Ok(c) => { 
+        approved = c.status.developer_approved;
+        completed = c.status.developer_completed;
+        cancelled = c.status.cancelled;          
+        memo = c.memo.clone();  
+        dto_source = 1;     
+        c
+      },
+      Err(_e) => {
+        // Pi Server error
+        let err_type = format!("Pi Server: error while check payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
         return Err(ApiError::err(&err_type).into());
       }
+    };
 
-      if !approved {
-        dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
-          Ok(c) => {
-            Some(c)
+    if cancelled {
+      let err_type = format!("Pi Server: payment cancelled: user {}, paymentid {}", &data.pi_username, &data.paymentid);
+      return Err(ApiError::err(&err_type).into());
+    }
+
+    if !approved {
+      dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
+        Ok(c) => {
+          dto_source = 2;
+          Some(c)
+        },
+        Err(_e) => {
+          // Pi Server error
+          let err_type = format!("Pi Server: Error while approve: user {}, paymentid {} error: {}", &data.pi_username, &data.paymentid, _e.to_string());
+          //let err_type = _e.to_string();
+          return Err(ApiError::err(&err_type).into());
+        }
+      };
+    } else {
+      if !completed {
+        let tx = dto_read.transaction.clone();
+        match tx {
+            Some(_tx) => {
+            txid = _tx.txid;
+            dto = match pi_complete(context.client(), &data.paymentid.clone(), &txid.clone() ).await {
+              Ok(c) => {
+                dto_source = 3;
+                Some(c)
+              },
+              Err(_e) => {
+                // Pi Server error
+                let err_type = format!("Pi Server: Error while completed: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+                return Err(ApiError::err(&err_type).into());
+              }
+            };
           },
-          Err(_e) => {
-            // Pi Server error
-            let err_type = format!("Pi Server: Error while approve: user {}, paymentid {} error: {}", &data.pi_username, &data.paymentid, _e.to_string());
-            //let err_type = _e.to_string();
+          None => {
+            let err_type = format!("Pi Server: Error while completed, no transaction: user {}, paymentid {}", &data.pi_username,  &data.paymentid);
             return Err(ApiError::err(&err_type).into());
           }
         };
-      } else {
-        if !completed {
-          tx = dto_read.transaction.clone();
-          match tx {
-              Some(tx_) => {
-              //let err_type = format!("Pi Server: Error while complete: user {}, paymentid {}", &data.pi_username, &data.paymentid);
-              //return Err(ApiError::err(&err_type).into());
-              txid = tx_.txid;
-              dto = match pi_complete(context.client(), &data.paymentid.clone(), &txid.clone() ).await {
-                Ok(c) => {
-                  Some(c)
-                },
-                Err(_e) => {
-                  // Pi Server error
-                  let err_type = format!("Pi Server: Error while completed: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
-                  return Err(ApiError::err(&err_type).into());
-                }
-              };
-            },
-            None => {
-              let err_type = format!("Pi Server: Error while completed, no transaction: user {}, paymentid {}", &data.pi_username,  &data.paymentid);
-              return Err(ApiError::err(&err_type).into());
-            }
-          };
-        };
-        finished = true;         
-      } 
+      };
+      finished = true;         
+    }
 
     let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
     };
-    _payment_dto.status.developer_approved  =  true;
 
     if dto.is_some() {
       _payment_dto = dto.unwrap();
-      //tx = _payment_dto.transaction;
     } else {
       _payment_dto = dto_read;
     }
 
+    //_payment_dto = dto_read;
+    _payment_dto.status.developer_approved  =  true;
     // let refid = match &data.info.captcha_uuid {
     //   Some(uid) => match Uuid::parse_str(uid) {
     //     Ok(uidx) => Some(uidx),
@@ -184,15 +187,16 @@ impl PerformCrud for PiPaymentFound {
       }
     };
 
+    let _comment = format!("UpdatePaymentFound;dto_source:{};pi_pid:{};comment:{};memo:{}", dto_source, data.paymentid.clone(), comment, memo.clone());
     let mut payment_form = PiPaymentForm {
       person_id: None,
-      ref_id: None,
+      ref_id: ref_id.clone(),
       testnet: Settings::get().pi_testnet,
       finished: finished,
       updated: updated,
       pi_uid: data.pi_uid, //data.pi_uid
       pi_username: "".to_string(), //data.pi_username.clone(), Hide user name
-      comment: None, //"".to_string(),
+      comment: Some(_comment), //"".to_string(),
 
       identifier: data.paymentid.clone(),
       user_uid: _payment_dto.user_uid.clone(), //"".to_string(), //_payment_dto.user_uid,

@@ -127,7 +127,7 @@ impl PerformCrud for PiAgreeRegister {
       });
     }
 
-    let mut pi_person = match blocking(context.pool(), move |conn| {
+    let pi_person = match blocking(context.pool(), move |conn| {
       Person::find_by_pi_name(&conn, &_pi_alias)
     })
     .await?

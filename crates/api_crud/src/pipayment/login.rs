@@ -62,7 +62,7 @@ impl PerformCrud for PiLogin {
     println!("PiLogin is processing for {} {} {} ", _pi_uid.clone(), _pi_username.clone(), _pi_token.clone());
 
     // First, valid user token
-    let userDto = match pi_me(context.client(), &data.pi_token.clone()).await {
+    let user_dto = match pi_me(context.client(), &data.pi_token.clone()).await {
       Ok(dto) => {
         _pi_username = dto.username.clone();
         _pi_uid = dto.uid.clone();
@@ -87,7 +87,7 @@ impl PerformCrud for PiLogin {
     let mut _new_user = username.clone();
     let mut _new_password = "".to_string(); //info.password.to_owned();
 
-    let mut person_id: PersonId;
+    let person_id: PersonId;
     let mut pi_exist = false;
     let mut result = true;
     let mut create_new = false;

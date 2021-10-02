@@ -1,6 +1,6 @@
 use crate::Blockable;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_schema::{*,source::community_block::{CommunityBlock, CommunityBlockForm}};
+use lemmy_db_schema::{source::community_block::{CommunityBlock, CommunityBlockForm}};
 
 impl Blockable for CommunityBlock {
   type Form = CommunityBlockForm;

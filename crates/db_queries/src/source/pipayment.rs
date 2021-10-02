@@ -1,15 +1,11 @@
 use crate::Crud;
 use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{
-  naive_now,
   source::pipayment::*, 
   PaymentId, PiUserId 
 };
-use lemmy_utils::{
-  settings::structs::Settings,
-};
 
-use uuid::Uuid;
+//use uuid::Uuid;
 
 impl Crud for PiPayment {
   type Form = PiPaymentForm;

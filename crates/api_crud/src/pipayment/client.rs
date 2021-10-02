@@ -1,35 +1,28 @@
-use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
-use lemmy_api_common::{blocking, person::*};
+use lemmy_api_common::{blocking};
 use lemmy_db_queries::{
-  source::local_user::LocalUser_, source::post::*, source::comment::*,source::pipayment::*, source::site::*, Crud, Followable,
-  Joinable, ListingType, SortType,
+  source::post::*, source::comment::*,source::pipayment::*, Crud, 
 };
 use lemmy_db_schema::*;
 use lemmy_db_schema::{
   source::{
-    local_user::{LocalUser, LocalUserForm},
     post::*,
     comment::*,
     pipayment::*,
-    site::*,
   },
-  PaymentId, PersonId, PiUserId,
+//  PaymentId, PersonId, PiUserId,
 };
 use lemmy_utils::{
-  claims::Claims,
   request::*,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_actor_name},
-  ApiError, ConnectionId, LemmyError,
+  ApiError, LemmyError,
 };
 use lemmy_websocket::{
-  messages::{SendModRoomMessage, SendUserRoomMessage},
-  LemmyContext, UserOperation,
+  LemmyContext,
 };
 use reqwest::Client;
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 pub async fn pi_payment(client: &Client, id: &str) -> Result<PiPaymentDto, LemmyError> {
@@ -241,7 +234,7 @@ pub async fn pi_update_payment(
     pi_username: _pi_user_alias.clone(),    
     comment: comment,
 
-    identifier: _payment_dto.identifier.into(),
+    identifier: payment_id.clone(),
     user_uid: _payment_dto.user_uid,
     amount: _payment_dto.amount,
     memo: _payment_dto.memo,
@@ -292,7 +285,7 @@ pub async fn pi_update_payment(
     if completed 
     {
       payment_form.finished = true;
-      if (payment_form.memo == "wepi:post") {
+      if payment_form.memo == "wepi:post" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
         let uuid = Uuid::parse_str(&comment2.clone());
@@ -317,7 +310,7 @@ pub async fn pi_update_payment(
             //None
           }
         };
-      } else if (payment_form.memo == "wepi:comment") {
+      } else if payment_form.memo == "wepi:comment" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
         let uuid = Uuid::parse_str(&comment2.clone());

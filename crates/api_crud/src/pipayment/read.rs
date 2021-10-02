@@ -9,18 +9,6 @@ use lemmy_apub::{
 };
 use lemmy_db_queries::{from_opt_str_to_opt_enum, ListingType, SortType};
 use lemmy_db_queries::{source::local_user::LocalUser_, Crud, Followable, Joinable};
-use lemmy_db_schema::{
-  source::{
-    community::*,
-    local_user::{LocalUser, LocalUserForm},
-    person::*,
-  },
-  CommunityId,
-};
-use lemmy_db_views::{
-  comment_view::CommentQueryBuilder,
-  post_view::{PostQueryBuilder, PostView},
-};
 use lemmy_db_views_actor::person_view::PersonViewSafe;
 use lemmy_db_views_actor::{
   community_moderator_view::CommunityModeratorView, community_view::CommunityView,
@@ -34,8 +22,6 @@ use lemmy_utils::{
   ApiError, ConnectionId, LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use reqwest::Client;
-use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for GetPayment {
