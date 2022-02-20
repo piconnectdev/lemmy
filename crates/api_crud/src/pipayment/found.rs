@@ -101,7 +101,7 @@ impl PerformCrud for PiPaymentFound {
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;          
-        memo = c.memo.clone();  
+        memo = c.memo.clone();
         dto_source = 1;     
         c
       },
@@ -167,15 +167,7 @@ impl PerformCrud for PiPaymentFound {
       _payment_dto = dto_read;
     }
 
-    //_payment_dto = dto_read;
     _payment_dto.status.developer_approved  =  true;
-    // let refid = match &data.info.captcha_uuid {
-    //   Some(uid) => match Uuid::parse_str(uid) {
-    //     Ok(uidx) => Some(uidx),
-    //     Err(_e) => None,
-    //   },
-    //   None => None,
-    // };
 
     let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
       Ok(dt) => Some(dt),
@@ -201,7 +193,7 @@ impl PerformCrud for PiPaymentFound {
       identifier: data.paymentid.clone(),
       user_uid: _payment_dto.user_uid.clone(), //"".to_string(), //_payment_dto.user_uid,
       amount: _payment_dto.amount,
-      memo: _payment_dto.memo,
+      memo: memo,
       to_address: _payment_dto.to_address,
       created_at: create_at,
       approved: _payment_dto.status.developer_approved,
