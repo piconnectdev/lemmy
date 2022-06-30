@@ -13,7 +13,7 @@ use lemmy_db_schema::{
   ListingType,
   SortType,
 };
-
+use uuid::Uuid;
 type CommunityViewTuple = (
   CommunitySafe,
   CommunityAggregates,
@@ -27,6 +27,7 @@ impl CommunityView {
     community_id: CommunityId,
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
+  	/// TODO: DinhHa
     // The left join below will return None in this case
     //let person_id_join = my_person_id.unwrap_or(PersonId(
     //  Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),

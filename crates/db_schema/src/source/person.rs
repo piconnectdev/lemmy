@@ -28,6 +28,7 @@ pub struct Person {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub ban_expires: Option<chrono::NaiveDateTime>,
   pub extra_user_id: Option<String>,
   pub verified: bool,
   pub private_seeds: Option<String>,
@@ -37,7 +38,6 @@ pub struct Person {
   pub dap_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
-  pub ban_expires: Option<chrono::NaiveDateTime>,
 }
 
 /// A safe representation of person, without the sensitive info
@@ -62,6 +62,7 @@ pub struct PersonSafe {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub ban_expires: Option<chrono::NaiveDateTime>,
   pub verified: bool,
   pub pi_address: Option<String>,
   pub web3_address: Option<String>,
@@ -69,7 +70,6 @@ pub struct PersonSafe {
   pub dap_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
-  pub ban_expires: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -96,6 +96,7 @@ pub struct PersonAlias1 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub ban_expires: Option<chrono::NaiveDateTime>,
   pub verified: bool,
   //pub private_seeds: Option<String>,
   pub pi_address: Option<String>,
@@ -104,7 +105,6 @@ pub struct PersonAlias1 {
   pub dap_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
-  pub ban_expires: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -128,6 +128,7 @@ pub struct PersonSafeAlias1 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub ban_expires: Option<chrono::NaiveDateTime>,
   pub verified: bool,
   pub pi_address: Option<String>,
   pub web3_address: Option<String>,
@@ -135,7 +136,6 @@ pub struct PersonSafeAlias1 {
   pub dap_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
-  pub ban_expires: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -162,6 +162,7 @@ pub struct PersonAlias2 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub ban_expires: Option<chrono::NaiveDateTime>,
   pub verified: bool,
   //pub private_seeds: Option<String>,
   pub pi_address: Option<String>,
@@ -170,7 +171,6 @@ pub struct PersonAlias2 {
   pub dap_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
-  pub ban_expires: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -194,6 +194,7 @@ pub struct PersonSafeAlias2 {
   pub matrix_user_id: Option<String>,
   pub admin: bool,
   pub bot_account: bool,
+  pub ban_expires: Option<chrono::NaiveDateTime>,
   pub verified: bool,
   pub pi_address: Option<String>,
   pub web3_address: Option<String>,
@@ -201,7 +202,6 @@ pub struct PersonSafeAlias2 {
   pub dap_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
-  pub ban_expires: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Clone, Default)]
@@ -227,6 +227,7 @@ pub struct PersonForm {
   pub matrix_user_id: Option<Option<String>>,
   pub admin: Option<bool>,
   pub bot_account: Option<bool>,
+  pub ban_expires: Option<Option<chrono::NaiveDateTime>>,
   pub extra_user_id: Option<String>,
   pub verified: bool,
   pub private_seeds: Option<Option<String>>,
@@ -236,5 +237,4 @@ pub struct PersonForm {
   pub dap_address: Option<Option<String>>,
   pub cert: Option<Option<String>>,
   pub tx : Option<Option<String>>,
-  pub ban_expires: Option<Option<chrono::NaiveDateTime>>,
 }

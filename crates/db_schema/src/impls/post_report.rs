@@ -9,6 +9,7 @@ use diesel::{dsl::*, result::Error, *};
 impl Reportable for PostReport {
   type Form = PostReportForm;
   type IdType = PostReportId;
+
   /// creates a post report and returns it
   ///
   /// * `conn` - the postgres connection

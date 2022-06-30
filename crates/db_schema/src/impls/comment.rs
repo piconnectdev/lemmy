@@ -132,12 +132,12 @@ impl Comment {
 impl Crud for Comment {
   type Form = CommentForm;
   type IdType = CommentId;
-  fn read(conn: &PgConnection, comment_id: CommentId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, comment_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::comment::dsl::*;
     comment.find(comment_id).first::<Self>(conn)
   }
 
-  fn delete(conn: &PgConnection, comment_id: CommentId) -> Result<usize, Error> {
+  fn delete(conn: &PgConnection, comment_id: Self::IdType) -> Result<usize, Error> {
     use crate::schema::comment::dsl::*;
     diesel::delete(comment.find(comment_id)).execute(conn)
   }
@@ -151,7 +151,7 @@ impl Crud for Comment {
 
   fn update(
     conn: &PgConnection,
-    comment_id: CommentId,
+    comment_id: Self::IdType,
     comment_form: &CommentForm,
   ) -> Result<Self, Error> {
     use crate::schema::comment::dsl::*;

@@ -1,6 +1,6 @@
 use crate::sensitive::Sensitive;
 use lemmy_db_schema::{
-  newtypes::{CommentId, CommunityId, PersonId, PostId},
+  newtypes::{CommentId, CommunityId, PersonId, PostId, *},
   ListingType,
   SearchType,
   SortType,
@@ -44,7 +44,6 @@ pub struct Search {
   pub q: String,
   pub community_id: Option<String>,
   pub community_name: Option<String>,
-
   pub creator_id: Option<String>,
   // pub type_: Option<String>,
   // pub sort: Option<String>,
@@ -241,7 +240,7 @@ pub struct ListRegistrationApplicationsResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ApproveRegistrationApplication {
-  pub id: i32,
+  pub id: RegistrationApplicationId,
   pub approve: bool,
   pub deny_reason: Option<String>,
   pub auth: String,

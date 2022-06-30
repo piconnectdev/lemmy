@@ -77,12 +77,12 @@ mod safe_type {
 impl Crud for Community {
   type Form = CommunityForm;
   type IdType = CommunityId;
-  fn read(conn: &PgConnection, community_id: CommunityId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, community_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::community::dsl::*;
     community.find(community_id).first::<Self>(conn)
   }
 
-  fn delete(conn: &PgConnection, community_id: CommunityId) -> Result<usize, Error> {
+  fn delete(conn: &PgConnection, community_id: Self::IdType) -> Result<usize, Error> {
     use crate::schema::community::dsl::*;
     diesel::delete(community.find(community_id)).execute(conn)
   }
@@ -96,7 +96,7 @@ impl Crud for Community {
 
   fn update(
     conn: &PgConnection,
-    community_id: CommunityId,
+    community_id: Self::IdType,
     new_community: &CommunityForm,
   ) -> Result<Self, Error> {
     use crate::schema::community::dsl::*;

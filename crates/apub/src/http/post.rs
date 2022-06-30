@@ -23,6 +23,8 @@ pub(crate) async fn get_apub_post(
   info: web::Path<PostQuery>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse, LemmyError> {
+  /// TODO: DinhHa 
+  /// Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()
   let id = PostId(info.post_id.parse::<i32>()?);
   let post: ApubPost = blocking(context.pool(), move |conn| Post::read(conn, id))
     .await??

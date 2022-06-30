@@ -1,4 +1,4 @@
-use crate::newtypes::LocalUserId;
+use crate::newtypes::{LocalUserId, EmailVerificationId};
 
 #[cfg(feature = "full")]
 use crate::schema::email_verification;
@@ -7,7 +7,7 @@ use crate::schema::email_verification;
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "email_verification")]
 pub struct EmailVerification {
-  pub id: i32,
+  pub id: EmailVerificationId,
   pub local_user_id: LocalUserId,
   pub email: String,
   pub verification_code: String,

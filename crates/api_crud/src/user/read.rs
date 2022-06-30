@@ -37,6 +37,7 @@ impl PerformCrud for GetPersonDetails {
       .as_ref()
       .map(|t| t.local_user.show_read_posts);
 
+	/// TODO: DinhHa check read by id
     let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
 
     /// TODO: person_id may be name.

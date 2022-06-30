@@ -26,6 +26,7 @@ impl fmt::Display for PostId {
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PersonId(pub Uuid);
+
 impl fmt::Display for PersonId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
@@ -33,7 +34,7 @@ impl fmt::Display for PersonId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommentId(pub Uuid);
 
 impl fmt::Display for CommentId {
@@ -43,7 +44,7 @@ impl fmt::Display for CommentId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommunityId(pub Uuid);
 
 impl fmt::Display for CommunityId {
@@ -53,7 +54,7 @@ impl fmt::Display for CommunityId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct LocalUserId(pub Uuid);
 
 impl fmt::Display for LocalUserId {
@@ -63,7 +64,7 @@ impl fmt::Display for LocalUserId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PrivateMessageId(Uuid);
 
 impl fmt::Display for PrivateMessageId {
@@ -73,7 +74,7 @@ impl fmt::Display for PrivateMessageId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PersonMentionId(pub Uuid);
 
 impl fmt::Display for PersonMentionId {
@@ -83,7 +84,7 @@ impl fmt::Display for PersonMentionId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PersonBlockId(Uuid);
 
 impl fmt::Display for PersonBlockId {
@@ -94,8 +95,9 @@ impl fmt::Display for PersonBlockId {
 
 //#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, DieselNewType)]
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommunityBlockId(pub Uuid);
+
 impl fmt::Display for CommunityBlockId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
@@ -113,7 +115,7 @@ impl fmt::Display for CommentReportId {
 }
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
-//#[cfg_attr(feature = "full", derive(DieselNewType))]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PostReportId(pub Uuid);
 
 impl fmt::Display for PostReportId {
@@ -122,7 +124,8 @@ impl fmt::Display for PostReportId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ActivityId(pub Uuid);
 
 impl fmt::Display for ActivityId {
@@ -131,7 +134,8 @@ impl fmt::Display for ActivityId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PostLikeId(pub Uuid);
 
 impl fmt::Display for PostLikeId {
@@ -140,7 +144,8 @@ impl fmt::Display for PostLikeId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PostSaveId(pub Uuid);
 
 impl fmt::Display for PostSaveId {
@@ -149,7 +154,8 @@ impl fmt::Display for PostSaveId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PostReadId(pub Uuid);
 
 impl fmt::Display for PostReadId {
@@ -159,8 +165,8 @@ impl fmt::Display for PostReadId {
 }
 
 
-
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommentLikeId(pub Uuid);
 
 impl fmt::Display for CommentLikeId {
@@ -169,7 +175,8 @@ impl fmt::Display for CommentLikeId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommentSavedId(pub Uuid);
 
 impl fmt::Display for CommentSavedId {
@@ -178,7 +185,8 @@ impl fmt::Display for CommentSavedId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommentAggregatesId(pub Uuid);
 
 impl fmt::Display for CommentAggregatesId {
@@ -187,7 +195,8 @@ impl fmt::Display for CommentAggregatesId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommunityFollowerId(pub Uuid);
 
 impl fmt::Display for CommunityFollowerId {
@@ -196,7 +205,8 @@ impl fmt::Display for CommunityFollowerId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommunityModeratorId(pub Uuid);
 
 impl fmt::Display for CommunityModeratorId {
@@ -205,7 +215,8 @@ impl fmt::Display for CommunityModeratorId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommunityPersonBanId(pub Uuid);
 
 impl fmt::Display for CommunityPersonBanId {
@@ -214,7 +225,8 @@ impl fmt::Display for CommunityPersonBanId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommunityAggregatesId(pub Uuid);
 
 impl fmt::Display for CommunityAggregatesId {
@@ -223,7 +235,8 @@ impl fmt::Display for CommunityAggregatesId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PersonAggregatesId(pub Uuid);
 
 impl fmt::Display for PersonAggregatesId {
@@ -232,7 +245,8 @@ impl fmt::Display for PersonAggregatesId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PostAggregatesId(pub Uuid);
 
 impl fmt::Display for PostAggregatesId {
@@ -241,7 +255,8 @@ impl fmt::Display for PostAggregatesId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize,)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct SiteAggregatesId(pub Uuid);
 
 impl fmt::Display for SiteAggregatesId {
@@ -250,7 +265,8 @@ impl fmt::Display for SiteAggregatesId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModRemovePostId(pub Uuid);
 
 impl fmt::Display for ModRemovePostId {
@@ -259,7 +275,8 @@ impl fmt::Display for ModRemovePostId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModLockPostId(pub Uuid);
 
 impl fmt::Display for ModLockPostId {
@@ -268,7 +285,8 @@ impl fmt::Display for ModLockPostId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModStickyPostId(pub Uuid);
 
 impl fmt::Display for ModStickyPostId {
@@ -277,7 +295,8 @@ impl fmt::Display for ModStickyPostId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModRemoveCommentId(pub Uuid);
 
 impl fmt::Display for ModRemoveCommentId {
@@ -286,7 +305,8 @@ impl fmt::Display for ModRemoveCommentId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModRemoveCommunityId(pub Uuid);
 
 impl fmt::Display for ModRemoveCommunityId {
@@ -295,7 +315,8 @@ impl fmt::Display for ModRemoveCommunityId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModBanFromCommunityId(pub Uuid);
 
 impl fmt::Display for ModBanFromCommunityId {
@@ -304,7 +325,18 @@ impl fmt::Display for ModBanFromCommunityId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct ModHideCommunityId(pub Uuid);
+
+impl fmt::Display for ModHideCommunityId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModAddCommunityId(pub Uuid);
 
 impl fmt::Display for ModAddCommunityId {
@@ -313,7 +345,8 @@ impl fmt::Display for ModAddCommunityId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModBanId(pub Uuid);
 
 impl fmt::Display for ModBanId {
@@ -322,7 +355,8 @@ impl fmt::Display for ModBanId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModAddId(pub Uuid);
 
 impl fmt::Display for ModAddId {
@@ -331,7 +365,8 @@ impl fmt::Display for ModAddId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModTransferCommunityId(pub Uuid);
 
 impl fmt::Display for ModTransferCommunityId {
@@ -340,7 +375,58 @@ impl fmt::Display for ModTransferCommunityId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct AdminPurgePersonId(pub Uuid);
+
+impl fmt::Display for AdminPurgePersonId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct AdminPurgeCommunityId(pub Uuid);
+
+impl fmt::Display for AdminPurgeCommunityId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct AdminPurgePostId(pub Uuid);
+
+impl fmt::Display for AdminPurgePostId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct AdminPurgeCommentId(pub Uuid);
+
+impl fmt::Display for AdminPurgeCommentId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct EmailVerificationId(pub Uuid);
+
+impl fmt::Display for EmailVerificationId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PasswordResetId(pub Uuid);
 
 impl fmt::Display for PasswordResetId {
@@ -349,7 +435,8 @@ impl fmt::Display for PasswordResetId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct RegistrationApplicationId(pub Uuid);
 
 impl fmt::Display for RegistrationApplicationId {
@@ -358,7 +445,18 @@ impl fmt::Display for RegistrationApplicationId {
   }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct SecretId(pub Uuid);
+
+impl fmt::Display for SecretId	{
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PaymentId(pub Uuid);
 
 impl fmt::Display for PaymentId {
@@ -371,7 +469,9 @@ impl fmt::Display for PaymentId {
   PiPaymentId from Pi Network SDK
 */
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+//#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PiPaymentId(pub String);
 
 impl fmt::Display for PiPaymentId {
@@ -383,7 +483,8 @@ impl fmt::Display for PiPaymentId {
 /*
   PiUserId from Pi Network SDK
 */
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PiUserId(pub Uuid);
 
 impl fmt::Display for PiUserId {

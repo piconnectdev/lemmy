@@ -46,6 +46,7 @@ impl Perform for CommunityJoin {
     let data: &CommunityJoin = self;
 
     if let Some(ws_id) = websocket_id {
+      /// TODO: DinhHa check
       // let community_id = match Uuid::parse_str(&data.community_id.clone()) {
       //   Ok(uid) => {
       //       CommunityId(uid)

@@ -96,10 +96,10 @@ table! {
         followers_url -> Varchar,
         inbox_url -> Varchar,
         shared_inbox_url -> Nullable<Varchar>,
-        cert -> Nullable<Text>,
-        tx -> Nullable<Text>,
         hidden -> Bool,
         posting_restricted_to_mods -> Bool,
+		cert -> Nullable<Text>,
+        tx -> Nullable<Text>,        
     }
 }
 
@@ -312,7 +312,8 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
-        extra_user_id -> Nullable<Text>,
+        ban_expires -> Nullable<Timestamp>,		
+		extra_user_id -> Nullable<Text>,
         verified -> Bool,
         private_seeds -> Nullable<Text>,
         pi_address -> Nullable<Text>,
@@ -320,8 +321,7 @@ table! {
         sol_address -> Nullable<Text>,
         dap_address -> Nullable<Text>,   
         cert -> Nullable<Text>,
-        tx -> Nullable<Text>,
-        ban_expires -> Nullable<Timestamp>,
+        tx -> Nullable<Text>,        
     }
 }
 
@@ -463,7 +463,7 @@ table! {
         id -> BigInt,
         name -> Varchar,
         sidebar -> Nullable<Text>,
-        creator_id -> Uuid,
+        //creator_id -> Uuid,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
         enable_downvotes -> Bool,
@@ -491,7 +491,7 @@ table! {
 table! {
     site_aggregates (id) {
         id -> Uuid,
-        site_id -> Int8,
+        site_id -> BigInt,
         users -> Int8,
         posts -> Int8,
         comments -> Int8,
@@ -611,16 +611,16 @@ table! {
 
 table! {
   secret(id) {
-    id -> Int4,
+    id -> Uuid,
     jwt_secret -> Varchar,
   }
 }
 
 table! {
   admin_purge_comment (id) {
-    id -> Int4,
-    admin_person_id -> Int4,
-    post_id -> Int4,
+    id -> Uuid,
+    admin_person_id -> Uuid,
+    post_id -> Uuid,
     reason -> Nullable<Text>,
     when_ -> Timestamp,
   }
@@ -628,8 +628,8 @@ table! {
 
 table! {
   email_verification (id) {
-    id -> Int4,
-    local_user_id -> Int4,
+    id -> Uuid,
+    local_user_id -> Uuid,
     email -> Text,
     verification_token -> Varchar,
     published -> Timestamp,
@@ -638,8 +638,8 @@ table! {
 
 table! {
   admin_purge_community (id) {
-    id -> Int4,
-    admin_person_id -> Int4,
+    id -> Uuid,
+    admin_person_id -> Uuid,
     reason -> Nullable<Text>,
     when_ -> Timestamp,
   }
@@ -647,8 +647,8 @@ table! {
 
 table! {
   admin_purge_person (id) {
-    id -> Int4,
-    admin_person_id -> Int4,
+    id -> Uuid,
+    admin_person_id -> Uuid,
     reason -> Nullable<Text>,
     when_ -> Timestamp,
   }
@@ -656,9 +656,9 @@ table! {
 
 table! {
   admin_purge_post (id) {
-    id -> Int4,
-    admin_person_id -> Int4,
-    community_id -> Int4,
+    id -> Uuid,
+    admin_person_id -> Uuid,
+    community_id -> Uuid,
     reason -> Nullable<Text>,
     when_ -> Timestamp,
   }
@@ -666,10 +666,10 @@ table! {
 
 table! {
     registration_application (id) {
-        id -> Int4,
-        local_user_id -> Int4,
+        id -> Uuid,
+        local_user_id -> Uuid,
         answer -> Text,
-        admin_id -> Nullable<Int4>,
+        admin_id -> Nullable<Uuid>,
         deny_reason -> Nullable<Text>,
         published -> Timestamp,
     }
@@ -677,9 +677,9 @@ table! {
 
 table! {
     mod_hide_community (id) {
-        id -> Int4,
-        community_id -> Int4,
-        mod_person_id -> Int4,
+        id -> Uuid,
+        community_id -> Uuid,
+        mod_person_id -> Uuid,
         reason -> Nullable<Text>,
         hidden -> Nullable<Bool>,
         when_ -> Timestamp,

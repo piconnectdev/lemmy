@@ -1,13 +1,4 @@
-use crate::newtypes::{CommentId, CommunityId, PersonId, PostId, ModRemovePostId,
-  ModLockPostId,
-  ModStickyPostId,
-  ModRemoveCommentId,
-  ModRemoveCommunityId,
-  ModBanFromCommunityId,
-  ModAddCommunityId,
-  ModBanId,
-  ModAddId,
-  ModTransferCommunityId,};
+use crate::newtypes::{CommentId, CommunityId, PersonId, PostId, *};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "full")]
@@ -182,7 +173,7 @@ pub struct ModHideCommunityForm {
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "mod_hide_community")]
 pub struct ModHideCommunity {
-  pub id: i32,
+  pub id: ModHideCommunityId,
   pub community_id: CommunityId,
   pub mod_person_id: PersonId,
   pub reason: Option<String>,
@@ -265,7 +256,7 @@ pub struct ModAddForm {
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "admin_purge_person")]
 pub struct AdminPurgePerson {
-  pub id: i32,
+  pub id: AdminPurgePersonId,
   pub admin_person_id: PersonId,
   pub reason: Option<String>,
   pub when_: chrono::NaiveDateTime,
@@ -282,7 +273,7 @@ pub struct AdminPurgePersonForm {
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "admin_purge_community")]
 pub struct AdminPurgeCommunity {
-  pub id: i32,
+  pub id: AdminPurgeCommunityId,
   pub admin_person_id: PersonId,
   pub reason: Option<String>,
   pub when_: chrono::NaiveDateTime,
@@ -299,7 +290,7 @@ pub struct AdminPurgeCommunityForm {
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "admin_purge_post")]
 pub struct AdminPurgePost {
-  pub id: i32,
+  pub id: AdminPurgePostId,
   pub admin_person_id: PersonId,
   pub community_id: CommunityId,
   pub reason: Option<String>,
@@ -318,7 +309,7 @@ pub struct AdminPurgePostForm {
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "admin_purge_comment")]
 pub struct AdminPurgeComment {
-  pub id: i32,
+  pub id: AdminPurgeCommentId,
   pub admin_person_id: PersonId,
   pub post_id: PostId,
   pub reason: Option<String>,

@@ -5,7 +5,7 @@ use crate::{newtypes::*,source::moderator::*};
 impl Crud for ModRemovePost {
   type Form = ModRemovePostForm;
   type IdType = ModRemovePostId;
-  fn read(conn: &PgConnection, from_id: ModRemovePostId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_remove_post::dsl::*;
     mod_remove_post.find(from_id).first::<Self>(conn)
   }
@@ -17,7 +17,7 @@ impl Crud for ModRemovePost {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: ModRemovePostId, form: &ModRemovePostForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModRemovePostForm) -> Result<Self, Error> {
     use crate::schema::mod_remove_post::dsl::*;
     diesel::update(mod_remove_post.find(from_id))
       .set(form)
@@ -28,7 +28,7 @@ impl Crud for ModRemovePost {
 impl Crud for ModLockPost {
   type Form = ModLockPostForm;
   type IdType = ModLockPostId;
-  fn read(conn: &PgConnection, from_id: ModLockPostId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_lock_post::dsl::*;
     mod_lock_post.find(from_id).first::<Self>(conn)
   }
@@ -40,7 +40,7 @@ impl Crud for ModLockPost {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: ModLockPostId, form: &ModLockPostForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModLockPostForm) -> Result<Self, Error> {
     use crate::schema::mod_lock_post::dsl::*;
     diesel::update(mod_lock_post.find(from_id))
       .set(form)
@@ -51,7 +51,7 @@ impl Crud for ModLockPost {
 impl Crud for ModStickyPost {
   type Form = ModStickyPostForm;
   type IdType = ModStickyPostId;
-  fn read(conn: &PgConnection, from_id: ModStickyPostId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_sticky_post::dsl::*;
     mod_sticky_post.find(from_id).first::<Self>(conn)
   }
@@ -63,7 +63,7 @@ impl Crud for ModStickyPost {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: ModStickyPostId, form: &ModStickyPostForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModStickyPostForm) -> Result<Self, Error> {
     use crate::schema::mod_sticky_post::dsl::*;
     diesel::update(mod_sticky_post.find(from_id))
       .set(form)
@@ -74,7 +74,7 @@ impl Crud for ModStickyPost {
 impl Crud for ModRemoveComment {
   type Form = ModRemoveCommentForm;
   type IdType = ModRemoveCommentId;
-  fn read(conn: &PgConnection, from_id: ModRemoveCommentId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_remove_comment::dsl::*;
     mod_remove_comment.find(from_id).first::<Self>(conn)
   }
@@ -86,7 +86,7 @@ impl Crud for ModRemoveComment {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: ModRemoveCommentId, form: &ModRemoveCommentForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModRemoveCommentForm) -> Result<Self, Error> {
     use crate::schema::mod_remove_comment::dsl::*;
     diesel::update(mod_remove_comment.find(from_id))
       .set(form)
@@ -97,7 +97,7 @@ impl Crud for ModRemoveComment {
 impl Crud for ModRemoveCommunity {
   type Form = ModRemoveCommunityForm;
   type IdType = ModRemoveCommunityId;
-  fn read(conn: &PgConnection, from_id: ModRemoveCommunityId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_remove_community::dsl::*;
     mod_remove_community.find(from_id).first::<Self>(conn)
   }
@@ -111,7 +111,7 @@ impl Crud for ModRemoveCommunity {
 
   fn update(
     conn: &PgConnection,
-    from_id: ModRemoveCommunityId,
+    from_id: Self::IdType,
     form: &ModRemoveCommunityForm,
   ) -> Result<Self, Error> {
     use crate::schema::mod_remove_community::dsl::*;
@@ -124,7 +124,7 @@ impl Crud for ModRemoveCommunity {
 impl Crud for ModBanFromCommunity {
   type Form = ModBanFromCommunityForm;
   type IdType = ModBanFromCommunityId;
-  fn read(conn: &PgConnection, from_id: ModBanFromCommunityId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_ban_from_community::dsl::*;
     mod_ban_from_community.find(from_id).first::<Self>(conn)
   }
@@ -138,7 +138,7 @@ impl Crud for ModBanFromCommunity {
 
   fn update(
     conn: &PgConnection,
-    from_id: ModBanFromCommunityId,
+    from_id: Self::IdType,
     form: &ModBanFromCommunityForm,
   ) -> Result<Self, Error> {
     use crate::schema::mod_ban_from_community::dsl::*;
@@ -151,7 +151,7 @@ impl Crud for ModBanFromCommunity {
 impl Crud for ModBan {
   type Form = ModBanForm;
   type IdType = ModBanId;
-  fn read(conn: &PgConnection, from_id: ModBanId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_ban::dsl::*;
     mod_ban.find(from_id).first::<Self>(conn)
   }
@@ -161,7 +161,7 @@ impl Crud for ModBan {
     insert_into(mod_ban).values(form).get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: ModBanId, form: &ModBanForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModBanForm) -> Result<Self, Error> {
     use crate::schema::mod_ban::dsl::*;
     diesel::update(mod_ban.find(from_id))
       .set(form)
@@ -171,9 +171,9 @@ impl Crud for ModBan {
 
 impl Crud for ModHideCommunity {
   type Form = ModHideCommunityForm;
-  type IdType = i32;
+  type IdType = ModHideCommunityId;
 
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_hide_community::dsl::*;
     mod_hide_community.find(from_id).first::<Self>(conn)
   }
@@ -185,7 +185,7 @@ impl Crud for ModHideCommunity {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &ModHideCommunityForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModHideCommunityForm) -> Result<Self, Error> {
     use crate::schema::mod_hide_community::dsl::*;
     diesel::update(mod_hide_community.find(from_id))
       .set(form)
@@ -196,7 +196,7 @@ impl Crud for ModHideCommunity {
 impl Crud for ModAddCommunity {
   type Form = ModAddCommunityForm;
   type IdType = ModAddCommunityId;
-  fn read(conn: &PgConnection, from_id: ModAddCommunityId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_add_community::dsl::*;
     mod_add_community.find(from_id).first::<Self>(conn)
   }
@@ -208,7 +208,7 @@ impl Crud for ModAddCommunity {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: ModAddCommunityId, form: &ModAddCommunityForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModAddCommunityForm) -> Result<Self, Error> {
     use crate::schema::mod_add_community::dsl::*;
     diesel::update(mod_add_community.find(from_id))
       .set(form)
@@ -219,7 +219,7 @@ impl Crud for ModAddCommunity {
 impl Crud for ModTransferCommunity {
   type Form = ModTransferCommunityForm;
   type IdType = ModTransferCommunityId;
-  fn read(conn: &PgConnection, from_id: ModTransferCommunityId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_transfer_community::dsl::*;
     mod_transfer_community.find(from_id).first::<Self>(conn)
   }
@@ -233,7 +233,7 @@ impl Crud for ModTransferCommunity {
 
   fn update(
     conn: &PgConnection,
-    from_id: ModTransferCommunityId,
+    from_id: Self::IdType,
     form: &ModTransferCommunityForm,
   ) -> Result<Self, Error> {
     use crate::schema::mod_transfer_community::dsl::*;
@@ -246,7 +246,7 @@ impl Crud for ModTransferCommunity {
 impl Crud for ModAdd {
   type Form = ModAddForm;
   type IdType = ModAddId;
-  fn read(conn: &PgConnection, from_id: ModAddId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::mod_add::dsl::*;
     mod_add.find(from_id).first::<Self>(conn)
   }
@@ -256,7 +256,7 @@ impl Crud for ModAdd {
     insert_into(mod_add).values(form).get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: ModAddId, form: &ModAddForm) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &ModAddForm) -> Result<Self, Error> {
     use crate::schema::mod_add::dsl::*;
     diesel::update(mod_add.find(from_id))
       .set(form)
@@ -266,8 +266,8 @@ impl Crud for ModAdd {
 
 impl Crud for AdminPurgePerson {
   type Form = AdminPurgePersonForm;
-  type IdType = i32;
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+  type IdType = AdminPurgePersonId;
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::admin_purge_person::dsl::*;
     admin_purge_person.find(from_id).first::<Self>(conn)
   }
@@ -279,7 +279,7 @@ impl Crud for AdminPurgePerson {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &Self::Form) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &Self::Form) -> Result<Self, Error> {
     use crate::schema::admin_purge_person::dsl::*;
     diesel::update(admin_purge_person.find(from_id))
       .set(form)
@@ -289,8 +289,8 @@ impl Crud for AdminPurgePerson {
 
 impl Crud for AdminPurgeCommunity {
   type Form = AdminPurgeCommunityForm;
-  type IdType = i32;
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+  type IdType = AdminPurgeCommunityId;
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::admin_purge_community::dsl::*;
     admin_purge_community.find(from_id).first::<Self>(conn)
   }
@@ -302,7 +302,7 @@ impl Crud for AdminPurgeCommunity {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &Self::Form) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &Self::Form) -> Result<Self, Error> {
     use crate::schema::admin_purge_community::dsl::*;
     diesel::update(admin_purge_community.find(from_id))
       .set(form)
@@ -312,8 +312,8 @@ impl Crud for AdminPurgeCommunity {
 
 impl Crud for AdminPurgePost {
   type Form = AdminPurgePostForm;
-  type IdType = i32;
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+  type IdType = AdminPurgePostId;
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::admin_purge_post::dsl::*;
     admin_purge_post.find(from_id).first::<Self>(conn)
   }
@@ -325,7 +325,7 @@ impl Crud for AdminPurgePost {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &Self::Form) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &Self::Form) -> Result<Self, Error> {
     use crate::schema::admin_purge_post::dsl::*;
     diesel::update(admin_purge_post.find(from_id))
       .set(form)
@@ -335,8 +335,8 @@ impl Crud for AdminPurgePost {
 
 impl Crud for AdminPurgeComment {
   type Form = AdminPurgeCommentForm;
-  type IdType = i32;
-  fn read(conn: &PgConnection, from_id: i32) -> Result<Self, Error> {
+  type IdType = AdminPurgeCommentId;
+  fn read(conn: &PgConnection, from_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::admin_purge_comment::dsl::*;
     admin_purge_comment.find(from_id).first::<Self>(conn)
   }
@@ -348,7 +348,7 @@ impl Crud for AdminPurgeComment {
       .get_result::<Self>(conn)
   }
 
-  fn update(conn: &PgConnection, from_id: i32, form: &Self::Form) -> Result<Self, Error> {
+  fn update(conn: &PgConnection, from_id: Self::IdType, form: &Self::Form) -> Result<Self, Error> {
     use crate::schema::admin_purge_comment::dsl::*;
     diesel::update(admin_purge_comment.find(from_id))
       .set(form)

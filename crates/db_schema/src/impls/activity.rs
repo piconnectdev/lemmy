@@ -9,7 +9,7 @@ use serde_json::Value;
 impl Crud for Activity {
   type Form = ActivityForm;
   type IdType = ActivityId;
-  fn read(conn: &PgConnection, activity_id: ActivityId) -> Result<Self, Error> {
+  fn read(conn: &PgConnection, activity_id: Self::IdType) -> Result<Self, Error> {
     use crate::schema::activity::dsl::*;
     activity.find(activity_id).first::<Self>(conn)
   }
@@ -23,7 +23,7 @@ impl Crud for Activity {
 
   fn update(
     conn: &PgConnection,
-    activity_id: ActivityId,
+    activity_id: Self::IdType,
     new_activity: &ActivityForm,
   ) -> Result<Self, Error> {
     use crate::schema::activity::dsl::*;
@@ -31,7 +31,7 @@ impl Crud for Activity {
       .set(new_activity)
       .get_result::<Self>(conn)
   }
-  fn delete(conn: &PgConnection, activity_id: ActivityId) -> Result<usize, Error> {
+  fn delete(conn: &PgConnection, activity_id: Self::IdType) -> Result<usize, Error> {
     use crate::schema::activity::dsl::*;
     diesel::delete(activity.find(activity_id)).execute(conn)
   }

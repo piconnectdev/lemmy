@@ -56,7 +56,7 @@ impl PerformCrud for DeleteComment {
 
     // Do the delete
     let deleted = data.deleted;
-    let mut updated_comment = blocking(context.pool(), move |conn| {
+    let updated_comment = blocking(context.pool(), move |conn| {
       Comment::update_deleted(conn, comment_id, deleted)
     })
     .await?

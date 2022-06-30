@@ -174,6 +174,7 @@ impl PerformCrud for Register {
       }
     };
 
+	/// TODO: DinhHa check
     let main_community_keypair = generate_actor_keypair()?;
 
     // Create the main community if it doesn't exist

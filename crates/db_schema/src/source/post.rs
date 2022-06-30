@@ -1,4 +1,4 @@
-use crate::newtypes::{CommunityId, DbUrl, PersonId, PostId, PostLikeId, PostSaveId, PostReadId};
+use crate::newtypes::{CommunityId, DbUrl, PersonId, PostId, *};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "full")]

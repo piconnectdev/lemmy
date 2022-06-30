@@ -29,7 +29,7 @@ use lemmy_db_schema::{
   utils::{functions::hot_rank, limit_and_offset},
   SortType,
 };
-
+use uuid::Uuid;
 type PersonMentionViewTuple = (
   PersonMention,
   Comment,

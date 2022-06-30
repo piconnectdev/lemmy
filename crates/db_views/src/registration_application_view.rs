@@ -19,7 +19,7 @@ type RegistrationApplicationViewTuple = (
 );
 
 impl RegistrationApplicationView {
-  pub fn read(conn: &PgConnection, registration_application_id: i32) -> Result<Self, Error> {
+  pub fn read(conn: &PgConnection, registration_application_id: RegistrationApplicationId) -> Result<Self, Error> {
     let (registration_application, creator_local_user, creator, admin) =
       registration_application::table
         .find(registration_application_id)

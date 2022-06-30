@@ -17,8 +17,8 @@ pub struct RegistrationApplication {
 }
 
 #[derive(Default)]
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-//#[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
+//#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
 #[cfg_attr(feature = "full", table_name = "registration_application")]
 pub struct RegistrationApplicationForm {
   pub local_user_id: Option<LocalUserId>,
