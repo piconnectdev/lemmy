@@ -1,14 +1,8 @@
-use diesel::{result::Error, *};
-use lemmy_db_queries::{
-  aggregates::comment_aggregates::CommentAggregates,
-  functions::hot_rank,
-  limit_and_offset,
-  MaybeOptional,
-  SortType,
-  ToSafe,
-  ViewToVec,
-};
+use crate::structs::PersonMentionView;
+use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{
+  aggregates::structs::CommentAggregates,
+  newtypes::{PersonId, PersonMentionId},
   schema::{
     comment,
     comment_aggregates,
@@ -31,27 +25,10 @@ use lemmy_db_schema::{
     person_mention::PersonMention,
     post::Post,
   },
-  PersonId,
-  PersonMentionId,
+  traits::{MaybeOptional, ToSafe, ViewToVec},
+  utils::{functions::hot_rank, limit_and_offset},
+  SortType,
 };
-use serde::Serialize;
-use uuid::Uuid;
-
-#[derive(Debug, PartialEq, Serialize, Clone)]
-pub struct PersonMentionView {
-  pub person_mention: PersonMention,
-  pub comment: Comment,
-  pub creator: PersonSafe,
-  pub post: Post,
-  pub community: CommunitySafe,
-  pub recipient: PersonSafeAlias1,
-  pub counts: CommentAggregates,
-  pub creator_banned_from_community: bool, // Left Join to CommunityPersonBan
-  pub subscribed: bool,                    // Left join to CommunityFollower
-  pub saved: bool,                         // Left join to CommentSaved
-  pub creator_blocked: bool,               // Left join to PersonBlock
-  pub my_vote: Option<i16>,                // Left join to CommentLike
-}
 
 type PersonMentionViewTuple = (
   PersonMention,
@@ -87,7 +64,7 @@ impl PersonMentionView {
       recipient,
       counts,
       creator_banned_from_community,
-      subscribed,
+      follower,
       saved,
       creator_blocked,
       my_vote,
@@ -103,7 +80,12 @@ impl PersonMentionView {
         community_person_ban::table.on(
           community::id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(comment::creator_id)),
+            .and(community_person_ban::person_id.eq(comment::creator_id))
+            .and(
+              community_person_ban::expires
+                .is_null()
+                .or(community_person_ban::expires.gt(now)),
+            ),
         ),
       )
       .left_join(
@@ -159,11 +141,22 @@ impl PersonMentionView {
       recipient,
       counts,
       creator_banned_from_community: creator_banned_from_community.is_some(),
-      subscribed: subscribed.is_some(),
+      subscribed: CommunityFollower::to_subscribed_type(&follower),
       saved: saved.is_some(),
       creator_blocked: creator_blocked.is_some(),
       my_vote,
     })
+  }
+
+  /// Gets the number of unread mentions
+  pub fn get_unread_mentions(conn: &PgConnection, my_person_id: PersonId) -> Result<i64, Error> {
+    use diesel::dsl::*;
+
+    person_mention::table
+      .filter(person_mention::recipient_id.eq(my_person_id))
+      .filter(person_mention::read.eq(false))
+      .select(count(person_mention::id))
+      .first::<i64>(conn)
   }
 }
 
@@ -238,7 +231,12 @@ impl<'a> PersonMentionQueryBuilder<'a> {
         community_person_ban::table.on(
           community::id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(comment::creator_id)),
+            .and(community_person_ban::person_id.eq(comment::creator_id))
+            .and(
+              community_person_ban::expires
+                .is_null()
+                .or(community_person_ban::expires.gt(now)),
+            ),
         ),
       )
       .left_join(
@@ -340,7 +338,7 @@ impl ViewToVec for PersonMentionView {
         recipient: a.5.to_owned(),
         counts: a.6.to_owned(),
         creator_banned_from_community: a.7.is_some(),
-        subscribed: a.8.is_some(),
+        subscribed: CommunityFollower::to_subscribed_type(&a.8),
         saved: a.9.is_some(),
         creator_blocked: a.10.is_some(),
         my_vote: a.11,

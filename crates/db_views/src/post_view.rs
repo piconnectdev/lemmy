@@ -1,16 +1,8 @@
-use diesel::{pg::Pg, result::Error, *};
-use lemmy_db_queries::{
-  aggregates::post_aggregates::PostAggregates,
-  functions::hot_rank,
-  fuzzy_search,
-  limit_and_offset,
-  ListingType,
-  MaybeOptional,
-  SortType,
-  ToSafe,
-  ViewToVec,
-};
+use crate::structs::PostView;
+use diesel::{dsl::*, pg::Pg, result::Error, *};
 use lemmy_db_schema::{
+  aggregates::structs::PostAggregates,
+  newtypes::{CommunityId, DbUrl, PersonId, PostId},
   schema::{
     community,
     community_block,
@@ -30,28 +22,12 @@ use lemmy_db_schema::{
     person_block::PersonBlock,
     post::{Post, PostRead, PostSaved},
   },
-  CommunityId,
-  DbUrl,
-  PersonId,
-  PostId,
+  traits::{MaybeOptional, ToSafe, ViewToVec},
+  utils::{functions::hot_rank, fuzzy_search, limit_and_offset},
+  ListingType,
+  SortType,
 };
-use log::debug;
-use serde::Serialize;
-use uuid::Uuid;
-
-#[derive(Debug, PartialEq, Serialize, Clone)]
-pub struct PostView {
-  pub post: Post,
-  pub creator: PersonSafe,
-  pub community: CommunitySafe,
-  pub creator_banned_from_community: bool, // Left Join to CommunityPersonBan
-  pub counts: PostAggregates,
-  pub subscribed: bool,      // Left join to CommunityFollower
-  pub saved: bool,           // Left join to PostSaved
-  pub read: bool,            // Left join to PostRead
-  pub creator_blocked: bool, // Left join to PersonBlock
-  pub my_vote: Option<i16>,  // Left join to PostLike
-}
+use tracing::debug;
 
 type PostViewTuple = (
   Post,
@@ -95,7 +71,12 @@ impl PostView {
         community_person_ban::table.on(
           post::community_id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(post::creator_id)),
+            .and(community_person_ban::person_id.eq(post::creator_id))
+            .and(
+              community_person_ban::expires
+                .is_null()
+                .or(community_person_ban::expires.gt(now)),
+            ),
         ),
       )
       .inner_join(post_aggregates::table)
@@ -162,7 +143,7 @@ impl PostView {
       community,
       creator_banned_from_community: creator_banned_from_community.is_some(),
       counts,
-      subscribed: follower.is_some(),
+      subscribed: CommunityFollower::to_subscribed_type(&follower),
       saved: saved.is_some(),
       read: read.is_some(),
       creator_blocked: creator_blocked.is_some(),
@@ -294,7 +275,12 @@ impl<'a> PostQueryBuilder<'a> {
         community_person_ban::table.on(
           post::community_id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(post::creator_id)),
+            .and(community_person_ban::person_id.eq(post::creator_id))
+            .and(
+              community_person_ban::expires
+                .is_null()
+                .or(community_person_ban::expires.gt(now)),
+            ),
         ),
       )
       .inner_join(post_aggregates::table)
@@ -355,17 +341,32 @@ impl<'a> PostQueryBuilder<'a> {
       .into_boxed();
 
     if let Some(listing_type) = self.listing_type {
-      query = match listing_type {
-        ListingType::Subscribed => query.filter(community_follower::person_id.is_not_null()),
-        ListingType::Local => query.filter(community::local.eq(true)),
-        _ => query,
-      };
-    }
-
-    if let Some(community_id) = self.community_id {
-      query = query
-        .filter(post::community_id.eq(community_id))
-        .then_order_by(post_aggregates::stickied.desc());
+      match listing_type {
+        ListingType::Subscribed => {
+          query = query.filter(community_follower::person_id.is_not_null())
+        }
+        ListingType::Local => {
+          query = query.filter(community::local.eq(true)).filter(
+            community::hidden
+              .eq(false)
+              .or(community_follower::person_id.eq(person_id_join)),
+          );
+        }
+        ListingType::All => {
+          query = query.filter(
+            community::hidden
+              .eq(false)
+              .or(community_follower::person_id.eq(person_id_join)),
+          )
+        }
+        ListingType::Community => {
+          if let Some(community_id) = self.community_id {
+            query = query
+              .filter(post::community_id.eq(community_id))
+              .then_order_by(post_aggregates::stickied.desc());
+          }
+        }
+      }
     }
 
     if let Some(community_actor_id) = self.community_actor_id {
@@ -402,13 +403,14 @@ impl<'a> PostQueryBuilder<'a> {
       query = query.filter(person::bot_account.eq(false));
     };
 
-    if !self.show_read_posts.unwrap_or(true) {
-      query = query.filter(post_read::id.is_null());
-    };
-
     if self.saved_only.unwrap_or(false) {
       query = query.filter(post_saved::id.is_not_null());
-    };
+    }
+    // Only hide the read posts, if the saved_only is false. Otherwise ppl with the hide_read
+    // setting wont be able to see saved posts.
+    else if !self.show_read_posts.unwrap_or(true) {
+      query = query.filter(post_read::id.is_null());
+    }
 
     // Don't show blocked communities or persons
     if self.my_person_id.is_some() {
@@ -430,21 +432,29 @@ impl<'a> PostQueryBuilder<'a> {
         .then_order_by(hot_rank(post_aggregates::score, post_aggregates::published).desc())
         .then_order_by(post_aggregates::published.desc()),
       SortType::New => query.then_order_by(post_aggregates::published.desc()),
-      SortType::MostComments => query.then_order_by(post_aggregates::comments.desc()),
       SortType::NewComments => query.then_order_by(post_aggregates::newest_comment_time.desc()),
-      SortType::TopAll => query.then_order_by(post_aggregates::score.desc()),
+      SortType::MostComments => query
+        .then_order_by(post_aggregates::comments.desc())
+        .then_order_by(post_aggregates::published.desc()),
+      SortType::TopAll => query
+        .then_order_by(post_aggregates::score.desc())
+        .then_order_by(post_aggregates::published.desc()),
       SortType::TopYear => query
-        .filter(post::published.gt(now - 1.years()))
-        .then_order_by(post_aggregates::score.desc()),
+        .filter(post_aggregates::published.gt(now - 1.years()))
+        .then_order_by(post_aggregates::score.desc())
+        .then_order_by(post_aggregates::published.desc()),
       SortType::TopMonth => query
-        .filter(post::published.gt(now - 1.months()))
-        .then_order_by(post_aggregates::score.desc()),
+        .filter(post_aggregates::published.gt(now - 1.months()))
+        .then_order_by(post_aggregates::score.desc())
+        .then_order_by(post_aggregates::published.desc()),
       SortType::TopWeek => query
-        .filter(post::published.gt(now - 1.weeks()))
-        .then_order_by(post_aggregates::score.desc()),
+        .filter(post_aggregates::published.gt(now - 1.weeks()))
+        .then_order_by(post_aggregates::score.desc())
+        .then_order_by(post_aggregates::published.desc()),
       SortType::TopDay => query
-        .filter(post::published.gt(now - 1.days()))
-        .then_order_by(post_aggregates::score.desc()),
+        .filter(post_aggregates::published.gt(now - 1.days()))
+        .then_order_by(post_aggregates::score.desc())
+        .then_order_by(post_aggregates::published.desc()),
     };
 
     let (limit, offset) = limit_and_offset(self.page, self.limit);
@@ -476,7 +486,7 @@ impl ViewToVec for PostView {
         community: a.2.to_owned(),
         creator_banned_from_community: a.3.is_some(),
         counts: a.4.to_owned(),
-        subscribed: a.5.is_some(),
+        subscribed: CommunityFollower::to_subscribed_type(&a.5),
         saved: a.6.is_some(),
         read: a.7.is_some(),
         creator_blocked: a.8.is_some(),
@@ -489,21 +499,20 @@ impl ViewToVec for PostView {
 #[cfg(test)]
 mod tests {
   use crate::post_view::{PostQueryBuilder, PostView};
-  use lemmy_db_queries::{
-    aggregates::post_aggregates::PostAggregates,
-    establish_unpooled_connection,
-    Blockable,
-    Crud,
-    Likeable,
+  use lemmy_db_schema::{
+    aggregates::structs::PostAggregates,
+    source::{
+      community::*,
+      community_block::{CommunityBlock, CommunityBlockForm},
+      person::*,
+      person_block::{PersonBlock, PersonBlockForm},
+      post::*,
+    },
+    traits::{Blockable, Crud, Likeable},
+    utils::establish_unpooled_connection,
     ListingType,
     SortType,
-  };
-  use lemmy_db_schema::source::{
-    community::*,
-    community_block::{CommunityBlock, CommunityBlockForm},
-    person::*,
-    person_block::{PersonBlock, PersonBlockForm},
-    post::*,
+    SubscribedType,
   };
   use serial_test::serial;
 
@@ -640,7 +649,7 @@ mod tests {
         nsfw: false,
         embed_title: None,
         embed_description: None,
-        embed_html: None,
+        embed_video_url: None,
         thumbnail_url: None,
         ap_id: inserted_post.ap_id.to_owned(),
         local: true,
@@ -673,6 +682,7 @@ mod tests {
         dap_address: None,
         cert: None,
         tx: None,
+        ban_expires: None,
       },
       creator_banned_from_community: false,
       community: CommunitySafe {
@@ -688,6 +698,8 @@ mod tests {
         description: None,
         updated: None,
         banner: None,
+        hidden: false,
+        posting_restricted_to_mods: false,
         published: inserted_community.published,
         cert: None,
         tx: None,
@@ -704,7 +716,7 @@ mod tests {
         newest_comment_time_necro: inserted_post.published,
         newest_comment_time: inserted_post.published,
       },
-      subscribed: false,
+      subscribed: SubscribedType::NotSubscribed,
       read: false,
       saved: false,
       creator_blocked: false,

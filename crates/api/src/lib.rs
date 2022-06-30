@@ -1,7 +1,7 @@
 use actix_web::{web, web::Data};
 use captcha::Captcha;
 use lemmy_api_common::{comment::*, community::*, person::*, post::*, site::*, websocket::*};
-use lemmy_utils::{ConnectionId, LemmyError};
+use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{serialize_websocket_message, LemmyContext, UserOperation};
 use serde::Deserialize;
 
@@ -38,7 +38,19 @@ pub async fn match_websocket_operation(
     UserOperation::GetCaptcha => do_websocket_operation::<GetCaptcha>(context, id, op, data).await,
     UserOperation::GetReplies => do_websocket_operation::<GetReplies>(context, id, op, data).await,
     UserOperation::AddAdmin => do_websocket_operation::<AddAdmin>(context, id, op, data).await,
+    UserOperation::GetUnreadRegistrationApplicationCount => {
+      do_websocket_operation::<GetUnreadRegistrationApplicationCount>(context, id, op, data).await
+    }
+    UserOperation::ListRegistrationApplications => {
+      do_websocket_operation::<ListRegistrationApplications>(context, id, op, data).await
+    }
+    UserOperation::ApproveRegistrationApplication => {
+      do_websocket_operation::<ApproveRegistrationApplication>(context, id, op, data).await
+    }
     UserOperation::BanPerson => do_websocket_operation::<BanPerson>(context, id, op, data).await,
+    UserOperation::GetBannedPersons => {
+      do_websocket_operation::<GetBannedPersons>(context, id, op, data).await
+    }
     UserOperation::BlockPerson => {
       do_websocket_operation::<BlockPerson>(context, id, op, data).await
     }
@@ -55,7 +67,7 @@ pub async fn match_websocket_operation(
       do_websocket_operation::<PasswordReset>(context, id, op, data).await
     }
     UserOperation::PasswordChange => {
-      do_websocket_operation::<PasswordChange>(context, id, op, data).await
+      do_websocket_operation::<PasswordChangeAfterReset>(context, id, op, data).await
     }
     UserOperation::UserJoin => do_websocket_operation::<UserJoin>(context, id, op, data).await,
     UserOperation::PostJoin => do_websocket_operation::<PostJoin>(context, id, op, data).await,
@@ -72,6 +84,12 @@ pub async fn match_websocket_operation(
     UserOperation::GetReportCount => {
       do_websocket_operation::<GetReportCount>(context, id, op, data).await
     }
+    UserOperation::GetUnreadCount => {
+      do_websocket_operation::<GetUnreadCount>(context, id, op, data).await
+    }
+    UserOperation::VerifyEmail => {
+      do_websocket_operation::<VerifyEmail>(context, id, op, data).await
+    }
 
     // Private Message ops
     UserOperation::MarkPrivateMessageAsRead => {
@@ -80,11 +98,15 @@ pub async fn match_websocket_operation(
 
     // Site ops
     UserOperation::GetModlog => do_websocket_operation::<GetModlog>(context, id, op, data).await,
-    UserOperation::GetSiteConfig => {
-      do_websocket_operation::<GetSiteConfig>(context, id, op, data).await
+    UserOperation::PurgePerson => {
+      do_websocket_operation::<PurgePerson>(context, id, op, data).await
     }
-    UserOperation::SaveSiteConfig => {
-      do_websocket_operation::<SaveSiteConfig>(context, id, op, data).await
+    UserOperation::PurgeCommunity => {
+      do_websocket_operation::<PurgeCommunity>(context, id, op, data).await
+    }
+    UserOperation::PurgePost => do_websocket_operation::<PurgePost>(context, id, op, data).await,
+    UserOperation::PurgeComment => {
+      do_websocket_operation::<PurgeComment>(context, id, op, data).await
     }
     UserOperation::Search => do_websocket_operation::<Search>(context, id, op, data).await,
     UserOperation::ResolveObject => {
@@ -93,9 +115,7 @@ pub async fn match_websocket_operation(
     UserOperation::TransferCommunity => {
       do_websocket_operation::<TransferCommunity>(context, id, op, data).await
     }
-    UserOperation::TransferSite => {
-      do_websocket_operation::<TransferSite>(context, id, op, data).await
-    }
+    UserOperation::LeaveAdmin => do_websocket_operation::<LeaveAdmin>(context, id, op, data).await,
 
     // Community ops
     UserOperation::FollowCommunity => {
@@ -116,6 +136,9 @@ pub async fn match_websocket_operation(
     UserOperation::StickyPost => do_websocket_operation::<StickyPost>(context, id, op, data).await,
     UserOperation::CreatePostLike => {
       do_websocket_operation::<CreatePostLike>(context, id, op, data).await
+    }
+    UserOperation::MarkPostAsRead => {
+      do_websocket_operation::<MarkPostAsRead>(context, id, op, data).await
     }
     UserOperation::SavePost => do_websocket_operation::<SavePost>(context, id, op, data).await,
     UserOperation::CreatePostReport => {
@@ -187,17 +210,23 @@ pub(crate) fn captcha_as_wav_base64(captcha: &Captcha) -> String {
 
 #[cfg(test)]
 mod tests {
-  use lemmy_api_common::check_validator_time;
-  use lemmy_db_queries::{establish_unpooled_connection, source::local_user::LocalUser_, Crud};
-  use lemmy_db_schema::source::{
-    local_user::{LocalUser, LocalUserForm},
-    person::{Person, PersonForm},
+  use lemmy_api_common::utils::check_validator_time;
+  use lemmy_db_schema::{
+    source::{
+      local_user::{LocalUser, LocalUserForm},
+      person::{Person, PersonForm},
+      secret::Secret,
+    },
+    traits::Crud,
+    utils::establish_unpooled_connection,
   };
-  use lemmy_utils::claims::Claims;
+  use lemmy_utils::{claims::Claims, settings::SETTINGS};
 
   #[test]
   fn test_should_not_validate_user_token_after_password_change() {
     let conn = establish_unpooled_connection();
+    let secret = Secret::init(&conn).unwrap();
+    let settings = &SETTINGS.to_owned();
 
     let new_person = PersonForm {
       name: "Gerry9812".into(),
@@ -207,15 +236,20 @@ mod tests {
     let inserted_person = Person::create(&conn, &new_person).unwrap();
 
     let local_user_form = LocalUserForm {
-      person_id: inserted_person.id,
-      password_encrypted: "123456".to_string(),
+      person_id: Some(inserted_person.id),
+      password_encrypted: Some("123456".to_string()),
       ..LocalUserForm::default()
     };
 
     let inserted_local_user = LocalUser::create(&conn, &local_user_form).unwrap();
 
-    let jwt = Claims::jwt(inserted_local_user.id.0).unwrap();
-    let claims = Claims::decode(&jwt).unwrap().claims;
+    let jwt = Claims::jwt(
+      inserted_local_user.id.0,
+      &secret.jwt_secret,
+      &settings.hostname,
+    )
+    .unwrap();
+    let claims = Claims::decode(&jwt, &secret.jwt_secret).unwrap().claims;
     let check = check_validator_time(&inserted_local_user.validator_time, &claims);
     assert!(check.is_ok());
 

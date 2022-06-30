@@ -1,16 +1,8 @@
-use diesel::{result::Error, *};
-use lemmy_db_queries::{
-  aggregates::comment_aggregates::CommentAggregates,
-  functions::hot_rank,
-  fuzzy_search,
-  limit_and_offset,
-  ListingType,
-  MaybeOptional,
-  SortType,
-  ToSafe,
-  ViewToVec,
-};
+use crate::structs::CommentView;
+use diesel::{dsl::*, result::Error, *};
 use lemmy_db_schema::{
+  aggregates::structs::CommentAggregates,
+  newtypes::{CommentId, CommunityId, DbUrl, PersonId, PostId},
   schema::{
     comment,
     comment_aggregates,
@@ -33,29 +25,11 @@ use lemmy_db_schema::{
     person_block::PersonBlock,
     post::Post,
   },
-  CommentId,
-  CommunityId,
-  DbUrl,
-  PersonId,
-  PostId,
+  traits::{MaybeOptional, ToSafe, ViewToVec},
+  utils::{functions::hot_rank, fuzzy_search, limit_and_offset},
+  ListingType,
+  SortType,
 };
-use serde::Serialize;
-use uuid::Uuid;
-
-#[derive(Debug, PartialEq, Serialize, Clone)]
-pub struct CommentView {
-  pub comment: Comment,
-  pub creator: PersonSafe,
-  pub recipient: Option<PersonSafeAlias1>, // Left joins to comment and person
-  pub post: Post,
-  pub community: CommunitySafe,
-  pub counts: CommentAggregates,
-  pub creator_banned_from_community: bool, // Left Join to CommunityPersonBan
-  pub subscribed: bool,                    // Left join to CommunityFollower
-  pub saved: bool,                         // Left join to CommentSaved
-  pub creator_blocked: bool,               // Left join to PersonBlock
-  pub my_vote: Option<i16>,                // Left join to CommentLike
-}
 
 type CommentViewTuple = (
   Comment,
@@ -91,7 +65,7 @@ impl CommentView {
       community,
       counts,
       creator_banned_from_community,
-      subscribed,
+      follower,
       saved,
       creator_blocked,
       comment_like,
@@ -108,7 +82,12 @@ impl CommentView {
         community_person_ban::table.on(
           community::id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(comment::creator_id)),
+            .and(community_person_ban::person_id.eq(comment::creator_id))
+            .and(
+              community_person_ban::expires
+                .is_null()
+                .or(community_person_ban::expires.gt(now)),
+            ),
         ),
       )
       .left_join(
@@ -171,7 +150,7 @@ impl CommentView {
       community,
       counts,
       creator_banned_from_community: creator_banned_from_community.is_some(),
-      subscribed: subscribed.is_some(),
+      subscribed: CommunityFollower::to_subscribed_type(&follower),
       saved: saved.is_some(),
       creator_blocked: creator_blocked.is_some(),
       my_vote,
@@ -185,6 +164,46 @@ impl CommentView {
       Some(parent_commenter) => parent_commenter.id,
       None => self.post.creator_id,
     }
+  }
+
+  /// Gets the number of unread replies
+  pub fn get_unread_replies(conn: &PgConnection, my_person_id: PersonId) -> Result<i64, Error> {
+    use diesel::dsl::*;
+
+    comment::table
+      // recipient here
+      .left_join(comment_alias_1::table.on(comment_alias_1::id.nullable().eq(comment::parent_id)))
+      .left_join(person_alias_1::table.on(person_alias_1::id.eq(comment_alias_1::creator_id)))
+      .inner_join(post::table)
+      .inner_join(community::table.on(post::community_id.eq(community::id)))
+      .left_join(
+        person_block::table.on(
+          comment::creator_id
+            .eq(person_block::target_id)
+            .and(person_block::person_id.eq(my_person_id)),
+        ),
+      )
+      .left_join(
+        community_block::table.on(
+          community::id
+            .eq(community_block::community_id)
+            .and(community_block::person_id.eq(my_person_id)),
+        ),
+      )
+      .filter(person_alias_1::id.eq(my_person_id)) // Gets the comment replies
+      .or_filter(
+        comment::parent_id
+          .is_null()
+          .and(post::creator_id.eq(my_person_id)),
+      ) // Gets the top level replies
+      .filter(comment::read.eq(false))
+      .filter(comment::deleted.eq(false))
+      .filter(comment::removed.eq(false))
+      // Don't show blocked communities or persons
+      .filter(community_block::person_id.is_null())
+      .filter(person_block::person_id.is_null())
+      .select(count(comment::id))
+      .first::<i64>(conn)
   }
 }
 
@@ -316,7 +335,12 @@ impl<'a> CommentQueryBuilder<'a> {
         community_person_ban::table.on(
           community::id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(comment::creator_id)),
+            .and(community_person_ban::person_id.eq(comment::creator_id))
+            .and(
+              community_person_ban::expires
+                .is_null()
+                .or(community_person_ban::expires.gt(now)),
+            ),
         ),
       )
       .left_join(
@@ -409,10 +433,25 @@ impl<'a> CommentQueryBuilder<'a> {
     };
 
     if let Some(listing_type) = self.listing_type {
-      query = match listing_type {
-        ListingType::Subscribed => query.filter(community_follower::person_id.is_not_null()), // TODO could be this: and(community_follower::person_id.eq(person_id_join)),
-        ListingType::Local => query.filter(community::local.eq(true)),
-        _ => query,
+      match listing_type {
+        ListingType::Subscribed => {
+          query = query.filter(community_follower::person_id.is_not_null())
+        } // TODO could be this: and(community_follower::person_id.eq(person_id_join)),
+        ListingType::Local => {
+          query = query.filter(community::local.eq(true)).filter(
+            community::hidden
+              .eq(false)
+              .or(community_follower::person_id.eq(person_id_join)),
+          )
+        }
+        ListingType::All => {
+          query = query.filter(
+            community::hidden
+              .eq(false)
+              .or(community_follower::person_id.eq(person_id_join)),
+          )
+        }
+        ListingType::Community => {}
       };
     }
 
@@ -477,7 +516,7 @@ impl ViewToVec for CommentView {
         community: a.5.to_owned(),
         counts: a.6.to_owned(),
         creator_banned_from_community: a.7.is_some(),
-        subscribed: a.8.is_some(),
+        subscribed: CommunityFollower::to_subscribed_type(&a.8),
         saved: a.9.is_some(),
         creator_blocked: a.10.is_some(),
         my_vote: a.11,
@@ -489,19 +528,12 @@ impl ViewToVec for CommentView {
 #[cfg(test)]
 mod tests {
   use crate::comment_view::*;
-  use lemmy_db_queries::{
-    aggregates::comment_aggregates::CommentAggregates,
-    establish_unpooled_connection,
-    Blockable,
-    Crud,
-    Likeable,
-  };
-  use lemmy_db_schema::source::{
-    comment::*,
-    community::*,
-    person::*,
-    person_block::PersonBlockForm,
-    post::*,
+  use lemmy_db_schema::{
+    aggregates::structs::CommentAggregates,
+    source::{comment::*, community::*, person::*, person_block::PersonBlockForm, post::*},
+    traits::{Blockable, Crud, Likeable},
+    utils::establish_unpooled_connection,
+    SubscribedType,
   };
   use serial_test::serial;
 
@@ -590,7 +622,7 @@ mod tests {
     let expected_comment_view_no_person = CommentView {
       creator_banned_from_community: false,
       my_vote: None,
-      subscribed: false,
+      subscribed: SubscribedType::NotSubscribed,
       saved: false,
       creator_blocked: false,
       comment: Comment {
@@ -634,6 +666,7 @@ mod tests {
         dap_address: None,
         cert: None,
         tx: None,
+        ban_expires: None,
       },
       recipient: None,
       post: Post {
@@ -652,7 +685,7 @@ mod tests {
         nsfw: false,
         embed_title: None,
         embed_description: None,
-        embed_html: None,
+        embed_video_url: None,
         thumbnail_url: None,
         ap_id: inserted_post.ap_id.to_owned(),
         local: true,
@@ -672,6 +705,8 @@ mod tests {
         description: None,
         updated: None,
         banner: None,
+        hidden: false,
+        posting_restricted_to_mods: false,
         published: inserted_community.published,
         cert: None,
         tx: None,

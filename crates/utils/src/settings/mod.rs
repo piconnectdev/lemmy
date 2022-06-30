@@ -1,23 +1,35 @@
-use crate::{location_info, settings::structs::Settings, LemmyError};
+use crate::{
+  error::LemmyError,
+  location_info,
+  settings::structs::{PictrsConfig, Settings},
+};
 use anyhow::{anyhow, Context};
 use deser_hjson::from_str;
-use std::{env, fs, io::Error, sync::RwLock};
+use once_cell::sync::Lazy;
+use regex::{Regex, RegexBuilder};
+use std::{env, fs, io::Error};
 
 pub mod structs;
 
-static CONFIG_FILE: &str = "config/config.hjson";
+static DEFAULT_CONFIG_FILE: &str = "config/config.hjson";
 
-lazy_static! {
-  static ref SETTINGS: RwLock<Settings> =
-    RwLock::new(Settings::init().expect("Failed to load settings file"));
-}
+pub static SETTINGS: Lazy<Settings> =
+  Lazy::new(|| Settings::init().expect("Failed to load settings file"));
+static WEBFINGER_REGEX: Lazy<Regex> = Lazy::new(|| {
+  Regex::new(&format!(
+    "^acct:([a-zA-Z0-9_]{{3,}})@{}$",
+    SETTINGS.hostname
+  ))
+  .expect("compile webfinger regex")
+});
 
 impl Settings {
   /// Reads config from configuration file.
   ///
   /// Note: The env var `LEMMY_DATABASE_URL` is parsed in
-  /// `lemmy_db_queries/src/lib.rs::get_database_url_from_env()`
-  fn init() -> Result<Self, LemmyError> {
+  /// `lemmy_db_schema/src/lib.rs::get_database_url_from_env()`
+  /// Warning: Only call this once.
+  pub(crate) fn init() -> Result<Self, LemmyError> {
     // Read the config file
     let config = from_str::<Settings>(&Self::read_config_file()?)?;
 
@@ -26,11 +38,6 @@ impl Settings {
     }
 
     Ok(config)
-  }
-
-  /// Returns the config as a struct.
-  pub fn get() -> Self {
-    SETTINGS.read().expect("read config").to_owned()
   }
 
   pub fn get_database_url(&self) -> String {
@@ -42,7 +49,7 @@ impl Settings {
   }
 
   pub fn get_config_location() -> String {
-    env::var("LEMMY_CONFIG_LOCATION").unwrap_or_else(|_| CONFIG_FILE.to_string())
+    env::var("LEMMY_CONFIG_LOCATION").unwrap_or_else(|_| DEFAULT_CONFIG_FILE.to_string())
   }
 
   pub fn read_config_file() -> Result<String, Error> {
@@ -79,18 +86,24 @@ impl Settings {
     )
   }
 
-  pub fn save_config_file(data: &str) -> Result<String, LemmyError> {
-    fs::write(CONFIG_FILE, data)?;
+  pub fn webfinger_regex(&self) -> Regex {
+    WEBFINGER_REGEX.to_owned()
+  }
 
-    // Reload the new settings
-    // From https://stackoverflow.com/questions/29654927/how-do-i-assign-a-string-to-a-mutable-static-variable/47181804#47181804
-    let mut new_settings = SETTINGS.write().expect("write config");
-    *new_settings = match Settings::init() {
-      Ok(c) => c,
-      Err(e) => panic!("{}", e),
-    };
+  pub fn slur_regex(&self) -> Option<Regex> {
+    self.slur_filter.as_ref().map(|slurs| {
+      RegexBuilder::new(slurs)
+        .case_insensitive(true)
+        .build()
+        .expect("compile regex")
+    })
+  }
 
-    Ok(Self::read_config_file()?)
+  pub fn pictrs_config(&self) -> Result<PictrsConfig, LemmyError> {
+    self
+      .pictrs_config
+      .to_owned()
+      .ok_or_else(|| anyhow!("images_disabled").into())
   }
 
   pub fn pi_seed(&self) -> String {

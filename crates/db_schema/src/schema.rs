@@ -5,7 +5,7 @@ table! {
         local -> Bool,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
-        ap_id -> Nullable<Text>,
+        ap_id -> Text,
         sensitive -> Nullable<Bool>,
     }
 }
@@ -89,7 +89,7 @@ table! {
         actor_id -> Varchar,
         local -> Bool,
         private_key -> Nullable<Text>,
-        public_key -> Nullable<Text>,
+        public_key -> Text,
         last_refreshed_at -> Timestamp,
         icon -> Nullable<Varchar>,
         banner -> Nullable<Varchar>,
@@ -98,6 +98,8 @@ table! {
         shared_inbox_url -> Nullable<Varchar>,
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,
+        hidden -> Bool,
+        posting_restricted_to_mods -> Bool,
     }
 }
 
@@ -141,6 +143,7 @@ table! {
         community_id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
+        expires -> Nullable<Timestamp>,
     }
 }
 
@@ -162,6 +165,8 @@ table! {
         show_scores -> Bool,
         show_read_posts -> Bool,
         show_new_post_notifs -> Bool,
+        email_verified -> Bool,
+        accepted_application -> Bool,
     }
 }
 
@@ -298,7 +303,7 @@ table! {
         bio -> Nullable<Text>,
         local -> Bool,
         private_key -> Nullable<Text>,
-        public_key -> Nullable<Text>,
+        public_key -> Text,
         last_refreshed_at -> Timestamp,
         banner -> Nullable<Varchar>,
         deleted -> Bool,
@@ -316,6 +321,7 @@ table! {
         dap_address -> Nullable<Text>,   
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,
+        ban_expires -> Nullable<Timestamp>,
     }
 }
 
@@ -365,7 +371,7 @@ table! {
         stickied -> Bool,
         embed_title -> Nullable<Text>,
         embed_description -> Nullable<Text>,
-        embed_html -> Nullable<Text>,
+        embed_video_url -> Nullable<Text>,
         thumbnail_url -> Nullable<Text>,
         ap_id -> Varchar,
         local -> Bool,
@@ -466,7 +472,19 @@ table! {
         icon -> Nullable<Varchar>,
         banner -> Nullable<Varchar>,
         description -> Nullable<Text>,
-        community_creation_admin_only -> Bool,        
+        community_creation_admin_only -> Bool,
+        require_email_verification -> Bool,
+        require_application -> Bool,
+        application_question -> Nullable<Text>,
+        private_instance -> Bool,
+        actor_id -> Text,
+        last_refreshed_at -> Timestamp,
+        inbox_url -> Text,
+        private_key -> Nullable<Text>,
+        public_key -> Text,
+        default_theme -> Text,
+        default_post_listing_type -> Text,
+        legal_information -> Nullable<Text>,
     }
 }
 
@@ -534,7 +552,7 @@ table! {
         bio -> Nullable<Text>,
         local -> Bool,
         private_key -> Nullable<Text>,
-        public_key -> Nullable<Text>,
+        public_key -> Text,
         last_refreshed_at -> Timestamp,
         banner -> Nullable<Varchar>,
         deleted -> Bool,
@@ -543,6 +561,7 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
+        ban_expires -> Nullable<Timestamp>,
         //extra_user_id -> Nullable<Text>,
         verified -> Bool,
         //private_seeds -> Nullable<Text>,
@@ -568,7 +587,7 @@ table! {
         bio -> Nullable<Text>,
         local -> Bool,
         private_key -> Nullable<Text>,
-        public_key -> Nullable<Text>,
+        public_key -> Text,
         last_refreshed_at -> Timestamp,
         banner -> Nullable<Varchar>,
         deleted -> Bool,
@@ -577,6 +596,7 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
+        ban_expires -> Nullable<Timestamp>,
         //extra_user_id -> Nullable<Text>,
         verified -> Bool,
         //private_seeds -> Nullable<Text>,
@@ -586,6 +606,83 @@ table! {
         dap_address -> Nullable<Text>,   
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,
+    }
+}
+
+table! {
+  secret(id) {
+    id -> Int4,
+    jwt_secret -> Varchar,
+  }
+}
+
+table! {
+  admin_purge_comment (id) {
+    id -> Int4,
+    admin_person_id -> Int4,
+    post_id -> Int4,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+table! {
+  email_verification (id) {
+    id -> Int4,
+    local_user_id -> Int4,
+    email -> Text,
+    verification_token -> Varchar,
+    published -> Timestamp,
+  }
+}
+
+table! {
+  admin_purge_community (id) {
+    id -> Int4,
+    admin_person_id -> Int4,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+table! {
+  admin_purge_person (id) {
+    id -> Int4,
+    admin_person_id -> Int4,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+table! {
+  admin_purge_post (id) {
+    id -> Int4,
+    admin_person_id -> Int4,
+    community_id -> Int4,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+table! {
+    registration_application (id) {
+        id -> Int4,
+        local_user_id -> Int4,
+        answer -> Text,
+        admin_id -> Nullable<Int4>,
+        deny_reason -> Nullable<Text>,
+        published -> Timestamp,
+    }
+}
+
+table! {
+    mod_hide_community (id) {
+        id -> Int4,
+        community_id -> Int4,
+        mod_person_id -> Int4,
+        reason -> Nullable<Text>,
+        hidden -> Nullable<Bool>,
+        when_ -> Timestamp,
     }
 }
 
@@ -683,8 +780,19 @@ joinable!(post_read -> post (post_id));
 joinable!(post_report -> post (post_id));
 joinable!(post_saved -> person (person_id));
 joinable!(post_saved -> post (post_id));
-joinable!(site -> person (creator_id));
 joinable!(site_aggregates -> site (site_id));
+joinable!(email_verification -> local_user (local_user_id));
+joinable!(registration_application -> local_user (local_user_id));
+joinable!(registration_application -> person (admin_id));
+joinable!(mod_hide_community -> person (mod_person_id));
+joinable!(mod_hide_community -> community (community_id));
+
+joinable!(admin_purge_comment -> person (admin_person_id));
+joinable!(admin_purge_comment -> post (post_id));
+joinable!(admin_purge_community -> person (admin_person_id));
+joinable!(admin_purge_person -> person (admin_person_id));
+joinable!(admin_purge_post -> community (community_id));
+joinable!(admin_purge_post -> person (admin_person_id));
 
 allow_tables_to_appear_in_same_query!(
   activity,
@@ -710,6 +818,7 @@ allow_tables_to_appear_in_same_query!(
   mod_remove_community,
   mod_remove_post,
   mod_sticky_post,
+  mod_hide_community,
   password_reset_request,
   person,
   person_aggregates,
@@ -728,5 +837,11 @@ allow_tables_to_appear_in_same_query!(
   comment_alias_1,
   person_alias_1,
   person_alias_2,
+  admin_purge_comment,
+  admin_purge_community,
+  admin_purge_person,
+  admin_purge_post,
+  email_verification,
   pipayment,
+  registration_application
 );

@@ -1,33 +1,29 @@
 use crate::{
-  check_is_apub_id_valid,
-  extensions::signatures::verify_signature,
-  fetcher::get_or_fetch_and_upsert_actor,
-  http::{
-    community::{receive_group_inbox, GroupInboxActivities},
-    person::{receive_person_inbox, PersonInboxActivities},
-  },
+  activity_lists::SharedInboxActivities,
+  fetcher::user_or_community::UserOrCommunity,
   insert_activity,
+  local_instance,
+  protocol::objects::tombstone::Tombstone,
+  CONTEXT,
+};
+use activitypub_federation::{
+  core::inbox::receive_activity,
+  data::Data,
+  deser::context::WithContext,
+  traits::{ActivityHandler, Actor, ApubObject},
   APUB_JSON_CONTENT_TYPE,
 };
-use actix_web::{
-  body::Body,
-  web,
-  web::{Bytes, BytesMut, Payload},
-  HttpRequest,
-  HttpResponse,
-};
-use anyhow::{anyhow, Context};
-use futures::StreamExt;
+use actix_web::{web, HttpRequest, HttpResponse};
 use http::StatusCode;
-use lemmy_api_common::blocking;
-use lemmy_apub_lib::{ActivityFields, ActivityHandler};
-use lemmy_db_queries::{source::activity::Activity_, DbPool};
+use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::source::activity::Activity;
-use lemmy_utils::{location_info, settings::structs::Settings, LemmyError};
+use lemmy_utils::error::LemmyError;
 use lemmy_websocket::LemmyContext;
-use log::{info, trace};
-use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, io::Read};
+use once_cell::sync::OnceCell;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_json::Value;
+use std::ops::Deref;
+use tracing::{debug, log::info};
 use url::Url;
 
 mod comment;
@@ -35,108 +31,74 @@ mod community;
 mod person;
 mod post;
 pub mod routes;
+pub mod site;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ActivityHandler, ActivityFields)]
-#[serde(untagged)]
-pub enum SharedInboxActivities {
-  GroupInboxActivities(GroupInboxActivities),
-  // Note, pm activities need to be at the end, otherwise comments will end up here. We can probably
-  // avoid this problem by replacing createpm.object with our own struct, instead of NoteExt.
-  PersonInboxActivities(PersonInboxActivities),
-}
-
+#[tracing::instrument(skip_all)]
 pub async fn shared_inbox(
   request: HttpRequest,
-  payload: Payload,
+  payload: String,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse, LemmyError> {
-  let unparsed = payload_to_string(payload).await?;
-  trace!("Received shared inbox activity {}", unparsed);
-  let activity = serde_json::from_str::<SharedInboxActivities>(&unparsed)?;
-  match activity {
-    SharedInboxActivities::GroupInboxActivities(g) => {
-      receive_group_inbox(g, request, &context).await
-    }
-    SharedInboxActivities::PersonInboxActivities(p) => {
-      receive_person_inbox(p, request, &context).await
-    }
-  }
+  receive_lemmy_activity::<SharedInboxActivities, UserOrCommunity>(request, payload, context).await
 }
 
-async fn payload_to_string(mut payload: Payload) -> Result<String, LemmyError> {
-  let mut bytes = BytesMut::new();
-  while let Some(item) = payload.next().await {
-    bytes.extend_from_slice(&item?);
-  }
-  let mut unparsed = String::new();
-  Bytes::from(bytes).as_ref().read_to_string(&mut unparsed)?;
-  Ok(unparsed)
-}
-
-// TODO: move most of this code to library
-async fn receive_activity<'a, T>(
+pub async fn receive_lemmy_activity<Activity, ActorT>(
   request: HttpRequest,
-  activity: T,
-  context: &LemmyContext,
+  payload: String,
+  context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse, LemmyError>
 where
-  T: ActivityHandler
-    + ActivityFields
-    + Clone
-    + Deserialize<'a>
-    + Serialize
-    + std::fmt::Debug
+  Activity: ActivityHandler<DataType = LemmyContext, Error = LemmyError>
+    + DeserializeOwned
     + Send
     + 'static,
+  ActorT: ApubObject<DataType = LemmyContext, Error = LemmyError> + Actor + Send + 'static,
+  for<'de2> <ActorT as ApubObject>::ApubType: serde::Deserialize<'de2>,
 {
-  let request_counter = &mut 0;
-  let actor = get_or_fetch_and_upsert_actor(activity.actor(), context, request_counter).await?;
-  verify_signature(&request, &actor.public_key().context(location_info!())?)?;
-
-  // Do nothing if we received the same activity before
-  if is_activity_already_known(context.pool(), activity.id_unchecked()).await? {
-    return Ok(HttpResponse::Ok().finish());
+  let activity_value: Value = serde_json::from_str(&payload)?;
+  let activity: Activity = serde_json::from_value(activity_value.clone())?;
+  // Log the activity, so we avoid receiving and parsing it twice.
+  let insert = insert_activity(activity.id(), activity_value, false, true, context.pool()).await?;
+  if !insert {
+    debug!("Received duplicate activity {}", activity.id().to_string());
+    return Ok(HttpResponse::BadRequest().finish());
   }
-  check_is_apub_id_valid(activity.actor(), false)?;
-  info!("Verifying activity {}", activity.id_unchecked().to_string());
-  activity.verify(context, request_counter).await?;
-  assert_activity_not_local(&activity)?;
+  info!("Received activity {}", payload);
 
-  // Log the activity, so we avoid receiving and parsing it twice. Note that this could still happen
-  // if we receive the same activity twice in very quick succession.
-  insert_activity(
-    activity.id_unchecked(),
-    activity.clone(),
-    false,
-    true,
-    context.pool(),
+  static DATA: OnceCell<Data<LemmyContext>> = OnceCell::new();
+  let data = DATA.get_or_init(|| Data::new(context.get_ref().clone()));
+  receive_activity::<Activity, ActorT, LemmyContext>(
+    request,
+    activity,
+    local_instance(&context),
+    data,
   )
-  .await?;
-
-  info!("Receiving activity {}", activity.id_unchecked().to_string());
-  activity.receive(context, request_counter).await?;
-  Ok(HttpResponse::Ok().finish())
+  .await
 }
 
 /// Convert the data to json and turn it into an HTTP Response with the correct ActivityPub
 /// headers.
-fn create_apub_response<T>(data: &T) -> HttpResponse<Body>
+fn create_apub_response<T>(data: &T) -> HttpResponse
 where
   T: Serialize,
 {
   HttpResponse::Ok()
     .content_type(APUB_JSON_CONTENT_TYPE)
+    .json(WithContext::new(data, CONTEXT.deref().clone()))
+}
+
+fn create_json_apub_response(data: serde_json::Value) -> HttpResponse {
+  HttpResponse::Ok()
+    .content_type(APUB_JSON_CONTENT_TYPE)
     .json(data)
 }
 
-fn create_apub_tombstone_response<T>(data: &T) -> HttpResponse<Body>
-where
-  T: Serialize,
-{
+fn create_apub_tombstone_response<T: Into<Url>>(id: T) -> HttpResponse {
+  let tombstone = Tombstone::new(id.into());
   HttpResponse::Gone()
     .content_type(APUB_JSON_CONTENT_TYPE)
     .status(StatusCode::GONE)
-    .json(data)
+    .json(WithContext::new(tombstone, CONTEXT.deref().clone()))
 }
 
 #[derive(Deserialize)]
@@ -146,11 +108,12 @@ pub struct ActivityQuery {
 }
 
 /// Return the ActivityPub json representation of a local activity over HTTP.
+#[tracing::instrument(skip_all)]
 pub(crate) async fn get_activity(
   info: web::Path<ActivityQuery>,
   context: web::Data<LemmyContext>,
-) -> Result<HttpResponse<Body>, LemmyError> {
-  let settings = Settings::get();
+) -> Result<HttpResponse, LemmyError> {
+  let settings = context.settings();
   let activity_id = Url::parse(&format!(
     "{}/activities/{}/{}",
     settings.get_protocol_and_hostname(),
@@ -167,36 +130,6 @@ pub(crate) async fn get_activity(
   if !activity.local || sensitive {
     Ok(HttpResponse::NotFound().finish())
   } else {
-    Ok(create_apub_response(&activity.data))
+    Ok(create_json_apub_response(activity.data))
   }
-}
-
-pub(crate) async fn is_activity_already_known(
-  pool: &DbPool,
-  activity_id: &Url,
-) -> Result<bool, LemmyError> {
-  let activity_id = activity_id.to_owned().into();
-  let existing = blocking(pool, move |conn| {
-    Activity::read_from_apub_id(conn, &activity_id)
-  })
-  .await?;
-  match existing {
-    Ok(_) => Ok(true),
-    Err(_) => Ok(false),
-  }
-}
-
-fn assert_activity_not_local<T: Debug + ActivityFields>(activity: &T) -> Result<(), LemmyError> {
-  let activity_domain = activity.id_unchecked().domain().context(location_info!())?;
-
-  if activity_domain == Settings::get().hostname {
-    return Err(
-      anyhow!(
-        "Error: received activity which was sent by local instance: {:?}",
-        activity
-      )
-      .into(),
-    );
-  }
-  Ok(())
 }

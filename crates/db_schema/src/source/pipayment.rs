@@ -1,12 +1,14 @@
-use crate::{schema::pipayment, PaymentId, PersonId, PiUserId};
+use crate::newtypes::{PaymentId, PersonId, PiUserId};
+use crate::schema::{pipayment};
 //use diesel::sql_types::Jsonb;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+//use serde_json::Value;
 use uuid::Uuid;
 
 //#[changeset_options(treat_none_as_null = "true")]
-#[derive(Deserialize, Clone, Queryable, Identifiable, PartialEq, Debug, Serialize)]
-#[table_name = "pipayment"]
+#[derive(Deserialize, Clone, PartialEq, Debug, Serialize)]
+#[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
+#[cfg_attr(feature = "full", table_name = "pipayment")]
 pub struct PiPayment {
   pub id: PaymentId,
   pub person_id: Option<PersonId>,
@@ -35,13 +37,16 @@ pub struct PiPayment {
   pub tx_verified: bool,
   pub tx_link: String,
   pub tx_id: String,
-  pub metadata: Option<Value>,
-  pub extras: Option<Value>,
+  pub metadata: Option<String>,
+  pub extras: Option<String>,
 }
 
-#[derive(Insertable, AsChangeset, Clone)]
-#[table_name = "pipayment"]
+#[derive(Insertable, AsChangeset, )]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(Queryable))]
+#[cfg_attr(feature = "full", table_name = "pipayment")]
 pub struct PiPaymentForm {
+  // pub id: PaymentId,
   pub person_id: Option<PersonId>,
   pub ref_id: Option<Uuid>,
   pub testnet: bool,
@@ -66,6 +71,6 @@ pub struct PiPaymentForm {
   pub tx_verified: bool,
   pub tx_link: String,
   pub tx_id: String,
-  pub metadata: Option<Value>,
-  pub extras: Option<Value>,
+  pub metadata: Option<String>,
+  pub extras: Option<String>,
 }

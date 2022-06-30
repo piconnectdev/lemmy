@@ -1,23 +1,16 @@
+use crate::structs::PrivateMessageView;
 use diesel::{pg::Pg, result::Error, *};
-use lemmy_db_queries::{limit_and_offset, MaybeOptional, ToSafe, ViewToVec};
 use lemmy_db_schema::{
+  newtypes::{PersonId, PrivateMessageId},
   schema::{person, person_alias_1, private_message},
   source::{
     person::{Person, PersonAlias1, PersonSafe, PersonSafeAlias1},
     private_message::PrivateMessage,
   },
-  PersonId,
-  PrivateMessageId,
+  traits::{MaybeOptional, ToSafe, ViewToVec},
+  utils::limit_and_offset,
 };
-use log::debug;
-use serde::Serialize;
-
-#[derive(Debug, PartialEq, Serialize, Clone)]
-pub struct PrivateMessageView {
-  pub private_message: PrivateMessage,
-  pub creator: PersonSafe,
-  pub recipient: PersonSafeAlias1,
-}
+use tracing::debug;
 
 type PrivateMessageViewTuple = (PrivateMessage, PersonSafe, PersonSafeAlias1);
 
@@ -40,6 +33,17 @@ impl PrivateMessageView {
       creator,
       recipient,
     })
+  }
+
+  /// Gets the number of unread messages
+  pub fn get_unread_messages(conn: &PgConnection, my_person_id: PersonId) -> Result<i64, Error> {
+    use diesel::dsl::*;
+    private_message::table
+      .filter(private_message::read.eq(false))
+      .filter(private_message::recipient_id.eq(my_person_id))
+      .filter(private_message::deleted.eq(false))
+      .select(count(private_message::id))
+      .first::<i64>(conn)
   }
 }
 

@@ -1,8 +1,12 @@
-use crate::{schema::private_message, DbUrl, PersonId, PrivateMessageId};
-use serde::Serialize;
+use crate::newtypes::{DbUrl, PersonId, PrivateMessageId};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Queryable, Associations, Identifiable, PartialEq, Debug, Serialize)]
-#[table_name = "private_message"]
+#[cfg(feature = "full")]
+use crate::schema::private_message;
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(Queryable, Associations, Identifiable))]
+#[cfg_attr(feature = "full", table_name = "private_message")]
 pub struct PrivateMessage {
   pub id: PrivateMessageId,
   pub creator_id: PersonId,
@@ -19,8 +23,9 @@ pub struct PrivateMessage {
   pub tx: Option<String>,
 }
 
-#[derive(Insertable, AsChangeset, Default)]
-#[table_name = "private_message"]
+#[derive(Default)]
+#[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
+#[cfg_attr(feature = "full", table_name = "private_message")]
 pub struct PrivateMessageForm {
   pub creator_id: PersonId,
   pub recipient_id: PersonId,

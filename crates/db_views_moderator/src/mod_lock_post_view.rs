@@ -1,6 +1,7 @@
+use crate::structs::ModLockPostView;
 use diesel::{result::Error, *};
-use lemmy_db_queries::{limit_and_offset, ToSafe, ViewToVec};
 use lemmy_db_schema::{
+  newtypes::{CommunityId, PersonId},
   schema::{community, mod_lock_post, person, post},
   source::{
     community::{Community, CommunitySafe},
@@ -8,18 +9,9 @@ use lemmy_db_schema::{
     person::{Person, PersonSafe},
     post::Post,
   },
-  CommunityId,
-  PersonId,
+  traits::{ToSafe, ViewToVec},
+  utils::limit_and_offset,
 };
-use serde::Serialize;
-
-#[derive(Debug, Serialize, Clone)]
-pub struct ModLockPostView {
-  pub mod_lock_post: ModLockPost,
-  pub moderator: PersonSafe,
-  pub post: Post,
-  pub community: CommunitySafe,
-}
 
 type ModLockPostViewTuple = (ModLockPost, PersonSafe, Post, CommunitySafe);
 

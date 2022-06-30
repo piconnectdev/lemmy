@@ -1,13 +1,13 @@
 use crate::{
   http::{create_apub_response, create_apub_tombstone_response},
-  objects::ToApub,
+  objects::post::ApubPost,
 };
-use actix_web::{body::Body, web, HttpResponse};
+use activitypub_federation::traits::ApubObject;
+use actix_web::{web, HttpResponse};
 use diesel::result::Error::NotFound;
-use lemmy_api_common::blocking;
-use lemmy_db_queries::Crud;
-use lemmy_db_schema::{source::post::Post, PostId};
-use lemmy_utils::LemmyError;
+use lemmy_api_common::utils::blocking;
+use lemmy_db_schema::{newtypes::PostId, source::post::Post, traits::Crud};
+use lemmy_utils::error::LemmyError;
 use lemmy_websocket::LemmyContext;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -18,19 +18,22 @@ pub(crate) struct PostQuery {
 }
 
 /// Return the ActivityPub json representation of a local post over HTTP.
+#[tracing::instrument(skip_all)]
 pub(crate) async fn get_apub_post(
   info: web::Path<PostQuery>,
   context: web::Data<LemmyContext>,
-) -> Result<HttpResponse<Body>, LemmyError> {
-  let id = PostId(info.post_id.parse::<Uuid>()?);
-  let post = blocking(context.pool(), move |conn| Post::read(conn, id)).await??;
+) -> Result<HttpResponse, LemmyError> {
+  let id = PostId(info.post_id.parse::<i32>()?);
+  let post: ApubPost = blocking(context.pool(), move |conn| Post::read(conn, id))
+    .await??
+    .into();
   if !post.local {
     return Err(NotFound.into());
   }
 
   if !post.deleted {
-    Ok(create_apub_response(&post.to_apub(context.pool()).await?))
+    Ok(create_apub_response(&post.into_apub(&context).await?))
   } else {
-    Ok(create_apub_tombstone_response(&post.to_tombstone()?))
+    Ok(create_apub_tombstone_response(post.ap_id.clone()))
   }
 }

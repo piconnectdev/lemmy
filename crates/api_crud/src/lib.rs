@@ -1,6 +1,6 @@
 use actix_web::{web, web::Data};
 use lemmy_api_common::{comment::*, community::*, person::*, post::*, site::*, pipayment::*};
-use lemmy_utils::{ConnectionId, LemmyError};
+use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{serialize_websocket_message, LemmyContext, UserOperationCrud};
 use serde::Deserialize;
 
@@ -108,6 +108,9 @@ pub async fn match_websocket_operation_crud(
     }
     UserOperationCrud::RemoveComment => {
       do_websocket_operation::<RemoveComment>(context, id, op, data).await
+    }
+    UserOperationCrud::GetComment => {
+      do_websocket_operation::<GetComment>(context, id, op, data).await
     }
     UserOperationCrud::GetComments => {
       do_websocket_operation::<GetComments>(context, id, op, data).await

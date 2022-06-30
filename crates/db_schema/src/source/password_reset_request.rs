@@ -1,7 +1,11 @@
-use crate::{schema::password_reset_request, LocalUserId, PasswordResetId};
+use crate::newtypes::{LocalUserId, PasswordResetId};
 
-#[derive(Queryable, Identifiable, PartialEq, Debug)]
-#[table_name = "password_reset_request"]
+#[cfg(feature = "full")]
+use crate::schema::password_reset_request;
+
+#[derive(PartialEq, Debug)]
+#[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
+#[cfg_attr(feature = "full", table_name = "password_reset_request")]
 pub struct PasswordResetRequest {
   pub id: PasswordResetId,
   pub token_encrypted: String,
@@ -9,8 +13,8 @@ pub struct PasswordResetRequest {
   pub local_user_id: LocalUserId,
 }
 
-#[derive(Insertable, AsChangeset)]
-#[table_name = "password_reset_request"]
+#[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
+#[cfg_attr(feature = "full", table_name = "password_reset_request")]
 pub struct PasswordResetRequestForm {
   pub local_user_id: LocalUserId,
   pub token_encrypted: String,

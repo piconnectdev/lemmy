@@ -1,6 +1,7 @@
+use crate::structs::ModRemoveCommentView;
 use diesel::{result::Error, *};
-use lemmy_db_queries::{limit_and_offset, ToSafe, ViewToVec};
 use lemmy_db_schema::{
+  newtypes::{CommunityId, PersonId},
   schema::{comment, community, mod_remove_comment, person, person_alias_1, post},
   source::{
     comment::Comment,
@@ -9,20 +10,9 @@ use lemmy_db_schema::{
     person::{Person, PersonAlias1, PersonSafe, PersonSafeAlias1},
     post::Post,
   },
-  CommunityId,
-  PersonId,
+  traits::{ToSafe, ViewToVec},
+  utils::limit_and_offset,
 };
-use serde::Serialize;
-
-#[derive(Debug, Serialize, Clone)]
-pub struct ModRemoveCommentView {
-  pub mod_remove_comment: ModRemoveComment,
-  pub moderator: PersonSafe,
-  pub comment: Comment,
-  pub commenter: PersonSafeAlias1,
-  pub post: Post,
-  pub community: CommunitySafe,
-}
 
 type ModRemoveCommentViewTuple = (
   ModRemoveComment,

@@ -1,22 +1,16 @@
+use crate::structs::ModRemoveCommunityView;
 use diesel::{result::Error, *};
-use lemmy_db_queries::{limit_and_offset, ToSafe, ViewToVec};
 use lemmy_db_schema::{
+  newtypes::PersonId,
   schema::{community, mod_remove_community, person},
   source::{
     community::{Community, CommunitySafe},
     moderator::ModRemoveCommunity,
     person::{Person, PersonSafe},
   },
-  PersonId,
+  traits::{ToSafe, ViewToVec},
+  utils::limit_and_offset,
 };
-use serde::Serialize;
-
-#[derive(Debug, Serialize, Clone)]
-pub struct ModRemoveCommunityView {
-  pub mod_remove_community: ModRemoveCommunity,
-  pub moderator: PersonSafe,
-  pub community: CommunitySafe,
-}
 
 type ModRemoveCommunityTuple = (ModRemoveCommunity, PersonSafe, CommunitySafe);
 

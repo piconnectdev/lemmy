@@ -1,126 +1,123 @@
 use crate::{
-  activities::{
-    comment::create_or_update::CreateOrUpdateComment,
-    community::{
-      add_mod::AddMod,
-      block_user::BlockUserFromCommunity,
-      list_community_follower_inboxes,
-      remove_mod::RemoveMod,
-      undo_block_user::UndoBlockUserFromCommunity,
-      update::UpdateCommunity,
-    },
-    deletion::{delete::Delete, undo_delete::UndoDelete},
-    generate_activity_id,
-    post::create_or_update::CreateOrUpdatePost,
-    undo_remove::UndoRemovePostCommentOrCommunity,
-    verify_activity,
-    verify_community,
-    voting::{undo_vote::UndoVote, vote::Vote},
-  },
-  activity_queue::send_activity_new,
-  extensions::context::lemmy_context,
-  http::is_activity_already_known,
+  activities::{generate_activity_id, send_lemmy_activity, verify_is_public},
+  activity_lists::AnnouncableActivities,
   insert_activity,
+  objects::community::ApubCommunity,
+  protocol::{
+    activities::{community::announce::AnnounceActivity, CreateOrUpdateType},
+    IdOrNestedObject,
+  },
   ActorType,
-  CommunityType,
 };
-use activitystreams::{
-  activity::kind::AnnounceType,
-  base::AnyBase,
-  primitives::OneOrMany,
-  unparsed::Unparsed,
-};
-use lemmy_apub_lib::{values::PublicUrl, ActivityFields, ActivityHandler};
-use lemmy_db_schema::source::community::Community;
-use lemmy_utils::LemmyError;
+use activitypub_federation::{core::object_id::ObjectId, data::Data, traits::ActivityHandler};
+use activitystreams_kinds::{activity::AnnounceType, public};
+use lemmy_utils::error::LemmyError;
 use lemmy_websocket::LemmyContext;
-use serde::{Deserialize, Serialize};
+use tracing::debug;
 use url::Url;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ActivityHandler, ActivityFields)]
-#[serde(untagged)]
-pub enum AnnouncableActivities {
-  CreateOrUpdateComment(CreateOrUpdateComment),
-  CreateOrUpdatePost(Box<CreateOrUpdatePost>),
-  Vote(Vote),
-  UndoVote(UndoVote),
-  Delete(Delete),
-  UndoDelete(UndoDelete),
-  UndoRemovePostCommentOrCommunity(UndoRemovePostCommentOrCommunity),
-  UpdateCommunity(Box<UpdateCommunity>),
-  BlockUserFromCommunity(BlockUserFromCommunity),
-  UndoBlockUserFromCommunity(UndoBlockUserFromCommunity),
-  AddMod(AddMod),
-  RemoveMod(RemoveMod),
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ActivityFields)]
-#[serde(rename_all = "camelCase")]
-pub struct AnnounceActivity {
-  actor: Url,
-  to: [PublicUrl; 1],
-  object: AnnouncableActivities,
-  cc: Vec<Url>,
-  #[serde(rename = "type")]
-  kind: AnnounceType,
-  id: Url,
-  #[serde(rename = "@context")]
-  context: OneOrMany<AnyBase>,
-  #[serde(flatten)]
-  unparsed: Unparsed,
+#[async_trait::async_trait(?Send)]
+pub(crate) trait GetCommunity {
+  async fn get_community(
+    &self,
+    context: &LemmyContext,
+    request_counter: &mut i32,
+  ) -> Result<ApubCommunity, LemmyError>;
 }
 
 impl AnnounceActivity {
+  pub(crate) fn new(
+    object: AnnouncableActivities,
+    community: &ApubCommunity,
+    context: &LemmyContext,
+  ) -> Result<AnnounceActivity, LemmyError> {
+    Ok(AnnounceActivity {
+      actor: ObjectId::new(community.actor_id()),
+      to: vec![public()],
+      object: IdOrNestedObject::NestedObject(object),
+      cc: vec![community.followers_url.clone().into()],
+      kind: AnnounceType::Announce,
+      id: generate_activity_id(
+        &AnnounceType::Announce,
+        &context.settings().get_protocol_and_hostname(),
+      )?,
+      unparsed: Default::default(),
+    })
+  }
+
+  #[tracing::instrument(skip_all)]
   pub async fn send(
     object: AnnouncableActivities,
-    community: &Community,
-    additional_inboxes: Vec<Url>,
+    community: &ApubCommunity,
     context: &LemmyContext,
   ) -> Result<(), LemmyError> {
-    let announce = AnnounceActivity {
-      actor: community.actor_id(),
-      to: [PublicUrl::Public],
-      object,
-      cc: vec![community.followers_url()],
-      kind: AnnounceType::Announce,
-      id: generate_activity_id(&AnnounceType::Announce)?,
-      context: lemmy_context(),
-      unparsed: Default::default(),
+    let announce = AnnounceActivity::new(object.clone(), community, context)?;
+    let inboxes = community.get_follower_inboxes(context).await?;
+    send_lemmy_activity(context, announce, community, inboxes.clone(), false).await?;
+
+    // Pleroma and Mastodon can't handle activities like Announce/Create/Page. So for
+    // compatibility, we also send Announce/Page so that they can follow Lemmy communities.
+    use AnnouncableActivities::*;
+    let object = match object {
+      CreateOrUpdatePost(c) if c.kind == CreateOrUpdateType::Create => Page(c.object),
+      _ => return Ok(()),
     };
-    let inboxes = list_community_follower_inboxes(community, additional_inboxes, context).await?;
-    send_activity_new(context, &announce, &announce.id, community, inboxes, false).await
+    let announce_compat = AnnounceActivity::new(object, community, context)?;
+    send_lemmy_activity(context, announce_compat, community, inboxes, false).await?;
+    Ok(())
   }
 }
 
 #[async_trait::async_trait(?Send)]
 impl ActivityHandler for AnnounceActivity {
+  type DataType = LemmyContext;
+  type Error = LemmyError;
+
+  fn id(&self) -> &Url {
+    &self.id
+  }
+
+  fn actor(&self) -> &Url {
+    self.actor.inner()
+  }
+
+  #[tracing::instrument(skip_all)]
   async fn verify(
     &self,
-    context: &LemmyContext,
-    request_counter: &mut i32,
+    _context: &Data<LemmyContext>,
+    _request_counter: &mut i32,
   ) -> Result<(), LemmyError> {
-    verify_activity(self)?;
-    verify_community(&self.actor, context, request_counter).await?;
-    self.object.verify(context, request_counter).await?;
+    verify_is_public(&self.to, &self.cc)?;
     Ok(())
   }
 
+  #[tracing::instrument(skip_all)]
   async fn receive(
     self,
-    context: &LemmyContext,
+    context: &Data<LemmyContext>,
     request_counter: &mut i32,
   ) -> Result<(), LemmyError> {
-    if is_activity_already_known(context.pool(), self.object.id_unchecked()).await? {
-      return Ok(());
+    let object = self.object.object(context, request_counter).await?;
+    // we have to verify this here in order to avoid fetching the object twice over http
+    object.verify(context, request_counter).await?;
+
+    // TODO: this can probably be implemented in a cleaner way
+    match object {
+      // Dont insert these into activities table, as they are not activities.
+      AnnouncableActivities::Page(_) => {}
+      _ => {
+        let object_value = serde_json::to_value(&object)?;
+        let insert =
+          insert_activity(object.id(), object_value, false, true, context.pool()).await?;
+        if !insert {
+          debug!(
+            "Received duplicate activity in announce {}",
+            object.id().to_string()
+          );
+          return Ok(());
+        }
+      }
     }
-    insert_activity(
-      self.object.id_unchecked(),
-      self.object.clone(),
-      false,
-      true,
-      context.pool(),
-    )
-    .await?;
-    self.object.receive(context, request_counter).await
+    object.receive(context, request_counter).await
   }
 }

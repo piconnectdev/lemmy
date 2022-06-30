@@ -3,10 +3,12 @@ extern crate strum_macros;
 
 use crate::chat_server::ChatServer;
 use actix::Addr;
-use background_jobs::QueueHandle;
-use lemmy_db_queries::DbPool;
-use lemmy_utils::LemmyError;
-use reqwest::Client;
+use lemmy_db_schema::{source::secret::Secret, utils::DbPool};
+use lemmy_utils::{
+  error::LemmyError,
+  settings::{structs::Settings, SETTINGS},
+};
+use reqwest_middleware::ClientWithMiddleware;
 use serde::Serialize;
 
 pub mod chat_server;
@@ -16,24 +18,27 @@ pub mod routes;
 pub mod send;
 
 pub struct LemmyContext {
-  pub pool: DbPool,
-  pub chat_server: Addr<ChatServer>,
-  pub client: Client,
-  pub activity_queue: QueueHandle,
+  pool: DbPool,
+  chat_server: Addr<ChatServer>,
+  client: ClientWithMiddleware,
+  settings: Settings,
+  secret: Secret,
 }
 
 impl LemmyContext {
   pub fn create(
     pool: DbPool,
     chat_server: Addr<ChatServer>,
-    client: Client,
-    activity_queue: QueueHandle,
+    client: ClientWithMiddleware,
+    settings: Settings,
+    secret: Secret,
   ) -> LemmyContext {
     LemmyContext {
       pool,
       chat_server,
       client,
-      activity_queue,
+      settings,
+      secret,
     }
   }
   pub fn pool(&self) -> &DbPool {
@@ -42,11 +47,14 @@ impl LemmyContext {
   pub fn chat_server(&self) -> &Addr<ChatServer> {
     &self.chat_server
   }
-  pub fn client(&self) -> &Client {
+  pub fn client(&self) -> &ClientWithMiddleware {
     &self.client
   }
-  pub fn activity_queue(&self) -> &QueueHandle {
-    &self.activity_queue
+  pub fn settings(&self) -> &'static Settings {
+    &SETTINGS
+  }
+  pub fn secret(&self) -> &Secret {
+    &self.secret
   }
 }
 
@@ -56,7 +64,8 @@ impl Clone for LemmyContext {
       pool: self.pool.clone(),
       chat_server: self.chat_server.clone(),
       client: self.client.clone(),
-      activity_queue: self.activity_queue.clone(),
+      settings: self.settings.clone(),
+      secret: self.secret.clone(),
     }
   }
 }
@@ -82,7 +91,7 @@ where
   Ok(serde_json::to_string(&response)?)
 }
 
-#[derive(EnumString, ToString, Debug, Clone)]
+#[derive(EnumString, Display, Debug, Clone)]
 pub enum UserOperation {
   Login,
   GetCaptcha,
@@ -95,11 +104,14 @@ pub enum UserOperation {
   CreatePostLike,
   LockPost,
   StickyPost,
+  MarkPostAsRead,
   SavePost,
   CreatePostReport,
   ResolvePostReport,
   ListPostReports,
   GetReportCount,
+  GetUnreadCount,
+  VerifyEmail,
   FollowCommunity,
   GetReplies,
   GetPersonMentions,
@@ -108,19 +120,21 @@ pub enum UserOperation {
   BanFromCommunity,
   AddModToCommunity,
   AddAdmin,
+  GetUnreadRegistrationApplicationCount,
+  ListRegistrationApplications,
+  ApproveRegistrationApplication,
   BanPerson,
+  GetBannedPersons,
   Search,
   ResolveObject,
   MarkAllAsRead,
   SaveUserSettings,
   TransferCommunity,
-  TransferSite,
+  LeaveAdmin,
   PasswordReset,
   PasswordChange,
   MarkPrivateMessageAsRead,
   UserJoin,
-  GetSiteConfig,
-  SaveSiteConfig,
   PostJoin,
   CommunityJoin,
   ModJoin,
@@ -128,9 +142,13 @@ pub enum UserOperation {
   GetSiteMetadata,
   BlockCommunity,
   BlockPerson,
+  PurgePerson,
+  PurgeCommunity,
+  PurgePost,
+  PurgeComment,
 }
 
-#[derive(EnumString, ToString, Debug, Clone)]
+#[derive(EnumString, Display, Debug, Clone)]
 pub enum UserOperationCrud {
   // Site
   CreateSite,
@@ -152,6 +170,7 @@ pub enum UserOperationCrud {
   RemovePost,
   // Comment
   CreateComment,
+  GetComment,
   GetComments,
   EditComment,
   DeleteComment,

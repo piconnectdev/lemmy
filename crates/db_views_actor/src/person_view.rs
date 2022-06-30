@@ -1,25 +1,14 @@
+use crate::structs::PersonViewSafe;
 use diesel::{dsl::*, result::Error, *};
-use lemmy_db_queries::{
-  aggregates::person_aggregates::PersonAggregates,
-  fuzzy_search,
-  limit_and_offset,
-  MaybeOptional,
-  SortType,
-  ToSafe,
-  ViewToVec,
-};
 use lemmy_db_schema::{
+  aggregates::structs::PersonAggregates,
+  newtypes::PersonId,
   schema::{person, person_aggregates},
   source::person::{Person, PersonSafe},
-  PersonId,
+  traits::{MaybeOptional, ToSafe, ViewToVec},
+  utils::{fuzzy_search, limit_and_offset},
+  SortType,
 };
-use serde::Serialize;
-
-#[derive(Debug, Serialize, Clone)]
-pub struct PersonViewSafe {
-  pub person: PersonSafe,
-  pub counts: PersonAggregates,
-}
 
 type PersonViewSafeTuple = (PersonSafe, PersonAggregates);
 
@@ -48,7 +37,13 @@ impl PersonViewSafe {
     let banned = person::table
       .inner_join(person_aggregates::table)
       .select((Person::safe_columns_tuple(), person_aggregates::all_columns))
-      .filter(person::banned.eq(true))
+      .filter(
+        person::banned.eq(true).and(
+          person::ban_expires
+            .is_null()
+            .or(person::ban_expires.gt(now)),
+        ),
+      )
       .load::<PersonViewSafeTuple>(conn)?;
 
     Ok(Self::from_tuple_to_vec(banned))
