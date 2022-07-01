@@ -419,6 +419,8 @@ mod tests {
         hidden: false,
         posting_restricted_to_mods: false,
         published: inserted_community.published,
+        cert: inserted_community.cert.clone(),
+        tx: inserted_community.tx.clone(),
       },
       creator: PersonSafe {
         id: inserted_jessica.id,
@@ -439,6 +441,13 @@ mod tests {
         shared_inbox_url: None,
         matrix_user_id: None,
         ban_expires: None,
+        verified: inserted_jessica.verified,
+        pi_address: inserted_jessica.pi_address.clone(),
+        web3_address: inserted_jessica.web3_address.clone(),
+        sol_address: inserted_jessica.sol_address.clone(),
+        dap_address:inserted_jessica.dap_address.clone(),
+        cert: inserted_jessica.cert.clone(),
+        tx: inserted_jessica.clone(),
       },
       comment_creator: PersonSafeAlias1 {
         id: inserted_timmy.id,
@@ -459,6 +468,13 @@ mod tests {
         shared_inbox_url: None,
         matrix_user_id: None,
         ban_expires: None,
+        verified: inserted_timmy.verified,
+        pi_address: inserted_timmy.pi_address.clone(),
+        web3_address: inserted_timmy.web3_address.clone(),
+        sol_address: inserted_timmy.sol_address.clone(),
+        dap_address:inserted_timmy.dap_address.clone(),
+        cert: inserted_timmy.cert.clone(),
+        tx: inserted_timmy.clone(),
       },
       creator_banned_from_community: false,
       counts: CommentAggregates {
@@ -496,6 +512,13 @@ mod tests {
       shared_inbox_url: None,
       matrix_user_id: None,
       ban_expires: None,
+      verified: inserted_sara.verified,
+      pi_address: inserted_sara.pi_address.clone(),
+      web3_address: inserted_sara.web3_address.clone(),
+      sol_address: inserted_sara.sol_address.clone(),
+      dap_address:inserted_sara.dap_address.clone(),
+      cert: inserted_sara.cert.clone(),
+      tx: inserted_sara.clone(),
     };
 
     // Do a batch read of timmys reports
@@ -552,6 +575,13 @@ mod tests {
       shared_inbox_url: None,
       matrix_user_id: None,
       ban_expires: None,
+      verified: inserted_timmy.verified,
+      pi_address: inserted_timmy.pi_address.clone(),
+      web3_address: inserted_timmy.web3_address.clone(),
+      sol_address: inserted_timmy.sol_address.clone(),
+      dap_address:inserted_timmy.dap_address.clone(),
+      cert: inserted_timmy.cert.clone(),
+      tx: inserted_timmy.clone(),
     });
 
     assert_eq!(

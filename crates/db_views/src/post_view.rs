@@ -27,6 +27,7 @@ use lemmy_db_schema::{
   ListingType,
   SortType,
 };
+use uuid::Uuid;
 use tracing::debug;
 
 type PostViewTuple = (

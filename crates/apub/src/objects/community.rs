@@ -41,53 +41,9 @@ impl Deref for ApubCommunity {
   }
 }
 
-<<<<<<< HEAD
-impl Group {
-  pub(crate) fn id(&self, expected_domain: &Url) -> Result<&Url, LemmyError> {
-    verify_domains_match(&self.id, expected_domain)?;
-    Ok(&self.id)
-  }
-  pub(crate) async fn from_apub_to_form(
-    group: &Group,
-    expected_domain: &Url,
-  ) -> Result<CommunityForm, LemmyError> {
-    let actor_id = Some(group.id(expected_domain)?.clone().into());
-    let name = group.preferred_username.clone();
-    let title = group.name.clone();
-    let description = group.source.clone().map(|s| s.content);
-    let shared_inbox = group.endpoints.shared_inbox.clone().map(|s| s.into());
-
-    check_slurs(&name)?;
-    check_slurs(&title)?;
-    check_slurs_opt(&description)?;
-
-    Ok(CommunityForm {
-      name,
-      title,
-      description,
-      removed: None,
-      published: Some(group.published.naive_local()),
-      updated: group.updated.map(|u| u.naive_local()),
-      deleted: None,
-      nsfw: Some(group.sensitive.unwrap_or(false)),
-      actor_id,
-      local: Some(false),
-      private_key: None,
-      public_key: Some(group.public_key.public_key_pem.clone()),
-      last_refreshed_at: Some(naive_now()),
-      icon: Some(group.icon.clone().map(|i| i.url.into())),
-      banner: Some(group.image.clone().map(|i| i.url.into())),
-      followers_url: Some(group.followers.clone().into()),
-      inbox_url: Some(group.inbox.clone().into()),
-      shared_inbox_url: Some(shared_inbox),
-      cert: None,
-      tx: None,
-    })
-=======
 impl From<Community> for ApubCommunity {
   fn from(c: Community) -> Self {
     ApubCommunity(c)
->>>>>>> wepi-main
   }
 }
 

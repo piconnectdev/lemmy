@@ -30,7 +30,7 @@ use lemmy_db_schema::{
   ListingType,
   SortType,
 };
-
+use uuid::Uuid;
 type CommentViewTuple = (
   Comment,
   PersonSafe,

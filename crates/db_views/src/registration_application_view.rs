@@ -2,6 +2,7 @@ use crate::structs::RegistrationApplicationView;
 use diesel::{dsl::count, result::Error, *};
 use lemmy_db_schema::{
   schema::{local_user, person, person_alias_1, registration_application},
+  newtypes::{RegistrationApplicationId, },
   source::{
     local_user::{LocalUser, LocalUserSettings},
     person::{Person, PersonAlias1, PersonSafe, PersonSafeAlias1},
@@ -292,6 +293,13 @@ mod tests {
         inbox_url: inserted_sara_person.inbox_url.to_owned(),
         shared_inbox_url: None,
         matrix_user_id: None,
+        verified: inserted_sara_person.verified,
+        pi_address: inserted_sara_person.pi_address.clone(),
+        web3_address: inserted_sara_person.web3_address.clone(),
+        sol_address: inserted_sara_person.sol_address.clone(),
+        dap_address:inserted_sara_person.dap_address.clone(),
+        cert: inserted_sara_person.cert.clone(),
+        tx: inserted_sara_person.clone(),
       },
       admin: None,
     };
@@ -361,6 +369,13 @@ mod tests {
       inbox_url: inserted_timmy_person.inbox_url.to_owned(),
       shared_inbox_url: None,
       matrix_user_id: None,
+      verified: inserted_timmy_person.verified,
+      pi_address: inserted_timmy_person.pi_address.clone(),
+      web3_address: inserted_timmy_person.web3_address.clone(),
+      sol_address: inserted_timmy_person.sol_address.clone(),
+      dap_address:inserted_timmy_person.dap_address.clone(),
+      cert: inserted_timmy_person.cert.clone(),
+      tx: inserted_timmy_person.clone(),
     });
     assert_eq!(read_sara_app_view_after_approve, expected_sara_app_view);
 
