@@ -206,6 +206,7 @@ impl PerformCrud for PiAgreeRegister {
       _payment_dto = dto.unwrap();
     }
 
+    /// TODO: UUID check
     let refid = match &data.info.captcha_uuid {
       Some(uid) => match Uuid::parse_str(uid) {
         Ok(uidx) => Some(uidx),

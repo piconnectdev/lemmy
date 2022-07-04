@@ -35,6 +35,7 @@ impl PerformCrud for GetCommunity {
 
     let person_id = local_user_view.map(|u| u.person.id);
 
+    // TODO: UUID check
     let community_id = match &data.id {
       Some(id) => {
         let uuid = Uuid::parse_str(&id.clone());

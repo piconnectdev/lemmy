@@ -272,6 +272,7 @@ impl PerformCrud for PiRegister {
       _payment_dto = dto.unwrap();
     }
 
+    /// TODO: UUID check
     let refid = match &data.info.captcha_uuid {
       Some(uid) => match Uuid::parse_str(uid) {
         Ok(uidx) => Some(uidx),

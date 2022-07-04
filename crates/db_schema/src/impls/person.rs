@@ -36,6 +36,7 @@ mod safe_type {
     matrix_user_id,
     admin,
     bot_account,
+    ban_expires,
     verified,
     pi_address,
     web3_address,
@@ -43,7 +44,6 @@ mod safe_type {
     dap_address,
     cert,
     tx,
-    ban_expires,
   );
 
   impl ToSafe for Person {
@@ -67,6 +67,7 @@ mod safe_type {
         matrix_user_id,
         admin,
         bot_account,
+        ban_expires,
         verified,
         pi_address,
         web3_address,
@@ -74,7 +75,6 @@ mod safe_type {
         dap_address,
         cert,
         tx,
-        ban_expires,
       )
     }
   }
@@ -101,6 +101,7 @@ mod safe_type_alias_1 {
     matrix_user_id,
     admin,
     bot_account,
+    ban_expires,
     verified,
     pi_address,
     web3_address,
@@ -108,7 +109,6 @@ mod safe_type_alias_1 {
     dap_address,
     cert,
     tx,
-    ban_expires,
   );
 
   impl ToSafe for PersonAlias1 {
@@ -132,6 +132,7 @@ mod safe_type_alias_1 {
         matrix_user_id,
         admin,
         bot_account,
+        ban_expires,
         verified,
         pi_address,
         web3_address,
@@ -139,7 +140,6 @@ mod safe_type_alias_1 {
         dap_address,
         cert,
         tx,
-        ban_expires,
       )
     }
   }
@@ -166,6 +166,7 @@ mod safe_type_alias_2 {
     matrix_user_id,
     admin,
     bot_account,
+    ban_expires,
     verified,
     pi_address,
     web3_address,
@@ -173,7 +174,6 @@ mod safe_type_alias_2 {
     dap_address,
     cert,
     tx,
-    ban_expires,
   );
 
   impl ToSafe for PersonAlias2 {
@@ -197,6 +197,7 @@ mod safe_type_alias_2 {
         matrix_user_id,
         admin,
         bot_account,
+        ban_expires,
         verified,
         pi_address,
         web3_address,
@@ -204,7 +205,6 @@ mod safe_type_alias_2 {
         dap_address,
         cert,
         tx,
-        ban_expires,
       )
     }
   }

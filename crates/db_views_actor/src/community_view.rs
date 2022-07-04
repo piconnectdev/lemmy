@@ -27,7 +27,8 @@ impl CommunityView {
     community_id: CommunityId,
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
-  	/// TODO: DinhHa
+  	// TODO: UUID check
+    
     // The left join below will return None in this case
     //let person_id_join = my_person_id.unwrap_or(PersonId(
     //  Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
@@ -158,6 +159,7 @@ impl<'a> CommunityQueryBuilder<'a> {
   }
 
   pub fn list(self) -> Result<Vec<CommunityView>, Error> {
+    // TODO: UUID check
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));

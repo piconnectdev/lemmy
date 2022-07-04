@@ -134,6 +134,7 @@ impl PerformCrud for GetPosts {
     let mut community_name = data.community_name.to_owned();
     let community_id =  match &data.community_id {
         Some(cid) => {
+          /// TODO: UUID check
           let uuid = Uuid::parse_str(cid);
           match uuid {
               Ok(uid) => Some(CommunityId(uid)),

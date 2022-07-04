@@ -52,6 +52,7 @@ impl CommentView {
     comment_id: CommentId,
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
+    // TODO: UUID check 
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = my_person_id.unwrap_or(PersonId(uuid));
@@ -319,6 +320,7 @@ impl<'a> CommentQueryBuilder<'a> {
   pub fn list(self) -> Result<Vec<CommentView>, Error> {
     use diesel::dsl::*;
 
+    // TODO: UUID check 
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));

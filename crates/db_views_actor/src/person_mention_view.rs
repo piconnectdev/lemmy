@@ -51,6 +51,7 @@ impl PersonMentionView {
     person_mention_id: PersonMentionId,
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
+    // TODO: UUID check
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = my_person_id.unwrap_or(PersonId(uuid));
@@ -216,6 +217,7 @@ impl<'a> PersonMentionQueryBuilder<'a> {
   pub fn list(self) -> Result<Vec<PersonMentionView>, Error> {
     use diesel::dsl::*;
 
+    // TODO: UUID check
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));

@@ -49,6 +49,7 @@ impl PostView {
     post_id: PostId,
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
+    // TODO: UUID check 
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = my_person_id.unwrap_or(PersonId(uuid));
@@ -265,6 +266,7 @@ impl<'a> PostQueryBuilder<'a> {
   pub fn list(self) -> Result<Vec<PostView>, Error> {
     use diesel::dsl::*;
 
+    // TODO: UUID check 
     // The left join below will return None in this case
     let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));
@@ -676,6 +678,7 @@ mod tests {
         inbox_url: inserted_person.inbox_url.to_owned(),
         shared_inbox_url: None,
         matrix_user_id: None,
+        ban_expires: None,
         verified: false,
         pi_address: None,
         web3_address: None,
@@ -683,7 +686,6 @@ mod tests {
         dap_address: None,
         cert: None,
         tx: None,
-        ban_expires: None,
       },
       creator_banned_from_community: false,
       community: CommunitySafe {

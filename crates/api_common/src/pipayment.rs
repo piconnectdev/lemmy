@@ -1,4 +1,4 @@
-use lemmy_db_schema::{PaymentId, PiUserId,};
+use lemmy_db_schema::newtypes::{PaymentId, PiUserId,};
 use crate::person::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

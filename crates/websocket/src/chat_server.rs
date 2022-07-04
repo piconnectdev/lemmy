@@ -382,6 +382,7 @@ impl ChatServer {
       websocket_id,
     )?;
 
+    // TODO: UUID check
     // Send it to the community too
     self.send_community_room_message(
       user_operation,
@@ -424,6 +425,7 @@ impl ChatServer {
     let mut post_sent = post_res.clone();
     post_sent.post_view.my_vote = None;
 
+    // TODO: UUID check
     // Send it to /c/all and that community
     self.send_community_room_message(user_operation, &post_sent, CommunityId(Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()), websocket_id)?;
     self.send_community_room_message(user_operation, &post_sent, community_id, websocket_id)?;

@@ -198,6 +198,8 @@ impl ApubObject for ApubPost {
         thumbnail_url,
         ap_id: Some(page.id.clone().into()),
         local: Some(false),
+        cert: None,
+        tx: None,
       }
     } else {
       // if is mod action, only update locked/stickied fields, nothing else

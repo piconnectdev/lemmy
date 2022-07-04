@@ -110,6 +110,15 @@ impl Perform for SaveUserSettings {
       matrix_user_id,
       bot_account,
       ban_expires: None,
+      extra_user_id: None,
+      verified: None,
+      pi_address: None,
+      private_seeds: None,
+      sol_address: None,
+      web3_address: None,
+      dap_address: None,
+      cert: None,
+      tx: None,
     };
 
     blocking(context.pool(), move |conn| {

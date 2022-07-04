@@ -6,7 +6,7 @@ use lemmy_websocket::{
   messages::{JoinCommunityRoom, JoinModRoom, JoinPostRoom, JoinUserRoom},
   LemmyContext,
 };
-use lemmy_db_schema::{CommunityId,};
+use lemmy_db_schema::newtypes::{CommunityId,};
 use uuid::Uuid;
 #[async_trait::async_trait(?Send)]
 impl Perform for UserJoin {
@@ -46,7 +46,7 @@ impl Perform for CommunityJoin {
     let data: &CommunityJoin = self;
 
     if let Some(ws_id) = websocket_id {
-      /// TODO: DinhHa check
+      /// TODO: UUID check
       // let community_id = match Uuid::parse_str(&data.community_id.clone()) {
       //   Ok(uid) => {
       //       CommunityId(uid)
