@@ -18,8 +18,9 @@ use lemmy_db_schema::{
     person::{Person, PersonForm},
     registration_application::{RegistrationApplication, RegistrationApplicationForm},
     site::Site,
+    community::*,
   },
-  traits::Crud,
+  traits::{Crud, ApubActor, },  
 };
 use lemmy_db_views::structs::LocalUserView;
 use lemmy_db_views_actor::structs::PersonViewSafe;
@@ -27,6 +28,7 @@ use lemmy_utils::{
   claims::Claims,
   error::LemmyError,
   utils::{check_slurs, is_valid_actor_name},
+  settings::SETTINGS,
   ConnectionId,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
@@ -81,8 +83,11 @@ impl PerformCrud for Register {
     .await??;
 
     if !no_admins {
+      let settings = SETTINGS.to_owned();
       // Uncomment to disable registration
-      // return Err(ApiError::err("registration_disabled").into());
+      if !settings.pinetwork.pi_allow_all {
+        return Err(LemmyError::from_message("registration_disabled").into());
+      }
     }
 
     // If its not the admin, check the captcha
@@ -174,7 +179,8 @@ impl PerformCrud for Register {
       }
     };
 
-	/// TODO: DinhHa check
+	/// TODO: UUID check
+  /*
     let main_community_keypair = generate_actor_keypair()?;
 
     // Create the main community if it doesn't exist
@@ -186,14 +192,14 @@ impl PerformCrud for Register {
       Ok(c) => c,
       Err(_e) => {
         let default_community_name = "main";
-        let actor_id = generate_apub_endpoint(EndpointType::Community, default_community_name)?;
+        let actor_id = generate_local_apub_endpoint(EndpointType::Community, default_community_name, &context.settings().get_protocol_and_hostname())?;
         let community_form = CommunityForm {
           name: default_community_name.to_string(),
           title: "The Default Community".to_string(),
           description: Some("The Default Community".to_string()),
           actor_id: Some(actor_id.to_owned()),
-          private_key: Some(main_community_keypair.private_key),
-          public_key: Some(main_community_keypair.public_key),
+          private_key: Some(Some(main_community_keypair.private_key)),
+          public_key: main_community_keypair.public_key,
           followers_url: Some(generate_followers_url(&actor_id)?),
           inbox_url: Some(generate_inbox_url(&actor_id)?),
           shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
@@ -215,7 +221,7 @@ impl PerformCrud for Register {
 
     let follow = move |conn: &'_ _| CommunityFollower::follow(conn, &community_follower_form);
     if blocking(context.pool(), follow).await?.is_err() {
-      return Err(ApiError::err("community_follower_already_exists").into());
+      return Err(LemmyError::from_message("community_follower_already_exists").into());
     };
 
     // If its an admin, add them as a mod and follower to main
@@ -230,7 +236,7 @@ impl PerformCrud for Register {
       })
       .await??;
     }
-
+    */
     let mut login_response = LoginResponse {
       jwt: None,
       registration_created: false,

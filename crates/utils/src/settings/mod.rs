@@ -107,15 +107,15 @@ impl Settings {
   }
 
   pub fn pi_seed(&self) -> String {
-    self.pi_seed.to_owned().unwrap_or_default()
+    self.pinetwork.pi_seed.to_owned().unwrap_or_default()
   }
   pub fn pi_key(&self) -> String {
-    self.pi_key.to_owned().unwrap_or_default()
+    self.pinetwork.pi_key.to_owned().unwrap_or_default()
   }
   pub fn pi_api_host(&self) -> String {
-    self.pi_api_host.to_owned().unwrap_or_default()
+    self.pinetwork.pi_api_host.to_owned().unwrap_or_default()
   }
   pub fn pi_horizon_host(&self) -> String {
-    self.pi_api_host.to_owned().unwrap_or_default()
+    self.pinetwork.pi_api_host.to_owned().unwrap_or_default()
   }
 }

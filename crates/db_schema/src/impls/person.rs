@@ -318,6 +318,24 @@ impl Person {
       ))
       .get_result::<Self>(conn)
   }
+
+  pub fn find_by_name(conn: &PgConnection, from_name: &str) -> Result<Person, Error> {
+    person
+
+      .filter(deleted.eq(false))
+      .filter(local.eq(true))
+      .filter(name.eq(from_name))
+      .first::<Person>(conn)
+  }
+
+  pub fn find_by_pi_name(conn: &PgConnection, from_name: &str) -> Result<Person, Error> {
+    person
+      .filter(deleted.eq(false))
+      .filter(local.eq(true))
+      .filter(extra_user_id.eq(from_name))
+      .first::<Person>(conn)
+  }
+
 }
 
 impl PersonSafe {

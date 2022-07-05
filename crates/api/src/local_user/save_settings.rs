@@ -111,7 +111,7 @@ impl Perform for SaveUserSettings {
       bot_account,
       ban_expires: None,
       extra_user_id: None,
-      verified: None,
+      verified: false,
       pi_address: None,
       private_seeds: None,
       sol_address: None,
@@ -209,19 +209,19 @@ impl Perform for SaveUserSettings {
 
     if let Some(Some(bio)) = &bio {
       if bio.chars().count() > 300 {
-        return Err(ApiError::err("bio_length_overflow").into());
+        return Err(LemmyError::from_message("bio_length_overflow").into());
       }
     }
 
     if let Some(Some(display_name)) = &display_name {
       if !is_valid_display_name(display_name.trim()) {
-        return Err(ApiError::err("invalid_username").into());
+        return Err(LemmyError::from_message("invalid_username").into());
       }
     }
 
     if let Some(Some(matrix_user_id)) = &matrix_user_id {
       if !is_valid_matrix_id(matrix_user_id) {
-        return Err(ApiError::err("invalid_matrix_id").into());
+        return Err(LemmyError::from_message("invalid_matrix_id").into());
       }
     }
 
@@ -269,7 +269,7 @@ impl Perform for SaveUserSettings {
     let _updated_person: Person = match person_res {
       Ok(p) => p,
       Err(_) => {
-        return Err(ApiError::err("user_already_exists").into());
+        return Err(LemmyError::from_message("user_already_exists").into());
       }
     };
 
@@ -305,7 +305,7 @@ impl Perform for SaveUserSettings {
           "user_already_exists"
         };
 
-        return Err(ApiError::err(err_type).into());
+        return Err(LemmyError::from_message(err_type).into());
       }
     };
 

@@ -3,10 +3,7 @@ use crate::{
   source::pipayment::*, 
   newtypes::{PaymentId, PiUserId}, 
   traits::{Crud, },
-  utils::naive_now,
 };
-use serde_json::Value;
-//use uuid::Uuid;
 
 impl Crud for PiPayment {
   type Form = PiPaymentForm;
@@ -65,19 +62,20 @@ impl PiPayment_ for PiPayment {
 
 #[cfg(test)]
 mod tests {
-  use lemmy_utils::settings::structs::Settings;
+use lemmy_utils::settings::SETTINGS;
 use uuid::Uuid;
 
-use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment::*, newtypes::PiUserId};
+use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment::*, newtypes::PiUserId, traits::Crud};
 
   #[test]
   fn test_crud() {
+    let settings = SETTINGS.to_owned();
     let conn = establish_unpooled_connection();
     let uid = Uuid::new_v4();
     let new_payment = PiPaymentForm {
       person_id: None,
       ref_id: Some(uid),
-      testnet: Settings::get().pi_testnet,
+      testnet: settings.pinetwork.pi_testnet,
 
       finished: false,
       updated: None,
@@ -110,7 +108,7 @@ use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment
       id: inserted_payment.id,
       person_id: None,
       ref_id: Some(uid),
-      testnet: Settings::get().pi_testnet,
+      testnet: settings.pinetwork.pi_testnet,
       published: inserted_payment.published.clone(),
       finished: false,
       updated: None,

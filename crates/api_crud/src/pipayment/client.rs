@@ -1,37 +1,37 @@
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
-use lemmy_api_common::{blocking};
-use lemmy_db_queries::{
-  source::post::*, source::comment::*,source::pipayment::*, Crud, 
-};
-use lemmy_db_schema::*;
+use lemmy_api_common::utils::{blocking};
 use lemmy_db_schema::{
+  utils::naive_now,
   source::{
     post::*,
     comment::*,
     pipayment::*,
   },
-//  PaymentId, PersonId, PiUserId,
+  traits::Crud,
+  impls::pipayment::PiPayment_,
+  newtypes::{PaymentId, PersonId, PiUserId,CommentId},
 };
 use lemmy_utils::{
-  request::*,
-  settings::structs::Settings,
-  ApiError, LemmyError,
+  settings::SETTINGS,
+  request::retry,
+  error::LemmyError,
 };
 use lemmy_websocket::{
   LemmyContext,
 };
-use reqwest::Client;
+use reqwest_middleware::ClientWithMiddleware;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-pub async fn pi_payment(client: &Client, id: &str) -> Result<PiPaymentDto, LemmyError> {
-  let fetch_url = format!("{}/payments/{}", Settings::get().pi_api_host(), id);
+pub async fn pi_payment(client: &ClientWithMiddleware, id: &str) -> Result<PiPaymentDto, LemmyError> {
+  let settings = SETTINGS.to_owned();
+  let fetch_url = format!("{}/payments/{}", settings.pi_api_host(), id);
 
   let response = retry(|| {
     client
       .get(&fetch_url)
-      .header("Authorization", format!("Key {}", Settings::get().pi_key()))
+      .header("Authorization", format!("Key {}", settings.pi_key()))
       .header("Content-Type", format!("application/json"))
       .send()
   })
@@ -40,17 +40,19 @@ pub async fn pi_payment(client: &Client, id: &str) -> Result<PiPaymentDto, Lemmy
   let res: PiPaymentDto = response
     .json::<PiPaymentDto>()
     .await
-    .map_err(|e| RecvError(e.to_string()))?;
+    .map_err(|e| LemmyError::from_error_message(e, ""))?;
+    //.map_err(|e| RecvError(e.to_string()))?;
   Ok(res)
 }
 
-pub async fn pi_approve(client: &Client, id: &str) -> Result<PiPaymentDto, LemmyError> {
-  let fetch_url = format!("{}/payments/{}/approve", Settings::get().pi_api_host(), id);
+pub async fn pi_approve(client: &ClientWithMiddleware, id: &str) -> Result<PiPaymentDto, LemmyError> {
+  let settings = SETTINGS.to_owned();
+  let fetch_url = format!("{}/payments/{}/approve", settings.pi_api_host(), id);
 
   let response = retry(|| {
     client
       .post(&fetch_url)
-      .header("Authorization", format!("Key {}", Settings::get().pi_key()))
+      .header("Authorization", format!("Key {}", settings.pi_key()))
       .header("Content-Type", format!("application/json"))
       .send()
   })
@@ -59,16 +61,17 @@ pub async fn pi_approve(client: &Client, id: &str) -> Result<PiPaymentDto, Lemmy
   let res: PiPaymentDto = response
     .json::<PiPaymentDto>()
     .await
-    .map_err(|e| RecvError(e.to_string()))?;
+    .map_err(|e| LemmyError::from_error_message(e, ""))?;
   Ok(res)
 }
 
 pub async fn pi_complete(
-  client: &Client,
+  client: &ClientWithMiddleware,
   id: &str,
   txid_: &str,
 ) -> Result<PiPaymentDto, LemmyError> {
-  let fetch_url = format!("{}/payments/{}/complete", Settings::get().pi_api_host(), id);
+  let settings = SETTINGS.to_owned();
+  let fetch_url = format!("{}/payments/{}/complete", settings.pi_api_host(), id);
 
   let r = TxRequest {
     txid: txid_.to_owned(),
@@ -76,7 +79,7 @@ pub async fn pi_complete(
   let response = retry(|| {
     client
       .post(&fetch_url)
-      .header("Authorization", format!("Key {}", Settings::get().pi_key()))
+      .header("Authorization", format!("Key {}", settings.pi_key()))
       .header("Content-Type", format!("application/json"))
       .json(&r)
       .send()
@@ -86,15 +89,17 @@ pub async fn pi_complete(
   let res: PiPaymentDto = response
     .json::<PiPaymentDto>()
     .await
-    .map_err(|e| RecvError(e.to_string()))?;
+    .map_err(|e| LemmyError::from_error_message(e, ""))?;
   Ok(res)
 }
 
 pub async fn pi_me(
-  client: &Client,
+  client: &ClientWithMiddleware,
   key: &str,
 ) -> Result<PiUserDto, LemmyError> {
-  let fetch_url = format!("{}/me", Settings::get().pi_api_host());
+
+  let settings = SETTINGS.to_owned();
+  let fetch_url = format!("{}/me", settings.pi_api_host());
 
   let response = retry(|| {
     client
@@ -108,7 +113,7 @@ pub async fn pi_me(
   let res: PiUserDto = response
     .json::<PiUserDto>()
     .await
-    .map_err(|e| RecvError(e.to_string()))?;
+    .map_err(|e| LemmyError::from_error_message(e, &e.to_string().clone()))?;
   Ok(res)
 }
 
@@ -118,6 +123,8 @@ pub async fn pi_update_payment(
   approve: &PiApprove,
   tx: Option<String>,
 ) -> Result<PiPayment, LemmyError> {
+  let settings = SETTINGS.to_owned();
+
   let payment_id = approve.paymentid.clone();
   let pi_username = approve.pi_username.clone();
   let pi_uid = approve.pi_uid.clone();
@@ -219,7 +226,7 @@ pub async fn pi_update_payment(
     Err(_e) => {
       let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
       &pi_username, &_payment_dto.identifier.clone(), _payment_dto.created_at, _e.to_string() );
-      //return Err(ApiError::err(&err_type).into());  
+      //return Err(LemmyError::from_message(&err_type));  
       None
     }
   };
@@ -228,7 +235,7 @@ pub async fn pi_update_payment(
   let mut payment_form = PiPaymentForm {
     person_id: None,
     ref_id: person_id,
-    testnet: Settings::get().pi_testnet,
+    testnet: settings.pinetwork.pi_testnet,
     finished: false,
     updated: None,
     pi_uid: _pi_uid,
@@ -276,7 +283,7 @@ pub async fn pi_update_payment(
       }
       Err(_e) => {
         let err_type = _e.to_string();
-        return Err(ApiError::err(&err_type).into());
+        return Err(LemmyError::from_message(&err_type));
       }
     };
     pmt = _payment.unwrap();
@@ -350,7 +357,9 @@ pub async fn pi_update_payment(
       Ok(payment) => Some(payment),
       Err(_e) => {
         let err_type = _e.to_string();
-        return Err(ApiError::err(&err_type).into());
+        //return LemmyError::from_error_message(e, &err_type)?;
+        //    .map_err(|e| LemmyError::from_error_message(e, &e.to_string().clone()))?;
+        return Err(LemmyError::from_message(&err_type));
       }
     };
   }

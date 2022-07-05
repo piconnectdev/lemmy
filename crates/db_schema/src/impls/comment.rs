@@ -26,7 +26,7 @@ impl Comment {
       .set(ap_id.eq(apub_id))
       .get_result::<Self>(conn)
   }
-  fn update_tx(
+  pub fn update_tx(
     conn: &PgConnection,
     comment_id: CommentId,
     txlink: &str,

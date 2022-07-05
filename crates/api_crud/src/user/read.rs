@@ -5,7 +5,7 @@ use lemmy_api_common::{
   utils::{blocking, check_private_instance, get_local_user_view_from_jwt_opt},
 };
 use lemmy_apub::{fetcher::resolve_actor_identifier, objects::person::ApubPerson};
-use lemmy_db_schema::source::person::Person;
+use lemmy_db_schema::{source::person::Person, newtypes::PersonId};
 use lemmy_db_views::{comment_view::CommentQueryBuilder, post_view::PostQueryBuilder};
 use lemmy_db_views_actor::structs::{CommunityModeratorView, PersonViewSafe};
 use lemmy_utils::{error::LemmyError, ConnectionId};
@@ -38,39 +38,41 @@ impl PerformCrud for GetPersonDetails {
       .map(|t| t.local_user.show_read_posts);
 
 	  /// TODO: DinhHa check read by id
-    let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
+    //let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
 
     /// TODO: UUID check
     /// TODO: person_id may be name.
-    let username = data
-      .username
-      .to_owned()
-      .unwrap_or_else(|| "admin".to_string());
-    // let person_details_id = match &data.person_id {
-    //   Some(id) => {
-    //     let uuid = Uuid::parse_str(&id.clone());
-    //     match uuid {
-    //       Ok(u) => PersonId(u),
-    //       Err(e) => {
-    //         let name = id.clone();
-    //         //let person = blocking(context.pool(), move |conn| {
-    //         //  Person::find_by_name(conn, &name)
-    //         //})
-    //         //.await?;
-    //         let actor_id = build_actor_id_from_shortname(EndpointType::Person, &name)?;
+    // let username = data
+    //   .username
+    //   .to_owned()
+    //   .unwrap_or_else(|| "admin".to_string());
+    let person_details_id = match &data.person_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => PersonId(u),
+          Err(e) => {
+            let name = id.clone();
+            resolve_actor_identifier::<ApubPerson, Person>(&name, context)
+            .await
+            .map_err(|e| e.with_message("couldnt_find_that_username_or_email"))?
+            .id
+            //let person = blocking(context.pool(), move |conn| {
+            //  Person::find_by_name(conn, &name)
+            //})
+            //.await?;
+            // let actor_id = build_actor_id_from_shortname(EndpointType::Person, &name)?;
 
-    //         let person = blocking(context.pool(), move |conn| {
-    //           Person::read_from_apub_id(conn, &actor_id)
-    //         })
-    //         .await?;
-    //         person
-    //           .map_err(|_| ApiError::err("couldnt_find_that_username_or_email"))?
-    //           .id  
-    //       }
-    //     }
-    //   },
-    let person_details_id = match data.person_id {
-      Some(id) => id,
+            // let person = blocking(context.pool(), move |conn| {
+            //   Person::read_from_apub_id(conn, &actor_id)
+            // })
+            // .await?;
+            // person
+            //   .map_err(|_| LemmyError::from_message("couldnt_find_that_username_or_email"))?
+            //   .id  
+          }
+        }
+      },
       None => {
         if let Some(username) = &data.username {
           resolve_actor_identifier::<ApubPerson, Person>(username, context)

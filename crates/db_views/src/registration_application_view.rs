@@ -299,7 +299,7 @@ mod tests {
         sol_address: inserted_sara_person.sol_address.clone(),
         dap_address:inserted_sara_person.dap_address.clone(),
         cert: inserted_sara_person.cert.clone(),
-        tx: inserted_sara_person.clone(),
+        tx: inserted_sara_person.tx.clone(),
       },
       admin: None,
     };
@@ -375,7 +375,7 @@ mod tests {
       sol_address: inserted_timmy_person.sol_address.clone(),
       dap_address:inserted_timmy_person.dap_address.clone(),
       cert: inserted_timmy_person.cert.clone(),
-      tx: inserted_timmy_person.clone(),
+      tx: inserted_timmy_person.tx.clone(),
     });
     assert_eq!(read_sara_app_view_after_approve, expected_sara_app_view);
 

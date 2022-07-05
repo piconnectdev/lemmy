@@ -9,13 +9,16 @@ use lemmy_apub::{
   objects::{community::ApubCommunity, instance::instance_actor_id_from_url},
 };
 use lemmy_db_schema::{
+  newtypes::CommunityId,
   source::{community::Community, site::Site},
   traits::DeleteableOrRemoveable,
+  traits::ApubActor,
 };
 use lemmy_db_views_actor::structs::{CommunityModeratorView, CommunityView};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{messages::GetCommunityUsersOnline, LemmyContext};
 use uuid::Uuid;
+
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for GetCommunity {
   type Response = GetCommunityResponse;
@@ -47,7 +50,7 @@ impl PerformCrud for GetCommunity {
               Community::read_from_name(conn, &name)
             })
             .await?
-            .map_err(|_| ApiError::err("couldnt_find_community"))?
+            .map_err(|_| LemmyError::from_message("couldnt_find_community"))?
             .id    
           }
         }

@@ -2,17 +2,13 @@ use bcrypt::{hash, DEFAULT_COST};
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
+use lemmy_api_common::{utils::{blocking, password_length_check,}, person::*, pipayment::*};
 use lemmy_apub::{
-  generate_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
+  generate_local_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
   EndpointType,
 };
-use lemmy_db_queries::{
-  source::{community::Community_, local_user::LocalUser_, person::*, pipayment::*, site::Site_},
-  Crud, Followable, Joinable, ListingType, SortType,
-};
 use lemmy_db_schema::{
-  naive_now,
+  utils::naive_now,
   source::{
     community::*,
     local_user::{LocalUser, LocalUserForm},
@@ -20,17 +16,20 @@ use lemmy_db_schema::{
     pipayment::*,
     site::*,
   },
-  CommunityId, PaymentId, PersonId,
+  impls::pipayment::PiPayment_,
+  traits::Crud,
+  newtypes::{CommunityId, PaymentId, PersonId,},
 };
-use lemmy_db_views::{comment_view::CommentView, local_user_view::LocalUserView};
-use lemmy_db_views_actor::person_view::PersonViewSafe;
+use lemmy_db_views::{comment_view::*, local_user_view::*};
+use lemmy_db_views_actor::{person_view::{*}, structs::PersonViewSafe};
 
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
-  settings::structs::Settings,
+  settings::SETTINGS,
   utils::{check_slurs, is_valid_actor_name},
-  ApiError, ConnectionId, LemmyError,
+  error::{LemmyError},
+  ConnectionId,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256, Sha512};
@@ -45,13 +44,14 @@ impl PerformCrud for PiRegister {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiRegisterResponse, LemmyError> {
+    let settings = SETTINGS.to_owned();
     let data: &PiRegister = &self;
 
     let mut result = true;
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
       if !site.open_registration {
-        return Err(ApiError::err("registration_closed").into());
+        return Err(LemmyError::from_message("registration_closed"));
       }
     }
 
@@ -59,7 +59,7 @@ impl PerformCrud for PiRegister {
 
     // Make sure passwords match
     if data.info.password != data.info.password_verify {
-      return Err(ApiError::err("passwords_dont_match").into());
+      return Err(LemmyError::from_message("passwords_dont_match"));
     }
 
     // Check if there are admins. False if admins exist
@@ -86,16 +86,16 @@ impl PerformCrud for PiRegister {
     //     })
     //     .await?;
     //   if !check {
-    //     return Err(ApiError::err("captcha_incorrect").into());
+    //     return Err(LemmyError::from_message("captcha_incorrect").into());
     //   }
     // }
 
-    check_slurs(&data.info.username)?;
+    check_slurs(&data.info.username, &context.settings().slur_regex())?;
 
     let actor_keypair = generate_actor_keypair()?;
-    if !is_valid_actor_name(&data.info.username) {
+    if !is_valid_actor_name(&data.info.username, context.settings().actor_name_max_length) {
       println!("Invalid username {} {}", data.pi_username.to_owned(), &data.info.username);
-      //return Err(ApiError::err("register:invalid_username").into());
+      //return Err(LemmyError::from_message("register:invalid_username"));
       let err_type = format!("Register: invalid username");
       return Ok(PiRegisterResponse {
         success: false,
@@ -103,11 +103,11 @@ impl PerformCrud for PiRegister {
         extra: Some(format!("{}",err_type)),
         });
     }
-    let actor_id = generate_apub_endpoint(EndpointType::Person, &data.info.username)?;
+    let actor_id = generate_local_apub_endpoint(EndpointType::Person, &data.info.username, &settings.get_protocol_and_hostname())?;
 
     // Hide Pi user name, not store pi_uid
     let mut sha256 = Sha256::new();
-    sha256.update(Settings::get().pi_seed());
+    sha256.update(settings.pi_seed());
     sha256.update(data.pi_username.to_owned());
     let _pi_alias: String = format!("{:X}", sha256.finalize());
     let _pi_alias2 = _pi_alias.clone();
@@ -143,7 +143,7 @@ impl PerformCrud for PiRegister {
       Err(_e) => {
         //let err_type = format!("Payment {} was not approved", data.paymentid);
         let err_type = format!("Register: Payment {} was not approved, err: {}", data.paymentid, _e.to_string());
-        //return Err(ApiError::err(&err_type).into());        
+        //return Err(LemmyError::from_message(&err_type));        
         return Ok(PiRegisterResponse {
           success: false,
           jwt: format!(""),
@@ -155,11 +155,11 @@ impl PerformCrud for PiRegister {
     if _payment.is_none() {
       // Why here ????
       let err_type = format!("Register: Payment {} was not insert/approved", data.paymentid);
-      return Err(ApiError::err(&err_type).into());
+      return Err(LemmyError::from_message(&err_type).into());
     } else {
       if finished {
         let err_type = format!("Register: Payment {} was finished", data.paymentid);
-        return Err(ApiError::err(&err_type).into());
+        return Err(LemmyError::from_message(&err_type).into());
       }
     }
 
@@ -193,7 +193,7 @@ impl PerformCrud for PiRegister {
               let err_type = format!("Register: User {} is exist and belong to other Pi Account ", &data.info.username);
               println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
               result = false;
-              //return Err(ApiError::err(&err_type).into());
+              //return Err(LemmyError::from_message(&err_type).into());
               return Ok(PiRegisterResponse {
                 success: false,
                 jwt: format!(""),
@@ -211,7 +211,7 @@ impl PerformCrud for PiRegister {
             let err_type = format!("Register: You already have user name {}", pi.name);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result = false;
-            //return Err(ApiError::err(&err_type).into());
+            //return Err(LemmyError::from_message(&err_type).into());
             // return Ok(PiRegisterResponse {
             //   success: false,
             //   jwt: format!(""),
@@ -226,7 +226,7 @@ impl PerformCrud for PiRegister {
             let err_type = format!("Register: User {} is exist and belong to other user", &data.info.username);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result = false;
-            //return Err(ApiError::err(&err_type).into());
+            //return Err(LemmyError::from_message(&err_type).into());
             return Ok(PiRegisterResponse {
               success: false,
               jwt: format!(""),
@@ -252,7 +252,7 @@ impl PerformCrud for PiRegister {
         Err(_e) => {
           // Server error
           let err_type = format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-          //return Err(ApiError::err(&err_type).into());
+          //return Err(LemmyError::from_message(&err_type).into());
           return Ok(PiRegisterResponse {
             success: false,
             jwt: format!(""),
@@ -286,7 +286,7 @@ impl PerformCrud for PiRegister {
       Err(_e) => {
         let err_type = format!("Register: Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
         &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
-        //return Err(ApiError::err(&err_type).into());
+        //return Err(LemmyError::from_message(err_type));
         None  
       }
     };
@@ -295,7 +295,7 @@ impl PerformCrud for PiRegister {
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: refid,
-      testnet: Settings::get().pi_testnet,
+      testnet: settings.pinetwork.pi_testnet,
       finished: true,
       updated: Some(naive_now()),
       pi_uid: data.pi_uid,
@@ -339,7 +339,7 @@ impl PerformCrud for PiRegister {
       Ok(payment) => payment,
       Err(_e) => {
         let err_type = format!("Register: Update payment complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-        //return Err(ApiError::err(&err_type).into());
+        //return Err(LemmyError::from_message(&err_type).into());
         return Ok(PiRegisterResponse {
           success: false,
           jwt: format!(""),
@@ -361,7 +361,7 @@ impl PerformCrud for PiRegister {
          Ok(lcu) => lcu, 
          Err(_e) => {
            let err_type = format!("Register: Update local user not found {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-           return Err(ApiError::err(&err_type).into());
+           return Err(LemmyError::from_message(&err_type).into());
           //  return Ok(PiRegisterResponse {
           //   success: false,
           //   jwt: format!(""),
@@ -379,7 +379,7 @@ impl PerformCrud for PiRegister {
          Ok(chp) => chp,
          Err(_e) => {
            let err_type = format!("Register: Update local user password error {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
-           //return Err(ApiError::err(&err_type).into());
+           //return Err(LemmyError::from_message(&err_type).into());
            return Ok(PiRegisterResponse {
             success: false,
             jwt: format!(""),
@@ -389,7 +389,9 @@ impl PerformCrud for PiRegister {
        };
         return Ok(PiRegisterResponse {
             success: true,
-            jwt: Claims::jwt(local_user_id.0)?,
+            jwt: Claims::jwt(local_user_id.0,
+              &context.secret().jwt_secret,
+              &context.settings().hostname,)?,
             extra: None,
             })
     }
@@ -419,7 +421,7 @@ impl PerformCrud for PiRegister {
       Err(_e) => {
       let err_type = format!("Register: user_already_exists: {} {}, exists{},  err:{}", 
                              &data.info.username, _pi_alias3, pi_exist, _e.to_string());
-      return Err(ApiError::err(&err_type).into());
+      return Err(LemmyError::from_message(&err_type).into());
       },
     };
 
@@ -427,7 +429,7 @@ impl PerformCrud for PiRegister {
     let inserted_person = inserted_person1.unwrap();
     // Create the local user
     let local_user_form = LocalUserForm {
-      person_id: inserted_person.id,
+      person_id: Some(inserted_person.id),
       email: Some(data.info.email.to_owned()),
       password_encrypted: data.info.password.to_owned(),
       show_nsfw: Some(false),
@@ -441,6 +443,8 @@ impl PerformCrud for PiRegister {
       show_read_posts: Some(true),
       send_notifications_to_email: Some(false),
       show_new_post_notifs: Some(false),
+      email_verified: Some(false),
+      accepted_application: Some(true),
     };
 
     let inserted_local_user = match blocking(context.pool(), move |conn| {
@@ -464,7 +468,7 @@ impl PerformCrud for PiRegister {
         })
         .await??;
 
-        return Err(ApiError::err(err_type).into());
+        return Err(LemmyError::from_message(err_type).into());
       }
     };
 
@@ -479,14 +483,14 @@ impl PerformCrud for PiRegister {
       Ok(c) => c,
       Err(_e) => {
         let default_community_name = "main";
-        let actor_id = generate_apub_endpoint(EndpointType::Community, default_community_name)?;
+        let actor_id = generate_local_apub_endpoint(EndpointType::Community, default_community_name, &settings.get_protocol_and_hostname())?;
         let community_form = CommunityForm {
           name: default_community_name.to_string(),
           title: "The Default Community".to_string(),
           description: Some("The Default Community".to_string()),
           actor_id: Some(actor_id.to_owned()),
-          private_key: Some(main_community_keypair.private_key),
-          public_key: Some(main_community_keypair.public_key),
+          private_key: main_community_keypair.private_key.clone(),
+          public_key: main_community_keypair.public_key,
           followers_url: Some(generate_followers_url(&actor_id)?),
           inbox_url: Some(generate_inbox_url(&actor_id)?),
           shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
@@ -508,7 +512,7 @@ impl PerformCrud for PiRegister {
 
     let follow = move |conn: &'_ _| CommunityFollower::follow(conn, &community_follower_form);
     if blocking(context.pool(), follow).await?.is_err() {
-      //return Err(ApiError::err("Register: community_follower_already_exists").into());
+      //return Err(LemmyError::from_message("Register: community_follower_already_exists").into());
     };
 
     // If its an admin, add them as a mod and follower to main
@@ -520,14 +524,16 @@ impl PerformCrud for PiRegister {
 
       let join = move |conn: &'_ _| CommunityModerator::join(conn, &community_moderator_form);
       if blocking(context.pool(), join).await?.is_err() {
-        return Err(ApiError::err("community_moderator_already_exists").into());
+        return Err(LemmyError::from_message("community_moderator_already_exists").into());
       }
     }
 
     // Return the jwt
     Ok(PiRegisterResponse {
       success: true,
-      jwt: Claims::jwt(inserted_local_user.id.0)?,
+      jwt: Claims::jwt(inserted_local_user.id.0,
+        &context.secret().jwt_secret,
+        &context.settings().hostname,)?,
       extra: None,
     })
   }

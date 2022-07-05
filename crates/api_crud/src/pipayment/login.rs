@@ -2,17 +2,13 @@ use bcrypt::{hash, DEFAULT_COST};
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{blocking, password_length_check, person::*, pipayment::*};
+use lemmy_api_common::{utils::{blocking, password_length_check,}, person::*, pipayment::*};
 use lemmy_apub::{
-  generate_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
+  generate_local_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
   EndpointType,
 };
-use lemmy_db_queries::{
-  source::{community::Community_, local_user::LocalUser_, person::*, pipayment::*, site::Site_},
-  Crud, Followable, Joinable, ListingType, SortType,
-};
 use lemmy_db_schema::{
-  naive_now,
+  utils::naive_now,
   source::{
     community::*,
     local_user::{LocalUser, LocalUserForm},
@@ -20,17 +16,21 @@ use lemmy_db_schema::{
     pipayment::*,
     site::*,
   },
-  CommunityId, PaymentId, PersonId,
+  traits::{Crud, ApubActor},
+  newtypes::{CommunityId, PaymentId, PersonId,}, 
+  schema::local_user::email_verified,
 };
-use lemmy_db_views::{comment_view::CommentView, local_user_view::LocalUserView};
-use lemmy_db_views_actor::person_view::PersonViewSafe;
+use lemmy_db_views::{comment_view::*, local_user_view::*};
+use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   settings::structs::Settings,
-  utils::{check_slurs, is_valid_actor_name},
-  ApiError, ConnectionId, LemmyError,
+  settings::SETTINGS,
+  utils::{check_slurs, is_valid_actor_name,},
+  error::LemmyError,
+  ConnectionId,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256, Sha512};
@@ -46,11 +46,11 @@ impl PerformCrud for PiLogin {
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
     let data: &PiLogin = &self;
-
+    let settings = SETTINGS.to_owned();
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
       if !site.open_registration {
-        return Err(ApiError::err("registration_closed").into());
+        return Err(LemmyError::from_message("registration_closed"));
       }
     }
 
@@ -71,12 +71,12 @@ impl PerformCrud for PiLogin {
       Err(_e) => {
         // Pi Server error
         let err_type = format!("Pi Server Error: User not found: {}, error: {}", &data.pi_username,  _e.to_string());
-        return Err(ApiError::err(&err_type).into());
+        return Err(LemmyError::from_message(&err_type));
       }
     };
 
     let mut sha256 = Sha256::new();
-    sha256.update(Settings::get().pi_seed());
+    sha256.update(settings.pi_seed());
     sha256.update(_pi_username.clone());
     let _pi_alias: String = format!("{:X}", sha256.finalize());
     let _pi_alias2 = _pi_alias.clone();
@@ -114,7 +114,7 @@ impl PerformCrud for PiLogin {
       password_length_check(&_new_password)?;
       // // Make sure passwords match
       // if info.password != info.password_verify {
-      //   return Err(ApiError::err("passwords_dont_match").into());
+      //   return Err(LemmyError::from_message("passwords_dont_match"));
       // }
 
 
@@ -136,13 +136,12 @@ impl PerformCrud for PiLogin {
       //     })
       //     .await?;
       //   if !check {
-      //     return Err(ApiError::err("captcha_incorrect").into());
+      //     return Err(LemmyError::from_message("captcha_incorrect"));
       //   }
       // }
 
       
     }
-
 
     // Find user exist ?
     let pi_person = match blocking(context.pool(), move |conn| {
@@ -167,7 +166,7 @@ impl PerformCrud for PiLogin {
         if !create_new {
           let err_type = format!("Hi {}, you must register before login.", &username);
           println!("{} {}", _pi_uid.clone(), err_type);
-          return Err(ApiError::err(&err_type).into());
+          return Err(LemmyError::from_message(&err_type));
         }
       }
     }
@@ -184,7 +183,8 @@ impl PerformCrud for PiLogin {
          Err(_e) => {
            let err_type = format!("PiLogin local user not found {} {} {}", _pi_username.clone(), username.clone(),  _e.to_string());
            println!("{} {}", _pi_uid.clone(), err_type);
-           return Err(ApiError::err(&err_type).into());
+           return Err(LemmyError::from_error_message(_e, &err_type));
+        
           //  return Ok(PiRegisterResponse {
           //   success: false,
           //   jwt: format!(""),
@@ -205,7 +205,7 @@ impl PerformCrud for PiLogin {
           Ok(lcu) => lcu,
           Err(_e) => {
             let err_type = format!("PiLogin: Update local user password error {} {}", &username.clone(), _e.to_string());
-            return Err(ApiError::err(&err_type).into());
+            return Err(LemmyError::from_error_message(e, &err_type));
             }
         };
       }
@@ -221,13 +221,23 @@ impl PerformCrud for PiLogin {
       //   Err(_e) => {
       //     let err_type = format!("Invalid pi user id {}", &_new_user.clone());
       //     println!("{} {}", _pi_uid.clone(), err_type);
-      //     return Err(ApiError::err(&err_type).into());    
+      //     return Err(LemmyError::from_message(&err_type).into());    
       //   },
       // };
 
       return Ok(LoginResponse {
-          jwt: Claims::jwt(local_user_id.0)?,
-          })
+        jwt: Some(
+          Claims::jwt(
+            updated_local_user.id.0,
+            &context.secret().jwt_secret,
+            &context.settings().hostname,
+          )?
+          .into(),
+        ),
+        verify_email_sent: false,
+        registration_created: false,
+      })
+          
     }
 
 
@@ -235,13 +245,15 @@ impl PerformCrud for PiLogin {
     if !create_new {
       let err_type = format!("Auto create new account for Pioneers is disabled {} {}", &_new_user.clone(), &_pi_uid.clone());
       println!("{}", err_type);
-      return Err(ApiError::err(&err_type).into());
+      //return LemmyError::from_error_message(e, &err_type)?;
+      return Err(LemmyError::from_message(&err_type).into());
     }
 
-    check_slurs(&_new_user.clone())?;
-    if !is_valid_actor_name(&_new_user.clone()) {
+    check_slurs(&_new_user.clone(), &context.settings().slur_regex())?;
+    if !is_valid_actor_name(&_new_user.clone(), context.settings().actor_name_max_length) {
         //println!("Invalid username {} {}", _pi_username.to_owned(), &_new_user.clone());
-        return Err(ApiError::err("register:invalid_username").into());
+        //return LemmyError::from_error_message(e, &err_type)?;
+        return Err(LemmyError::from_message("register:invalid_username").into());
     }  
 
     let mut change_password = false;
@@ -262,7 +274,8 @@ impl PerformCrud for PiLogin {
           let err_type = format!("User {} is exist and belong to other Pi Account ", &_new_user.clone());
           println!("{} {} {}", _pi_username.clone(), err_type, &_pi_alias2);
           result = false;
-          return Err(ApiError::err(&err_type).into());
+          //return LemmyError::from_error_message(e, &err_type)?;
+          //return Err(LemmyError::from_message(&err_type).into());
           // return Ok(PiRegisterResponse {
           //   success: false,
           //   jwt: format!(""),
@@ -280,7 +293,7 @@ impl PerformCrud for PiLogin {
         //let err_type = format!("Register: You already have user name {}", _new_user.clone());
         //println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
         //result = false;
-        //return Err(ApiError::err(&err_type).into());
+        //return Err(LemmyError::from_message(&err_type).into());
         // return Ok(PiRegisterResponse {
         //   success: false,
         //   jwt: format!(""),
@@ -290,14 +303,14 @@ impl PerformCrud for PiLogin {
     };
 
     let actor_keypair = generate_actor_keypair()?;
-    let actor_id = generate_apub_endpoint(EndpointType::Person, &_new_user.clone())?;
+    let actor_id = generate_local_apub_endpoint(EndpointType::Person, &_new_user.clone())?;
 
     // Register the new person
     let person_form = PersonForm {
       name: _new_user.to_owned(),
       actor_id: Some(actor_id.clone()),
-      private_key: Some(Some(actor_keypair.private_key)),
-      public_key: Some(Some(actor_keypair.public_key)),
+      private_key: actor_keypair.private_key,
+      public_key: actor_keypair.public_key,
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
       admin: None,
@@ -316,7 +329,7 @@ impl PerformCrud for PiLogin {
       Err(_e) => {
       let err_type = format!("PiLogin: user_already_exists: {} {}, exists{},  err:{}", 
                              &_new_user.clone(), _pi_alias3, pi_exist, _e.to_string());
-      return Err(ApiError::err(&err_type).into());
+      return Err(LemmyError::from_message(&err_type));
       },
     };
 
@@ -324,7 +337,7 @@ impl PerformCrud for PiLogin {
     let inserted_person = inserted_tmp.unwrap();
     // Create the local user
     let local_user_form = LocalUserForm {
-      person_id: inserted_person.id,
+      person_id: Some(inserted_person.id),
       email: None, //Some(info.email.to_owned()),
       password_encrypted: _new_password.to_owned(),
       show_nsfw: Some(false),
@@ -338,6 +351,8 @@ impl PerformCrud for PiLogin {
       show_read_posts: Some(true),
       send_notifications_to_email: Some(false),
       show_new_post_notifs: Some(false),
+      email_verified: Some(false),
+      accepted_application: Some(true),
     };
 
     let inserted_local_user = match blocking(context.pool(), move |conn| {
@@ -361,7 +376,7 @@ impl PerformCrud for PiLogin {
         })
         .await??;
 
-        return Err(ApiError::err(err_type).into());
+        return Err(LemmyError::from_message(err_type));
       }
     };
 
@@ -376,14 +391,14 @@ impl PerformCrud for PiLogin {
       Ok(c) => c,
       Err(_e) => {
         let default_community_name = "main";
-        let actor_id = generate_apub_endpoint(EndpointType::Community, default_community_name)?;
+        let actor_id = generate_local_apub_endpoint(EndpointType::Community, default_community_name)?;
         let community_form = CommunityForm {
           name: default_community_name.to_string(),
           title: "The Default Community".to_string(),
           description: Some("The Default Community".to_string()),
           actor_id: Some(actor_id.to_owned()),
-          private_key: Some(main_community_keypair.private_key),
-          public_key: Some(main_community_keypair.public_key),
+          private_key: main_community_keypair.private_key,
+          public_key: main_community_keypair.public_key,
           followers_url: Some(generate_followers_url(&actor_id)?),
           inbox_url: Some(generate_inbox_url(&actor_id)?),
           shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
@@ -405,7 +420,7 @@ impl PerformCrud for PiLogin {
 
     let follow = move |conn: &'_ _| CommunityFollower::follow(conn, &community_follower_form);
     if blocking(context.pool(), follow).await?.is_err() {
-      //return Err(ApiError::err("Register: community_follower_already_exists").into());
+      //return Err(LemmyError::from_message("Register: community_follower_already_exists").into());
     };
 
     // If its an admin, add them as a mod and follower to main
@@ -417,13 +432,22 @@ impl PerformCrud for PiLogin {
 
     //   let join = move |conn: &'_ _| CommunityModerator::join(conn, &community_moderator_form);
     //   if blocking(context.pool(), join).await?.is_err() {
-    //     return Err(ApiError::err("community_moderator_already_exists").into());
+    //     return Err(LemmyError::from_message("community_moderator_already_exists").into());
     //   }
     // }
 
     // Return the jwt
     Ok(LoginResponse {
-      jwt: Claims::jwt(inserted_local_user.id.0)?,
+      jwt: Some(
+        Claims::jwt(
+          inserted_local_user.id.0,
+          &context.secret().jwt_secret,
+          &context.settings().hostname,
+        )?
+        .into(),
+      ),
+      verify_email_sent: false,
+      registration_created: false,
     })
   }
 }

@@ -3,7 +3,7 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{pipayment::*};
 use lemmy_utils::{
-  ApiError, ConnectionId, LemmyError,
+  ConnectionId, error::LemmyError,
 };
 use lemmy_websocket::{LemmyContext};
 
@@ -28,7 +28,7 @@ impl PerformCrud for PiApprove {
         Ok(c) => c,
         Err(e) => {
           let err_type = e.to_string();
-          return Err(ApiError::err(&err_type).into());
+          return Err(LemmyError::from_message(&err_type));
         }
       };
     Ok(PiApproveResponse {

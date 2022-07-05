@@ -66,7 +66,7 @@ impl Post {
       .get_result::<Self>(conn)
   }
 
-  fn update_tx(conn: &PgConnection, post_id: PostId, txlink: &str) -> Result<Self, Error> {
+  pub fn update_tx(conn: &PgConnection, post_id: PostId, txlink: &str) -> Result<Self, Error> {
     use crate::schema::post::dsl::*;
 
     diesel::update(post.find(post_id))

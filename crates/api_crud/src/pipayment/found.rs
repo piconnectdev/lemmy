@@ -1,21 +1,21 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{blocking, pipayment::*};
-use lemmy_db_queries::{
-  source::pipayment::*, Crud, 
-};
+use lemmy_api_common::{utils::{blocking,}, pipayment::*};
 use lemmy_db_schema::{
-  naive_now,
+  utils::naive_now,
   source::{
     pipayment::*,
   },
-  PaymentId
+  impls::pipayment::PiPayment_,
+  traits::Crud,
+  newtypes::PaymentId,
 };
 //use lemmy_db_views_actor::person_view::PersonViewSafe;
 use lemmy_utils::{
-  settings::structs::Settings,
-  ApiError, ConnectionId, LemmyError,
+  settings::SETTINGS,
+  ConnectionId, 
+  error::LemmyError,
 };
 use lemmy_websocket::{LemmyContext};
 use sha2::{Digest, Sha256};
@@ -30,13 +30,15 @@ impl PerformCrud for PiPaymentFound {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiPaymentFoundResponse, LemmyError> {
+
+    let settings= SETTINGS.to_owned();
     let data: &PiPaymentFound = self;
 
-    //check_slurs(&data.pi_username)?;
+    //check_slurs(&data.pi_username, &context.settings().slur_regex())?;
     //check_slurs_opt(&data.paymentid.unwrap())?;
     //check_slurs_opt(&data.username)?;
     let mut sha256 = Sha256::new();
-    sha256.update(Settings::get().pi_seed());
+    sha256.update(settings.pi_seed());
     sha256.update(data.pi_username.to_owned());
     let _pi_username: String = format!("{:X}", sha256.finalize());
     let _pi_username2 = _pi_username.clone();
@@ -108,13 +110,13 @@ impl PerformCrud for PiPaymentFound {
       Err(_e) => {
         // Pi Server error
         let err_type = format!("Pi Server: error while check payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
-        return Err(ApiError::err(&err_type).into());
+        return Err(LemmyError::from_message(&err_type));
       }
     };
 
     if cancelled {
       let err_type = format!("Pi Server: payment cancelled: user {}, paymentid {}", &data.pi_username, &data.paymentid);
-      return Err(ApiError::err(&err_type).into());
+      return Err(LemmyError::from_message(&err_type));
     }
 
     if !approved {
@@ -127,7 +129,7 @@ impl PerformCrud for PiPaymentFound {
           // Pi Server error
           let err_type = format!("Pi Server: Error while approve: user {}, paymentid {} error: {}", &data.pi_username, &data.paymentid, _e.to_string());
           //let err_type = _e.to_string();
-          return Err(ApiError::err(&err_type).into());
+          return Err(LemmyError::from_message(&err_type));
         }
       };
     } else {
@@ -144,13 +146,13 @@ impl PerformCrud for PiPaymentFound {
               Err(_e) => {
                 // Pi Server error
                 let err_type = format!("Pi Server: Error while completed: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
-                return Err(ApiError::err(&err_type).into());
+                return Err(LemmyError::from_message(&err_type));
               }
             };
           },
           None => {
             let err_type = format!("Pi Server: Error while completed, no transaction: user {}, paymentid {}", &data.pi_username,  &data.paymentid);
-            return Err(ApiError::err(&err_type).into());
+            return Err(LemmyError::from_message(&err_type));
           }
         };
       };
@@ -174,7 +176,7 @@ impl PerformCrud for PiPaymentFound {
       Err(_e) => {
         let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
         &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
-        //return Err(ApiError::err(&err_type).into());  
+        //return Err(LemmyError::from_message(&err_type));
         None
       }
     };
@@ -183,7 +185,7 @@ impl PerformCrud for PiPaymentFound {
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: ref_id.clone(),
-      testnet: Settings::get().pi_testnet,
+      testnet: settings.pinetwork.pi_testnet,
       finished: finished,
       updated: updated,
       pi_uid: data.pi_uid, //data.pi_uid
@@ -237,7 +239,7 @@ impl PerformCrud for PiPaymentFound {
           // };
           let err_type = format!("Error insert payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
 
-          return Err(ApiError::err(&err_type).into());
+          return Err(LemmyError::from_message(&err_type));
         }
       };
     } else {
@@ -256,7 +258,7 @@ impl PerformCrud for PiPaymentFound {
           //   "couldnt_create_post"
           // };
           let err_type = format!("Error update payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
-          return Err(ApiError::err(&err_type).into());
+          return Err(LemmyError::from_message(&err_type));
         }
       };
     }

@@ -13,7 +13,11 @@ use lemmy_api_common::pipayment::*;
 //use lemmy_db_schema::naive_now;
 //use lemmy_db_views::site_view::SiteView;
 
-use lemmy_utils::{ ApiError, ConnectionId, LemmyError};
+use lemmy_utils::{ 
+  ConnectionId, error::LemmyError,
+  settings::structs::Settings,
+  settings::SETTINGS,
+};
 use lemmy_websocket::{messages::SendAllMessage, LemmyContext, UserOperationCrud};
 
 #[async_trait::async_trait(?Send)]
@@ -68,7 +72,7 @@ impl PerformCrud for PiTip {
 
     let update_payment = move |conn: &'_ _| Payment::update(conn, found_payment.id, &payment_form);
     if blocking(context.pool(), update_payment).await?.is_err() {
-      return Err(ApiError::err("couldnt_update_payment").into());
+      return Err(LemmyError::from_message("couldnt_update_payment").into());
     }
     */
     //let site_view = blocking(context.pool(), move |conn| SiteView::read(conn)).await??;
@@ -77,7 +81,7 @@ impl PerformCrud for PiTip {
         Ok(c) => c,
         Err(e) => {
           let err_type = e.to_string();
-          return Err(ApiError::err(&err_type).into());
+          return Err(LemmyError::from_message(&err_type));
         }
       };
     Ok(PiTipResponse {

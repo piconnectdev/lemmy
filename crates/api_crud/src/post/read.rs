@@ -169,7 +169,7 @@ impl PerformCrud for GetPosts {
         .list()
     })
     .await?
-    .map_err(|_| ApiError::err("couldnt_get_posts"))?;
+    .map_err(|_| LemmyError::from_message("couldnt_get_posts"))?;
 
     // Blank out deleted or removed info
     for pv in posts

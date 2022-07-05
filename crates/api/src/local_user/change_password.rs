@@ -80,7 +80,7 @@ impl Perform for ChangePassword {
 
     // Make sure passwords match
     if data.new_password != data.new_password_verify {
-      return Err(ApiError::err("passwords_dont_match").into());
+      return Err(LemmyError::from_message("passwords_dont_match").into());
     }
 
     // Check the old password
@@ -90,7 +90,7 @@ impl Perform for ChangePassword {
     )
     .unwrap_or(false);
     if !valid {
-      return Err(ApiError::err("password_incorrect").into());
+      return Err(LemmyError::from_message("password_incorrect").into());
     }
 
     let local_user_id = local_user_view.local_user.id;

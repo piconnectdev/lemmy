@@ -6,6 +6,7 @@ use lemmy_api_common::{
 };
 use lemmy_apub::{fetcher::resolve_actor_identifier, objects::community::ApubCommunity};
 use lemmy_db_schema::{source::community::Community, traits::DeleteableOrRemoveable, SearchType};
+use lemmy_db_schema::newtypes::{PersonId, CommunityId};
 use lemmy_db_views::{comment_view::CommentQueryBuilder, post_view::PostQueryBuilder};
 use lemmy_db_views_actor::{
   community_view::CommunityQueryBuilder,
@@ -13,6 +14,7 @@ use lemmy_db_views_actor::{
 };
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::LemmyContext;
+use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for Search {
@@ -55,7 +57,7 @@ impl Perform for Search {
     let sort = data.sort;
     let listing_type = data.listing_type;
     let search_type = data.type_.unwrap_or(SearchType::All);
-    let community_id = data.community_id;
+    //let community_id = data.community_id;
     let community_actor_id = if let Some(name) = &data.community_name {
       resolve_actor_identifier::<ApubCommunity, Community>(name, context)
         .await
@@ -64,7 +66,39 @@ impl Perform for Search {
     } else {
       None
     };
-    let creator_id = data.creator_id;
+    // TODO: UUID check
+    //let creator_id = data.creator_id;
+    let creator_id = match &data.creator_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => Some(PersonId(u)),
+          Err(e) => {
+            None
+          }
+        }
+      },
+      None => {
+        None
+      }
+    };
+    
+    // TODO: UUID check
+    let community_id = match &data.community_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => Some(CommunityId(u)),
+          Err(e) => {
+            None
+          }
+        }
+      },
+      None => {
+        None
+      }
+    };
+
     match search_type {
       SearchType::Posts => {
         posts = blocking(context.pool(), move |conn| {

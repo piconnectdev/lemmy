@@ -6,6 +6,7 @@ use lemmy_api_common::{
 };
 use lemmy_apub::{fetcher::resolve_actor_identifier, objects::community::ApubCommunity};
 use lemmy_db_schema::{
+  newtypes::CommunityId,
   source::{community::Community, site::Site},
   traits::DeleteableOrRemoveable,
   ListingType,
@@ -52,7 +53,7 @@ impl PerformCrud for GetPosts {
     };
     let page = data.page;
     let limit = data.limit;
-    let community_id = data.community_id;
+    //let community_id = data.community_id;
     let community_actor_id = if let Some(name) = &data.community_name {
       resolve_actor_identifier::<ApubCommunity, Community>(name, context)
         .await
@@ -62,6 +63,22 @@ impl PerformCrud for GetPosts {
       None
     };
     let saved_only = data.saved_only;
+
+    // TODO: UUID check
+    let community_id = match &data.community_id {
+      Some(id) => {
+        let uuid = uuid::Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => Some(CommunityId(u)),
+          Err(e) => {
+            None
+          }
+        }
+      },
+      None => {
+        None
+      }
+    };
 
     let mut posts = blocking(context.pool(), move |conn| {
       PostQueryBuilder::create(conn)

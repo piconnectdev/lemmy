@@ -46,23 +46,12 @@ pub struct Settings {
   /// Maximum length of local community and user names
   #[default(20)]
   pub actor_name_max_length: usize,
-  #[default(Some("changeme".to_string()))]
-  //#[default(None)]
-  pub pi_seed: Option<String>,
-  #[default(Some("changeme".to_string()))]
-  pub pi_key: Option<String>,
-  #[default(Some("https://api.minepi.com/v2".to_string()))]
-  pub pi_api_host: Option<String>,
-  #[default(true)]
-  pub pi_testnet: bool,
-  #[default(Some("https://api.testnet.minepi.com/".to_string()))]
-  pub pi_horizon_host: Option<String>,
-
-
   /// Set the URL for opentelemetry exports. If you do not have an opentelemetry collector, do not set this option
   #[default(None)]
   //#[doku(skip)]
   pub opentelemetry_url: Option<String>,
+  #[default(PiNetworkConfig::default())]
+  pub pinetwork: PiNetworkConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
@@ -218,4 +207,28 @@ pub struct SetupConfig {
   //#[doku(example = "user@example.com")]
   #[default(None)]
   pub admin_email: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
+pub struct PiNetworkConfig {
+  // Allow non-pioneers register by email / username
+  #[default(false)]
+  pub pi_allow_all: bool,
+
+  // Allow use Pi Browser to login, by pass registration process
+  #[default(true)]
+  pub pi_free_login: bool,
+
+  #[default(Some("changeme".to_string()))]
+  //#[default(None)]
+  pub pi_seed: Option<String>,
+  #[default(Some("changeme".to_string()))]
+  pub pi_key: Option<String>,
+  #[default(Some("https://api.minepi.com/v2".to_string()))]
+  pub pi_api_host: Option<String>,
+  #[default(true)]
+  pub pi_testnet: bool,
+  #[default(Some("https://api.testnet.minepi.com/".to_string()))]
+  pub pi_horizon_host: Option<String>,
+
 }

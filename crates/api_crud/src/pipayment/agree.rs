@@ -1,20 +1,23 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{blocking, password_length_check, pipayment::*};
-use lemmy_db_queries::{
-  source::person::*, source::pipayment::*, source::site::*, Crud,  
+use lemmy_api_common::{utils::{blocking, password_length_check,}, pipayment::*};
+use lemmy_db_schema::{
+  utils::naive_now,
+  impls::{pipayment::PiPayment_},
+  source::{
+    person::*,
+    pipayment::*,
+    site::*,
+  },
+  traits::Crud,
+  newtypes::{*},
 };
-use lemmy_db_schema::source::{
-  person::*,
-  pipayment::*,
-  site::*,
-};
-use lemmy_db_views_actor::person_view::PersonViewSafe;
-use lemmy_utils::{
-  settings::structs::Settings,
-  utils::{check_slurs, is_valid_actor_name},
-  ApiError, ConnectionId, LemmyError,
+use lemmy_db_views_actor::structs::PersonViewSafe;
+use lemmy_utils::{  
+  settings::SETTINGS,
+  utils::{check_slurs, is_valid_actor_name,},
+  ConnectionId, error::LemmyError,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256};
@@ -30,15 +33,17 @@ impl PerformCrud for PiAgreeRegister {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiAgreeResponse, LemmyError> {
+
+    let settings = SETTINGS.to_owned();
     let data: &PiAgreeRegister = self;
 
     let mut result_string = "".to_string();
     let mut result = true;
     let mut completed = false;
     // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
+    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
       if !site.open_registration {
-        return Err(ApiError::err("registration_closed").into());
+        return Err(LemmyError::from_message("registration_closed").into());
       }
     }
 
@@ -51,7 +56,7 @@ impl PerformCrud for PiAgreeRegister {
     .await??;
 
     // If its not the admin, check the captcha
-    if !no_admins && Settings::get().captcha.enabled {
+    if !no_admins && settings.captcha.enabled {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
@@ -68,22 +73,22 @@ impl PerformCrud for PiAgreeRegister {
         })
         .await?;
       if !check {
-        return Err(ApiError::err("captcha_incorrect").into());
+        return Err(LemmyError::from_message("captcha_incorrect").into());
       }
     }
 
-    check_slurs(&data.info.username)?;
+    check_slurs(&data.info.username, &context.settings().slur_regex())?;
 
-    if !is_valid_actor_name(&data.info.username) {
+    if !is_valid_actor_name(&data.info.username, context.settings().actor_name_max_length) {
       println!("Invalid username {}", &data.info.username);
-      return Err(ApiError::err("agree:invalid_username").into());
+      return Err(LemmyError::from_message("agree:invalid_username"));
     }
-    //check_slurs_opt(&data.paymentid.unwrap())?;
-    //check_slurs_opt(&data.info.username)?;
+    //check_slurs_opt(&data.paymentid.unwrap(), &context.settings().slur_regex())?;
+    //check_slurs_opt(&data.info.username, &context.settings().slur_regex())?;
 
     // Hide Pi user name, not store pi_uid
     let mut sha256 = Sha256::new();
-    sha256.update(Settings::get().pi_seed());
+    sha256.update(settings.pi_seed());
     sha256.update(data.pi_username.to_owned());
     let _pi_alias: String = format!("{:X}", sha256.finalize());
     let _pi_alias2 = _pi_alias.clone();
@@ -193,7 +198,7 @@ impl PerformCrud for PiAgreeRegister {
         // Pi Server error
         let err_type = format!("Pi Server Error: approve user {}, paymentid {}, error: {}", &data.info.username,  &data.paymentid, _e.to_string());
         //let err_type = _e.to_string();
-        return Err(ApiError::err(&err_type).into());
+        return Err(LemmyError::from_message(&err_type));
       }
     };
     
@@ -220,7 +225,7 @@ impl PerformCrud for PiAgreeRegister {
       Err(_e) => {
         let err_type = format!("Pi Server Error: get payment datetime error: user {}, paymentid {} {}", 
         &data.info.username, &data.paymentid, _payment_dto.created_at );
-        //return Err(ApiError::err(&err_type).into());  
+        //return Err(LemmyError::from_message((&err_type));  
         None
       }
     };
@@ -228,7 +233,7 @@ impl PerformCrud for PiAgreeRegister {
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: refid,
-      testnet: Settings::get().pi_testnet,
+      testnet: settings.pinetwork.pi_testnet,
       finished: false,
       updated: None,
       pi_uid: data.pi_uid,
@@ -276,7 +281,7 @@ impl PerformCrud for PiAgreeRegister {
         },
         Err(_e) => {
           let err_type = format!("Error insert payment for agree: user {}, paymentid {} error: {}", &data.info.username,  &data.paymentid, _e.to_string());
-          return Err(ApiError::err(&err_type).into());
+          return Err(LemmyError::from_message(&err_type));
         }
       };      
     Ok(PiAgreeResponse {

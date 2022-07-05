@@ -81,7 +81,7 @@ impl Perform for Login {
       LocalUserView::find_by_email_or_name(conn, &username_or_email)
     })
     .await?
-    .map_err(|_| ApiError::err("couldnt_find_that_username_or_email"))?;
+    .map_err(|_| LemmyError::from_message("couldnt_find_that_username_or_email"))?;
 
     // Verify the password
     let valid: bool = verify(
@@ -90,7 +90,7 @@ impl Perform for Login {
     )
     .unwrap_or(false);
     if !valid {
-      return Err(ApiError::err("password_incorrect").into());
+      return Err(LemmyError::from_message("password_incorrect").into());
     }
 
     // Return the jwt

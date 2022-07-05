@@ -4,6 +4,7 @@ use anyhow::anyhow;
 use html2md::parse_html;
 use lemmy_utils::{error::LemmyError, settings::structs::Settings};
 use url::Url;
+use uuid::Uuid;
 
 pub mod comment;
 pub mod community;
@@ -62,6 +63,7 @@ pub(crate) mod tests {
   };
   use lemmy_api_common::request::build_user_agent;
   use lemmy_db_schema::{
+    newtypes::SecretId,
     source::secret::Secret,
     utils::{establish_unpooled_connection, get_database_url_from_env},
   };
@@ -107,8 +109,10 @@ pub(crate) mod tests {
       .unwrap();
 
     let client = ClientBuilder::new(client).with(BlockedMiddleware).build();
+    // TODO: UUID check
+    let uid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let secret = Secret {
-      id: 0,
+      id: SecretId(uid),
       jwt_secret: "".to_string(),
     };
     let db_url = match get_database_url_from_env() {
