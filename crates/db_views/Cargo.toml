@@ -19,9 +19,10 @@ lemmy_db_schema = { version = "=0.16.5", path = "../db_schema" }
 diesel = { version = "1.4.8", features = ["postgres","chrono","r2d2","serde_json","uuidv07"], optional = true }
 serde = { version = "1.0.136", features = ["derive"] }
 tracing = { version = "0.1.32", optional = true }
+uuid = { version = "0.8.2", features = ["serde", "v4"] }
+
 log = "0.4.14"
 url = "2.2.2"
-uuid = { version = "0.8.2", features = ["serde", "v4"] }
 
 [dev-dependencies]
 serial_test = "0.6.0"

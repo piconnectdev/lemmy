@@ -27,11 +27,11 @@ pub struct Settings {
   pub setup: Option<SetupConfig>,
   /// the domain name of your instance (mandatory)
   #[default("unset")]
-  //#[doku(example = "example.com")]
+  #[doku(example = "example.com")]
   pub hostname: String,
   /// Address where lemmy should listen for incoming requests
   #[default(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)))]
-  //#[doku(as = "String")]
+  #[doku(as = "String")]
   pub bind: IpAddr,
   /// Port where lemmy should listen for incoming requests
   #[default(8536)]
@@ -40,16 +40,18 @@ pub struct Settings {
   #[default(true)]
   pub tls_enabled: bool,
   #[default(None)]
-  //#[doku(example = "(\\bThis\\b)|(\\bis\\b)|(\\bsample\\b)")]
+  #[doku(example = "(\\bThis\\b)|(\\bis\\b)|(\\bsample\\b)")]
   /// A regex list of slurs to block / hide
   pub slur_filter: Option<String>,
   /// Maximum length of local community and user names
   #[default(20)]
   pub actor_name_max_length: usize,
+
   /// Set the URL for opentelemetry exports. If you do not have an opentelemetry collector, do not set this option
   #[default(None)]
-  //#[doku(skip)]
+  #[doku(skip)]
   pub opentelemetry_url: Option<String>,
+  
   #[default(PiNetworkConfig::default())]
   pub pinetwork: PiNetworkConfig,
 }
@@ -80,6 +82,7 @@ pub struct CaptchaConfig {
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
 #[serde(default)]
 pub struct DatabaseConfig {
+  /// Username to connect to postgres
   #[default("wepi")]
   pub(super) user: String,
   /// Password to connect to postgres
@@ -91,6 +94,7 @@ pub struct DatabaseConfig {
   /// Port where postgres can be accessed
   #[default(5432)]
   pub(super) port: i32,
+  /// Name of the postgres database for lemmy
   #[default("wepi")]
   pub(super) database: String,
   /// Maximum number of active sql connections
@@ -101,18 +105,18 @@ pub struct DatabaseConfig {
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
 pub struct EmailConfig {
   /// Hostname and port of the smtp server
-  // #[doku(example = "localhost:25")]
+  #[doku(example = "localhost:25")]
   pub smtp_server: String,
   /// Login name for smtp server
   pub smtp_login: Option<String>,
   /// Password to login to the smtp server
   pub smtp_password: Option<String>,
-  // #[doku(example = "noreply@example.com")]
+  #[doku(example = "noreply@example.com")]
   /// Address to send emails from, eg "noreply@your-instance.com"
   pub smtp_from_address: String,
   /// Whether or not smtp connections should use tls. Can be none, tls, or starttls
   #[default("none")]
-  //#[doku(example = "none")]
+  #[doku(example = "none")]
   pub tls_type: String,
 }
 
@@ -127,8 +131,8 @@ pub struct FederationConfig {
   ///
   /// list of instances with which federation is allowed
   #[default(None)]
-  //#[doku(example = "instance1.tld")]
-  //#[doku(example = "instance2.tld")]
+  #[doku(example = "instance1.tld")]
+  #[doku(example = "instance2.tld")]
   pub allowed_instances: Option<Vec<String>>,
   /// Instances which we never federate anything with (but previously federated objects are unaffected)
   #[default(None)]
@@ -195,16 +199,16 @@ pub struct RateLimitConfig {
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
 pub struct SetupConfig {
   /// Username for the admin user
-  //#[doku(example = "admin")]
+  #[doku(example = "admin")]
   pub admin_username: String,
   /// Password for the admin user. It must be at least 10 characters.
-  //#[doku(example = "tf6HHDS4RolWfFhk4Rq9")]
+  #[doku(example = "tf6HHDS4RolWfFhk4Rq9")]
   pub admin_password: String,
   /// Name of the site (can be changed later)
-  //#[doku(example = "My Lemmy Instance")]
+  #[doku(example = "My Lemmy Instance")]
   pub site_name: String,
   /// Email for the admin user (optional, can be omitted and set later through the website)
-  //#[doku(example = "user@example.com")]
+  #[doku(example = "user@example.com")]
   #[default(None)]
   pub admin_email: Option<String>,
 }

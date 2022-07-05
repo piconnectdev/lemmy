@@ -3,7 +3,6 @@ use std::{
   fmt,
   fmt::{Display, Formatter},
   ops::Deref,
-  io::Write,
 };
 
 use url::Url;

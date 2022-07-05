@@ -423,6 +423,7 @@ mod tests {
       inbox_url: inserted_person.inbox_url.to_owned(),
       shared_inbox_url: None,
       matrix_user_id: None,
+      ban_expires: None,
       extra_user_id: None,
       verified: false,
       private_seeds: None,
@@ -432,7 +433,6 @@ mod tests {
       dap_address: None,
       cert: None,
       tx : None,
-      ban_expires: None,
     };
 
     let read_person = Person::read(&conn, inserted_person.id).unwrap();

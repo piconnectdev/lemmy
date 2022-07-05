@@ -158,6 +158,9 @@ impl ApubObject for ApubPerson {
       private_key: None,
       public_key: person.public_key.public_key_pem,
       last_refreshed_at: Some(naive_now()),
+      inbox_url: Some(person.inbox.into()),
+      shared_inbox_url: Some(person.endpoints.map(|e| e.shared_inbox.into())),
+      matrix_user_id: Some(person.matrix_user_id),
       // inbox_url: Some(person.inbox.to_owned().into()),
       // shared_inbox_url: Some(shared_inbox),
       // matrix_user_id: Some(person.matrix_user_id.clone()),
@@ -170,9 +173,6 @@ impl ApubObject for ApubPerson {
       dap_address: None,
       cert: None,
       tx : None,
-      inbox_url: Some(person.inbox.into()),
-      shared_inbox_url: Some(person.endpoints.map(|e| e.shared_inbox.into())),
-      matrix_user_id: Some(person.matrix_user_id),
     };
     let person = blocking(context.pool(), move |conn| {
       DbPerson::upsert(conn, &person_form)

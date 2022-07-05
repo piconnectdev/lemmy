@@ -103,7 +103,6 @@ async fn upload(
 
   if let Some(addr) = req.head().peer_addr {
     client_req = client_req.header("X-Forwarded-For", addr.to_string())
-    //client_req = client_req.insert_header(("Accept-Encoding", "identity"));
   };
 
   let res = client_req

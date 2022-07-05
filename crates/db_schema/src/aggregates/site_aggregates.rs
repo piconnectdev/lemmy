@@ -24,7 +24,7 @@ mod tests {
   use serial_test::serial;
 
   #[test]
-//  #[serial]
+  #[serial]
   fn test_crud() {
     let conn = establish_unpooled_connection();
 

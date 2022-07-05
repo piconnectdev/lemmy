@@ -38,7 +38,7 @@ pub struct CommunityAggregates {
   pub users_active_half_year: i64,
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone, Default)]
 #[cfg_attr(feature = "full", derive(Queryable, Associations, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "person_aggregates")]
 pub struct PersonAggregates {

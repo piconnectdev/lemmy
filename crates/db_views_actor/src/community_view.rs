@@ -142,7 +142,6 @@ impl<'a> CommunityQueryBuilder<'a> {
     self
   }
 
-  /// TODO: XXX 
   pub fn my_person_id<T: MaybeOptional<PersonId>>(mut self, my_person_id: T) -> Self {
     self.my_person_id = my_person_id.get_optional();
     self

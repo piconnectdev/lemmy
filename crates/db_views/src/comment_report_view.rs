@@ -447,7 +447,7 @@ mod tests {
         sol_address: inserted_jessica.sol_address.clone(),
         dap_address:inserted_jessica.dap_address.clone(),
         cert: inserted_jessica.cert.clone(),
-        tx: inserted_jessica.clone(),
+        tx: inserted_jessica.tx.clone(),
       },
       comment_creator: PersonSafeAlias1 {
         id: inserted_timmy.id,
@@ -474,7 +474,7 @@ mod tests {
         sol_address: inserted_timmy.sol_address.clone(),
         dap_address:inserted_timmy.dap_address.clone(),
         cert: inserted_timmy.cert.clone(),
-        tx: inserted_timmy.clone(),
+        tx: inserted_timmy.tx.clone(),
       },
       creator_banned_from_community: false,
       counts: CommentAggregates {
@@ -518,7 +518,7 @@ mod tests {
       sol_address: inserted_sara.sol_address.clone(),
       dap_address:inserted_sara.dap_address.clone(),
       cert: inserted_sara.cert.clone(),
-      tx: inserted_sara.clone(),
+      tx: inserted_sara.tx.clone(),
     };
 
     // Do a batch read of timmys reports
@@ -581,7 +581,7 @@ mod tests {
       sol_address: inserted_timmy.sol_address.clone(),
       dap_address:inserted_timmy.dap_address.clone(),
       cert: inserted_timmy.cert.clone(),
-      tx: inserted_timmy.clone(),
+      tx: inserted_timmy.tx.clone(),
     });
 
     assert_eq!(
