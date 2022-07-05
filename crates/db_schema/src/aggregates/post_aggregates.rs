@@ -1,6 +1,5 @@
 use crate::{aggregates::structs::PostAggregates, newtypes::*, schema::post_aggregates};
 use diesel::{result::Error, *};
-use serde::Serialize;
 
 impl PostAggregates {
   pub fn read(conn: &PgConnection, post_id: PostId) -> Result<Self, Error> {

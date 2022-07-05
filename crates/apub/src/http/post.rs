@@ -23,9 +23,9 @@ pub(crate) async fn get_apub_post(
   info: web::Path<PostQuery>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse, LemmyError> {
-  /// TODO: UUID check 
-  /// Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()
-  //let id = PostId(info.post_id.parse::<i32>()?);
+  // TODO: UUID check 
+  // Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()
+  // let id = PostId(info.post_id.parse::<i32>()?);
   let uuid = Uuid::parse_str(&info.post_id.clone()).unwrap();
   let id = PostId(uuid);
   let post: ApubPost = blocking(context.pool(), move |conn| Post::read(conn, id))

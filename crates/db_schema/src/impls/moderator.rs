@@ -1,6 +1,6 @@
 use crate::{source::moderator::*, traits::Crud};
 use diesel::{dsl::*, result::Error, *};
-use crate::{newtypes::*,source::moderator::*};
+use crate::{newtypes::*,};
 
 impl Crud for ModRemovePost {
   type Form = ModRemovePostForm;

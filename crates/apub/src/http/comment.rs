@@ -23,8 +23,8 @@ pub(crate) async fn get_apub_comment(
   info: Path<CommentQuery>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse, LemmyError> {
-   /// TODO: DinhHa 
-  /// Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()
+  // TODO: DinhHa 
+  // Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()
   //let id = CommentId(info.comment_id.parse::<i32>()?);
   let uuid = Uuid::parse_str(&info.comment_id.clone()).unwrap();
   let id = CommentId(uuid);

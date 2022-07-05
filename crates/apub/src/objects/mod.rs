@@ -4,7 +4,6 @@ use anyhow::anyhow;
 use html2md::parse_html;
 use lemmy_utils::{error::LemmyError, settings::structs::Settings};
 use url::Url;
-use uuid::Uuid;
 
 pub mod comment;
 pub mod community;

@@ -21,7 +21,7 @@ use lemmy_utils::{
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256};
-//use chrono::*;
+use chrono::*;
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -211,7 +211,7 @@ impl PerformCrud for PiAgreeRegister {
       _payment_dto = dto.unwrap();
     }
 
-    /// TODO: UUID check
+    // TODO: UUID check
     let refid = match &data.info.captcha_uuid {
       Some(uid) => match Uuid::parse_str(uid) {
         Ok(uidx) => Some(uidx),
