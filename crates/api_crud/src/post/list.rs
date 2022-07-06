@@ -70,7 +70,7 @@ impl PerformCrud for GetPosts {
         let uuid = uuid::Uuid::parse_str(&id.clone());
         match uuid {
           Ok(u) => Some(CommunityId(u)),
-          Err(e) => {
+          Err(_e) => {
             None
           }
         }

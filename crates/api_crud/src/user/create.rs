@@ -179,7 +179,7 @@ impl PerformCrud for Register {
       }
     };
 
-	/// TODO: UUID check
+	// TODO: UUID check
   /*
     let main_community_keypair = generate_actor_keypair()?;
 

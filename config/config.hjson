@@ -1,12 +1,13 @@
 # See the documentation for available config fields and descriptions:
 # https://join-lemmy.org/docs/en/administration/configuration.html
 {
-  pi_seed: "changeme"
-  pi_key: "changme"
-  pi_api_host: "https://api.minepi.com/v2"
-  pi_horizon_host: "https://api.testnet.minepi.com"
-  pi_testnet: true
-
+  pinetwork: {
+    pi_seed: "changeme"
+    pi_key: "changme"
+    pi_api_host: "https://api.minepi.com/v2"
+    pi_horizon_host: "https://api.testnet.minepi.com"
+    pi_testnet: true
+  }
   hostname: lemmy-alpha
   federation: {
     enabled: true

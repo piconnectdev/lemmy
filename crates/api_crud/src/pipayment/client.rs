@@ -23,7 +23,6 @@ use lemmy_websocket::{
 use reqwest_middleware::ClientWithMiddleware;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use chrono::*;
 
 pub async fn pi_payment(client: &ClientWithMiddleware, id: &str) -> Result<PiPaymentDto, LemmyError> {
   let settings = SETTINGS.to_owned();
@@ -205,7 +204,7 @@ pub async fn pi_update_payment(
     _payment_dto = dto.unwrap();
   }
 
-  /// TODO: UUID check
+  // TODO: UUID check
   // let refid = match info {
   //   Some(inf) => {
   //     let _info = info.unwrap();
@@ -291,7 +290,7 @@ pub async fn pi_update_payment(
   } else {
     payment_form.updated = Some(naive_now());
     //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
-    /// TODO: UUID check
+    // TODO: UUID check
     if completed 
     {
       payment_form.finished = true;
@@ -323,7 +322,7 @@ pub async fn pi_update_payment(
       } else if payment_form.memo == "wepi:comment" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
-        /// TODO: UUID check
+        // TODO: UUID check
         let uuid = Uuid::parse_str(&comment2.clone());
         match uuid {
           Ok(u) => {

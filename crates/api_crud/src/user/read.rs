@@ -37,11 +37,11 @@ impl PerformCrud for GetPersonDetails {
       .as_ref()
       .map(|t| t.local_user.show_read_posts);
 
-	  /// TODO: DinhHa check read by id
-    //let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
+	  // TODO: DinhHa check read by id
+    // let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
 
-    /// TODO: UUID check
-    /// TODO: person_id may be name.
+    // TODO: UUID check
+    // TODO: person_id may be name.
     // let username = data
     //   .username
     //   .to_owned()
@@ -51,11 +51,11 @@ impl PerformCrud for GetPersonDetails {
         let uuid = Uuid::parse_str(&id.clone());
         match uuid {
           Ok(u) => PersonId(u),
-          Err(e) => {
+          Err(_e) => {
             let name = id.clone();
             resolve_actor_identifier::<ApubPerson, Person>(&name, context)
             .await
-            .map_err(|e| e.with_message("couldnt_find_that_username_or_email"))?
+            .map_err(|_e| _e.with_message("couldnt_find_that_username_or_email"))?
             .id
             //let person = blocking(context.pool(), move |conn| {
             //  Person::find_by_name(conn, &name)

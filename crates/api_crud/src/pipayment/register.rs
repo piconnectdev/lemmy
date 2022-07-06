@@ -34,7 +34,6 @@ use lemmy_utils::{
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use chrono::*;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegister {

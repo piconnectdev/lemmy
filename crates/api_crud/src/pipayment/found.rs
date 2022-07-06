@@ -11,7 +11,7 @@ use lemmy_db_schema::{
   traits::Crud,
   newtypes::PaymentId,
 };
-//use lemmy_db_views_actor::person_view::PersonViewSafe;
+
 use lemmy_utils::{
   settings::SETTINGS,
   ConnectionId, 
@@ -20,7 +20,6 @@ use lemmy_utils::{
 use lemmy_websocket::{LemmyContext};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use chrono::*;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiPaymentFound {
