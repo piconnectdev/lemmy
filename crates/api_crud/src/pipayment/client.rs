@@ -114,7 +114,7 @@ pub async fn pi_me(
   let res: PiUserDto = response
     .json::<PiUserDto>()
     .await
-    .map_err(|e| LemmyError::from_error_message(e, &e.to_string().clone()))?;
+    .map_err(|e| LemmyError::from_error_message(e, "Fetch /me error"))?;
   Ok(res)
 }
 

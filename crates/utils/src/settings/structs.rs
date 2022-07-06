@@ -2,7 +2,7 @@ use doku::Document;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
 
-#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
 #[serde(default)]
 pub struct Settings {
   /// settings related to the postgresql database
@@ -56,7 +56,7 @@ pub struct Settings {
   pub pinetwork: PiNetworkConfig,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
 #[serde(default)]
 pub struct PictrsConfig {
   /// Address where pictrs is available (for image hosting)
@@ -68,7 +68,7 @@ pub struct PictrsConfig {
   pub api_key: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
 #[serde(default)]
 pub struct CaptchaConfig {
   /// Whether captcha is required for signup
@@ -79,7 +79,7 @@ pub struct CaptchaConfig {
   pub difficulty: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
 #[serde(default)]
 pub struct DatabaseConfig {
   /// Username to connect to postgres
@@ -102,7 +102,7 @@ pub struct DatabaseConfig {
   pub pool_size: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault)]
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
 pub struct EmailConfig {
   /// Hostname and port of the smtp server
   #[doku(example = "localhost:25")]

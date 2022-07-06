@@ -15,10 +15,9 @@ use lemmy_api_common::pipayment::*;
 
 use lemmy_utils::{ 
   ConnectionId, error::LemmyError,
-  settings::structs::Settings,
   settings::SETTINGS,
 };
-use lemmy_websocket::{messages::SendAllMessage, LemmyContext, UserOperationCrud};
+use lemmy_websocket::{LemmyContext, };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiTip {

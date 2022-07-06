@@ -47,7 +47,7 @@ impl PerformCrud for GetCommunity {
           Err(e) => {
             let name = data.id.to_owned().unwrap_or_else(|| "main".to_string());
             blocking(context.pool(), move |conn| {
-              Community::read_from_name(conn, &name)
+              Community::read_from_name(conn, &name, false)
             })
             .await?
             .map_err(|_| LemmyError::from_message("couldnt_find_community"))?

@@ -2,7 +2,7 @@ use bcrypt::{hash, DEFAULT_COST};
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{utils::{blocking, password_length_check,}, person::*, pipayment::*};
+use lemmy_api_common::{utils::{blocking, password_length_check,}, person::*, pipayment::*, sensitive::Sensitive};
 use lemmy_apub::{
   generate_local_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
   EndpointType,
@@ -16,24 +16,23 @@ use lemmy_db_schema::{
     pipayment::*,
     site::*,
   },
-  traits::{Crud, ApubActor},
+  traits::{Crud, ApubActor, Followable, },
   newtypes::{CommunityId, PaymentId, PersonId,}, 
   schema::local_user::email_verified,
 };
-use lemmy_db_views::{comment_view::*, local_user_view::*};
+use lemmy_db_views::{structs::LocalUserView};
 use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
-  settings::structs::Settings,
   settings::SETTINGS,
   utils::{check_slurs, is_valid_actor_name,},
   error::LemmyError,
   ConnectionId,
 };
-use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use sha2::{Digest, Sha256, Sha512};
+use lemmy_websocket::{LemmyContext};
+use sha2::{Digest, Sha256, };
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -45,15 +44,19 @@ impl PerformCrud for PiLogin {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
+    // Call from client after Pi.authenticate
+
     let data: &PiLogin = &self;
     let settings = SETTINGS.to_owned();
     // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
+    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
       if !site.open_registration {
         return Err(LemmyError::from_message("registration_closed"));
       }
     }
-
+    if !settings.pinetwork.pi_free_login {
+      //return Err(LemmyError::from_message("registration_closed"));
+    }
     // Hide Pi user name, not store pi_uid
     let mut _pi_username = data.pi_username.clone();
     let mut _pi_uid = data.pi_uid.clone();
@@ -84,8 +87,8 @@ impl PerformCrud for PiLogin {
     //let _pi_alias = data.pi_username.to_owned();
 
     let mut username = _pi_username.clone();
-    let mut _new_user = username.clone();
-    let mut _new_password = "".to_string(); //info.password.to_owned();
+    let mut _new_user: Sensitive<String> = Sensitive::from(username.clone());
+    let mut _new_password = Sensitive::from("".to_string()); //info.password.to_owned();
 
     let person_id: PersonId;
     let mut pi_exist = false;
@@ -205,7 +208,7 @@ impl PerformCrud for PiLogin {
           Ok(lcu) => lcu,
           Err(_e) => {
             let err_type = format!("PiLogin: Update local user password error {} {}", &username.clone(), _e.to_string());
-            return Err(LemmyError::from_error_message(e, &err_type));
+            return Err(LemmyError::from_message(&err_type));
             }
         };
       }
@@ -228,7 +231,8 @@ impl PerformCrud for PiLogin {
       return Ok(LoginResponse {
         jwt: Some(
           Claims::jwt(
-            updated_local_user.id.0,
+            //updated_local_user.id.0,
+            local_user_id.0,
             &context.secret().jwt_secret,
             &context.settings().hostname,
           )?
@@ -238,12 +242,12 @@ impl PerformCrud for PiLogin {
         registration_created: false,
       })
           
-    }
+    } // Pi exist
 
 
     // We have to create both a person, and local_user
     if !create_new {
-      let err_type = format!("Auto create new account for Pioneers is disabled {} {}", &_new_user.clone(), &_pi_uid.clone());
+      let err_type = format!("Auto create new account for Pioneers is disabled {} {}", &_new_user.to_string().clone(), &_pi_uid.clone());
       println!("{}", err_type);
       //return LemmyError::from_error_message(e, &err_type)?;
       return Err(LemmyError::from_message(&err_type).into());
@@ -271,7 +275,7 @@ impl PerformCrud for PiLogin {
     match person {
       Some(per) => {
         if extra_user_id != per.extra_user_id {
-          let err_type = format!("User {} is exist and belong to other Pi Account ", &_new_user.clone());
+          let err_type = format!("User {} is exist and belong to other Pi Account ", &_new_user.to_string().clone());
           println!("{} {} {}", _pi_username.clone(), err_type, &_pi_alias2);
           result = false;
           //return LemmyError::from_error_message(e, &err_type)?;
@@ -303,13 +307,13 @@ impl PerformCrud for PiLogin {
     };
 
     let actor_keypair = generate_actor_keypair()?;
-    let actor_id = generate_local_apub_endpoint(EndpointType::Person, &_new_user.clone())?;
+    let actor_id = generate_local_apub_endpoint(EndpointType::Person, &_new_user.clone(), &settings.get_protocol_and_hostname())?;
 
     // Register the new person
     let person_form = PersonForm {
-      name: _new_user.to_owned(),
+      name: _new_user.to_string(),
       actor_id: Some(actor_id.clone()),
-      private_key: actor_keypair.private_key,
+      private_key: Some(Some(actor_keypair.private_key)),
       public_key: actor_keypair.public_key,
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
@@ -328,7 +332,7 @@ impl PerformCrud for PiLogin {
       Ok(p) => Some(p),
       Err(_e) => {
       let err_type = format!("PiLogin: user_already_exists: {} {}, exists{},  err:{}", 
-                             &_new_user.clone(), _pi_alias3, pi_exist, _e.to_string());
+                             &_new_user.to_string().clone(), _pi_alias3, pi_exist, _e.to_string());
       return Err(LemmyError::from_message(&err_type));
       },
     };
@@ -339,20 +343,9 @@ impl PerformCrud for PiLogin {
     let local_user_form = LocalUserForm {
       person_id: Some(inserted_person.id),
       email: None, //Some(info.email.to_owned()),
-      password_encrypted: _new_password.to_owned(),
+      password_encrypted: Some(_new_password.to_string()),
       show_nsfw: Some(false),
-      show_bot_accounts: Some(true),
-      theme: Some("browser".into()),
-      default_sort_type: Some(SortType::Active as i16),
-      default_listing_type: Some(ListingType::Subscribed as i16),
-      lang: Some("browser".into()),
-      show_avatars: Some(true),
-      show_scores: Some(true),
-      show_read_posts: Some(true),
-      send_notifications_to_email: Some(false),
-      show_new_post_notifs: Some(false),
-      email_verified: Some(false),
-      accepted_application: Some(true),
+      ..LocalUserForm::default()
     };
 
     let inserted_local_user = match blocking(context.pool(), move |conn| {
@@ -384,20 +377,20 @@ impl PerformCrud for PiLogin {
 
     // Create the main community if it doesn't exist
     let main_community = match blocking(context.pool(), move |conn| {
-      Community::read_from_name(conn, "main")
+      Community::read_from_name(conn, "main", false)
     })
     .await?
     {
       Ok(c) => c,
       Err(_e) => {
         let default_community_name = "main";
-        let actor_id = generate_local_apub_endpoint(EndpointType::Community, default_community_name)?;
+        let actor_id = generate_local_apub_endpoint(EndpointType::Community, default_community_name, &settings.get_protocol_and_hostname())?;
         let community_form = CommunityForm {
           name: default_community_name.to_string(),
           title: "The Default Community".to_string(),
           description: Some("The Default Community".to_string()),
           actor_id: Some(actor_id.to_owned()),
-          private_key: main_community_keypair.private_key,
+          private_key: Some(Some(main_community_keypair.private_key)),
           public_key: main_community_keypair.public_key,
           followers_url: Some(generate_followers_url(&actor_id)?),
           inbox_url: Some(generate_inbox_url(&actor_id)?),

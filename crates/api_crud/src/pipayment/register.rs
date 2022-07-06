@@ -2,7 +2,7 @@ use bcrypt::{hash, DEFAULT_COST};
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{utils::{blocking, password_length_check,}, person::*, pipayment::*};
+use lemmy_api_common::{utils::{blocking, honeypot_check, password_length_check,}, pipayment::*};
 use lemmy_apub::{
   generate_local_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
   EndpointType,
@@ -17,10 +17,10 @@ use lemmy_db_schema::{
     site::*,
   },
   impls::pipayment::PiPayment_,
-  traits::Crud,
+  traits::{Crud, ApubActor, Followable, Joinable,  },
   newtypes::{CommunityId, PaymentId, PersonId,},
 };
-use lemmy_db_views::{comment_view::*, local_user_view::*};
+use lemmy_db_views::{structs::LocalUserView};
 use lemmy_db_views_actor::{person_view::{*}, structs::PersonViewSafe};
 
 use lemmy_utils::{
@@ -32,7 +32,7 @@ use lemmy_utils::{
   ConnectionId,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use chrono::*;
 
@@ -48,16 +48,32 @@ impl PerformCrud for PiRegister {
     let settings = SETTINGS.to_owned();
     let data: &PiRegister = &self;
 
+    // no email verification, or applications if the site is not setup yet
+    let (mut email_verification, mut require_application) = (false, false);
+
     let mut result = true;
     // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_simple(conn)).await? {
+    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
       if !site.open_registration {
         return Err(LemmyError::from_message("registration_closed"));
       }
+      email_verification = site.require_email_verification;
+      require_application = site.require_application;
     }
 
     password_length_check(&data.info.password)?;
+    honeypot_check(&data.info.honeypot)?;
 
+    if email_verification && data.info.email.is_none() {
+      return Err(LemmyError::from_message("email_required"));
+    }
+
+    if require_application && data.info.answer.is_none() {
+      return Err(LemmyError::from_message(
+        "registration_application_answer_required",
+      ));
+    }
+    
     // Make sure passwords match
     if data.info.password != data.info.password_verify {
       return Err(LemmyError::from_message("passwords_dont_match"));
@@ -70,7 +86,7 @@ impl PerformCrud for PiRegister {
     .await??;
 
     // If its not the admin, check the captcha
-    // if !no_admins && Settings::get().captcha.enabled {
+    // if !no_admins && settings.captcha.enabled {
     //   let check = context
     //     .chat_server()
     //     .send(CheckCaptcha {
@@ -97,14 +113,17 @@ impl PerformCrud for PiRegister {
     if !is_valid_actor_name(&data.info.username, context.settings().actor_name_max_length) {
       println!("Invalid username {} {}", data.pi_username.to_owned(), &data.info.username);
       //return Err(LemmyError::from_message("register:invalid_username"));
-      let err_type = format!("Register: invalid username");
+      let err_type = format!("Register: invalid username {}", &data.info.username);
       return Ok(PiRegisterResponse {
         success: false,
         jwt: format!(""),
         extra: Some(format!("{}",err_type)),
         });
     }
-    let actor_id = generate_local_apub_endpoint(EndpointType::Person, &data.info.username, &settings.get_protocol_and_hostname())?;
+    let actor_id = generate_local_apub_endpoint(
+      EndpointType::Person,
+      &data.info.username, 
+      &settings.get_protocol_and_hostname())?;
 
     // Hide Pi user name, not store pi_uid
     let mut sha256 = Sha256::new();
@@ -403,14 +422,14 @@ impl PerformCrud for PiRegister {
       name: data.info.username.to_owned(),
       actor_id: Some(actor_id.clone()),
       private_key: Some(Some(actor_keypair.private_key)),
-      public_key: Some(Some(actor_keypair.public_key)),
+      public_key: actor_keypair.public_key,
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
       admin: Some(no_admins),
       extra_user_id: Some(_pi_alias2),
       ..PersonForm::default()
     };
-
+      
     // insert the person
     // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
     let inserted_person1 = match blocking(context.pool(), move |conn| {
@@ -426,26 +445,18 @@ impl PerformCrud for PiRegister {
       },
     };
 
+    //let default_listing_type = data.default_listing_type;
+    //let default_sort_type = data.default_sort_type;
 
     let inserted_person = inserted_person1.unwrap();
     // Create the local user
     let local_user_form = LocalUserForm {
       person_id: Some(inserted_person.id),
-      email: Some(data.info.email.to_owned()),
-      password_encrypted: data.info.password.to_owned(),
-      show_nsfw: Some(false),
-      show_bot_accounts: Some(true),
-      theme: Some("browser".into()),
-      default_sort_type: Some(SortType::Active as i16),
-      default_listing_type: Some(ListingType::Subscribed as i16),
-      lang: Some("browser".into()),
-      show_avatars: Some(true),
-      show_scores: Some(true),
-      show_read_posts: Some(true),
-      send_notifications_to_email: Some(false),
-      show_new_post_notifs: Some(false),
+      email: Some(data.info.email.as_deref().map(|s| s.to_owned())),
+      password_encrypted: Some(data.info.password.to_string()),
+      show_nsfw: Some(data.info.show_nsfw),
       email_verified: Some(false),
-      accepted_application: Some(true),
+      ..LocalUserForm::default()
     };
 
     let inserted_local_user = match blocking(context.pool(), move |conn| {
@@ -477,7 +488,7 @@ impl PerformCrud for PiRegister {
 
     // Create the main community if it doesn't exist
     let main_community = match blocking(context.pool(), move |conn| {
-      Community::read_from_name(conn, "main")
+      Community::read_from_name(conn, "main", false)
     })
     .await?
     {
@@ -490,7 +501,7 @@ impl PerformCrud for PiRegister {
           title: "The Default Community".to_string(),
           description: Some("The Default Community".to_string()),
           actor_id: Some(actor_id.to_owned()),
-          private_key: main_community_keypair.private_key.clone(),
+          private_key: Some(Some(main_community_keypair.private_key.clone())),
           public_key: main_community_keypair.public_key,
           followers_url: Some(generate_followers_url(&actor_id)?),
           inbox_url: Some(generate_inbox_url(&actor_id)?),
