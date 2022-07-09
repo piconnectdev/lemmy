@@ -30,7 +30,7 @@ use lemmy_db_schema::{
     post::Post,
   },
   traits::{MaybeOptional, ToSafe, ViewToVec},
-  utils::{functions::hot_rank, fuzzy_search, limit_and_offset_unlimited},
+  utils::{functions::hot_rank, fuzzy_search, limit_and_offset},
   ListingType,
   SortType,
 };
@@ -423,13 +423,13 @@ impl<'a> CommentQueryBuilder<'a> {
     };
 
 	// TODO: UUID check
-    if let Some(community_id) = self.community_id {
-      query = query.filter(post::community_id.eq(community_id));
-    }
+    //if let Some(community_id) = self.community_id {
+    //  query = query.filter(post::community_id.eq(community_id));
+    //}
 
-    if let Some(community_actor_id) = self.community_actor_id {
-      query = query.filter(community::actor_id.eq(community_actor_id))
-    }
+    //if let Some(community_actor_id) = self.community_actor_id {
+    //  query = query.filter(community::actor_id.eq(community_actor_id))
+    //}
 
     if let Some(post_id) = self.post_id {
       query = query.filter(comment::post_id.eq(post_id));
@@ -511,7 +511,7 @@ impl<'a> CommentQueryBuilder<'a> {
     }
 
     // Don't use the regular error-checking one, many more comments must ofter be fetched.
-    let (limit, offset) = limit_and_offset_unlimited(self.page, self.limit);
+    let (limit, offset) = limit_and_offset(self.page, self.limit);
 
     // Note: deleted and removed comments are done on the front side
     let res = query

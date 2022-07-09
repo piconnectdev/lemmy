@@ -43,7 +43,6 @@ impl PerformCrud for GetPersonDetails {
       .as_ref()
       .map(|t| t.local_user.show_read_posts);
 
-	/*
     // TODO: UUID check
     // TODO: person_id may be name.
     // OLD: client pass person_id as name
@@ -91,8 +90,7 @@ impl PerformCrud for GetPersonDetails {
         }
       }
     };
-	*/
-	
+/*
     let person_details_id = match data.person_id {
       Some(id) => id,
       None => {
@@ -108,7 +106,7 @@ impl PerformCrud for GetPersonDetails {
         }
       }
     };
-
+*/
     let person_id = local_user_view.map(|uv| uv.person.id);
 
     // You don't need to return settings for the user, since this comes back with GetSite
