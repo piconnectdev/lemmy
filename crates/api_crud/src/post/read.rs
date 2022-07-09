@@ -46,12 +46,13 @@ impl PerformCrud for GetPost {
     }
 
     let id = data.id;
+    // TODO: UUID Check 
     let mut comments = blocking(context.pool(), move |conn| {
       CommentQueryBuilder::create(conn)
         .my_person_id(person_id)
         .show_bot_accounts(show_bot_accounts)
         .post_id(id)
-        .limit(9999)
+        .limit(std::i64::MAX)
         .list()
     })
     .await??;

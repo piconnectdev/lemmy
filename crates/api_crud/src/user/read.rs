@@ -23,6 +23,12 @@ impl PerformCrud for GetPersonDetails {
     _websocket_id: Option<ConnectionId>,
   ) -> Result<GetPersonDetailsResponse, LemmyError> {
     let data: &GetPersonDetails = self;
+
+    // Check to make sure a person name or an id is given
+    if data.username.is_none() && data.person_id.is_none() {
+      return Err(LemmyError::from_message("no_id_given"));
+    }
+
     let local_user_view =
       get_local_user_view_from_jwt_opt(data.auth.as_ref(), context.pool(), context.secret())
         .await?;
@@ -37,11 +43,10 @@ impl PerformCrud for GetPersonDetails {
       .as_ref()
       .map(|t| t.local_user.show_read_posts);
 
-	  // TODO: DinhHa check read by id
-    // let sort: Option<SortType> = from_opt_str_to_opt_enum(&data.sort);
-
+	/*
     // TODO: UUID check
     // TODO: person_id may be name.
+    // OLD: client pass person_id as name
     // let username = data
     //   .username
     //   .to_owned()
@@ -73,6 +78,23 @@ impl PerformCrud for GetPersonDetails {
           }
         }
       },
+      None => {
+        if let Some(username) = &data.username {
+          resolve_actor_identifier::<ApubPerson, Person>(username, context)
+            .await
+            .map_err(|e| e.with_message("couldnt_find_that_username_or_email"))?
+            .id
+        } else {
+          return Err(LemmyError::from_message(
+            "couldnt_find_that_username_or_email",
+          ));
+        }
+      }
+    };
+	*/
+	
+    let person_details_id = match data.person_id {
+      Some(id) => id,
       None => {
         if let Some(username) = &data.username {
           resolve_actor_identifier::<ApubPerson, Person>(username, context)

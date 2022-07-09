@@ -133,7 +133,7 @@ impl PerformCrud for Register {
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
       admin: Some(no_admins),
-      extra_user_id: None,
+      //extra_user_id: None,
       ..PersonForm::default()
     };
 
@@ -179,7 +179,8 @@ impl PerformCrud for Register {
       }
     };
 
-	// TODO: UUID check
+  // TODO: UUID check
+  // Old: Create default main_community and auto join join
   /*
     let main_community_keypair = generate_actor_keypair()?;
 
@@ -229,6 +230,15 @@ impl PerformCrud for Register {
       let community_moderator_form = CommunityModeratorForm {
         community_id: main_community.id,
         person_id: inserted_person.id,
+    };
+*/
+    if require_application {
+      // Create the registration application
+      let form = RegistrationApplicationForm {
+        local_user_id: Some(inserted_local_user.id),
+        // We already made sure answer was not null above
+        answer: data.answer.to_owned(),
+        ..RegistrationApplicationForm::default()
       };
 
       blocking(context.pool(), move |conn| {
@@ -236,7 +246,7 @@ impl PerformCrud for Register {
       })
       .await??;
     }
-    */
+
     let mut login_response = LoginResponse {
       jwt: None,
       registration_created: false,

@@ -56,7 +56,7 @@ impl Perform for CommunityJoin {
       //     CommunityId(xid)
       //   }
       // };
-
+/*	
       let community_id = match &data.community_id {
         Some(id) => {
           let uuid = Uuid::parse_str(&id.clone());
@@ -73,8 +73,10 @@ impl Perform for CommunityJoin {
           CommunityId(xid)
         }
       };
+*/      
       context.chat_server().do_send(JoinCommunityRoom {
-        community_id: community_id,
+        community_id: data.community_id,
+        //community_id: community_id,
         id: ws_id,
       });
     }

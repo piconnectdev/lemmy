@@ -7,10 +7,10 @@ alter table site add column private_instance boolean not null default false;
 alter table local_user add column accepted_application boolean not null default false;
 
 create table registration_application (
-  id serial primary key,
-  local_user_id int references local_user on update cascade on delete cascade not null,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
+  local_user_id uuid references local_user on update cascade on delete cascade not null,
   answer text not null,
-  admin_id int references person on update cascade on delete cascade,
+  admin_id uuid references person on update cascade on delete cascade,
   deny_reason text,
   published timestamp not null default now(),
   unique(local_user_id)

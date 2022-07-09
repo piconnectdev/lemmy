@@ -8,7 +8,7 @@ drop trigger if exists site_aggregates_community_insert on community;
 drop trigger if exists site_aggregates_community_delete on community;
 drop trigger if exists person_aggregates_post_count on post;
 drop trigger if exists person_aggregates_comment_count on comment;
-
+ -- UUID Check
 create or replace function was_removed_or_deleted(TG_OP text, OLD record, NEW record)
 RETURNS boolean
 LANGUAGE plpgsql

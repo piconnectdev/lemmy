@@ -2,7 +2,12 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   post::{GetPosts, GetPostsResponse},
-  utils::{blocking, check_private_instance, get_local_user_view_from_jwt_opt},
+  utils::{
+    blocking,
+    check_private_instance,
+    get_local_user_view_from_jwt_opt,
+    listing_type_with_site_default,
+  },
 };
 use lemmy_apub::{fetcher::resolve_actor_identifier, objects::community::ApubCommunity};
 use lemmy_db_schema::{
@@ -44,27 +49,14 @@ impl PerformCrud for GetPosts {
       .map(|t| t.local_user.show_read_posts);
 
     let sort = data.sort;
-    let listing_type: ListingType = match data.type_ {
-      Some(l) => l,
-      None => {
-        let site = blocking(context.pool(), Site::read_local_site).await??;
-        ListingType::from_str(&site.default_post_listing_type)?
-      }
-    };
+    let listing_type = listing_type_with_site_default(data.type_, context.pool()).await?;
+
     let page = data.page;
     let limit = data.limit;
     //let community_id = data.community_id;
-    let community_actor_id = if let Some(name) = &data.community_name {
-      resolve_actor_identifier::<ApubCommunity, Community>(name, context)
-        .await
-        .ok()
-        .map(|c| c.actor_id)
-    } else {
-      None
-    };
-    let saved_only = data.saved_only;
-
+    
     // TODO: UUID check
+    
     let community_id = match &data.community_id {
       Some(id) => {
         let uuid = uuid::Uuid::parse_str(&id.clone());
@@ -79,6 +71,16 @@ impl PerformCrud for GetPosts {
         None
       }
     };
+	
+    let community_actor_id = if let Some(name) = &data.community_name {
+      resolve_actor_identifier::<ApubCommunity, Community>(name, context)
+        .await
+        .ok()
+        .map(|c| c.actor_id)
+    } else {
+      None
+    };
+    let saved_only = data.saved_only;
 
     let mut posts = blocking(context.pool(), move |conn| {
       PostQueryBuilder::create(conn)
