@@ -406,6 +406,8 @@ mod tests {
         hidden: false,
         posting_restricted_to_mods: false,
         published: inserted_community.published,
+        cert: None,
+        tx: None,
       },
       creator: PersonSafe {
         id: inserted_jessica.id,
@@ -426,6 +428,13 @@ mod tests {
         shared_inbox_url: None,
         matrix_user_id: None,
         ban_expires: None,
+        verified: false,
+        dap_address: None,
+        pi_address: None,
+        sol_address: None,
+        web3_address: None,
+        cert: None,
+        tx: None,
       },
       post_creator: PersonSafeAlias1 {
         id: inserted_timmy.id,
@@ -446,6 +455,13 @@ mod tests {
         shared_inbox_url: None,
         matrix_user_id: None,
         ban_expires: None,
+        verified: false,
+        dap_address: None,
+        pi_address: None,
+        sol_address: None,
+        web3_address: None,
+        cert: None,
+        tx: None,
       },
       creator_banned_from_community: false,
       my_vote: None,
@@ -488,6 +504,13 @@ mod tests {
       shared_inbox_url: None,
       matrix_user_id: None,
       ban_expires: None,
+      verified: false,
+      dap_address: None,
+      pi_address: None,
+      sol_address: None,
+      web3_address: None,
+      cert: None,
+      tx: None,
     };
 
     // Do a batch read of timmys reports
@@ -542,6 +565,13 @@ mod tests {
       shared_inbox_url: None,
       matrix_user_id: None,
       ban_expires: None,
+      verified: false,
+      dap_address: None,
+      pi_address: None,
+      sol_address: None,
+      web3_address: None,
+      cert: None,
+      tx: None,
     });
 
     assert_eq!(

@@ -1,5 +1,5 @@
 create table comment_report (
-  id            bigserial    primary key,
+  id            uuid NOT NULL DEFAULT next_uuid() primary key,
   creator_id    uuid       references user_ on update cascade on delete cascade not null,   -- user reporting comment
   comment_id    uuid       references comment on update cascade on delete cascade not null, -- comment being reported
   original_comment_text  text      not null,
@@ -12,7 +12,7 @@ create table comment_report (
 );
 
 create table post_report (
-  id            bigserial    primary key,
+  id            uuid NOT NULL DEFAULT next_uuid() primary key,
   creator_id    uuid       references user_ on update cascade on delete cascade not null, -- user reporting post
   post_id       uuid       references post on update cascade on delete cascade not null,  -- post being reported
   original_post_name	  varchar(100) not null,

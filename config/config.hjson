@@ -2,6 +2,8 @@
 # https://join-lemmy.org/docs/en/administration/configuration.html
 {
   pinetwork: {
+    pi_allow_all: false
+    pi_free_login: false
     pi_seed: "changeme"
     pi_key: "changme"
     pi_api_host: "https://api.minepi.com/v2"
