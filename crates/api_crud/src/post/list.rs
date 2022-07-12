@@ -14,12 +14,10 @@ use lemmy_db_schema::{
   newtypes::CommunityId,
   source::{community::Community, site::Site},
   traits::DeleteableOrRemoveable,
-  ListingType,
 };
 use lemmy_db_views::post_view::PostQueryBuilder;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::LemmyContext;
-use std::str::FromStr;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for GetPosts {

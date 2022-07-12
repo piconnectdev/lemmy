@@ -469,7 +469,7 @@ impl<'a> PostQueryBuilder<'a> {
         .then_order_by(post_aggregates::published.desc()),
     };
 
-    let (limit, offset) = limit_and_offset(self.page, self.limit);
+    let (limit, offset) = limit_and_offset(self.page, self.limit)?;
 
     query = query
       .limit(limit)
@@ -540,6 +540,7 @@ mod tests {
 
     let new_person = PersonForm {
       name: person_name.to_owned(),
+      public_key: Some("pubkey".to_string()),
       ..PersonForm::default()
     };
 
@@ -548,6 +549,7 @@ mod tests {
     let new_bot = PersonForm {
       name: person_name.to_owned(),
       bot_account: Some(true),
+      public_key: Some("pubkey".to_string()),
       ..PersonForm::default()
     };
 
@@ -556,6 +558,7 @@ mod tests {
     let new_community = CommunityForm {
       name: community_name.to_owned(),
       title: "nada".to_owned(),
+      public_key: Some("pubkey".to_string()),
       ..CommunityForm::default()
     };
 
@@ -564,6 +567,7 @@ mod tests {
     // Test a person block, make sure the post query doesn't include their post
     let blocked_person = PersonForm {
       name: person_name.to_owned(),
+      public_key: Some("pubkey".to_string()),
       ..PersonForm::default()
     };
 

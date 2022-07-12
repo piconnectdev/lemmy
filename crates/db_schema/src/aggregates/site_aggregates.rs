@@ -31,6 +31,7 @@ mod tests {
     let new_person = PersonForm {
       name: "thommy_site_agg".into(),
       extra_user_id: None,
+      public_key: Some("pubkey".to_string()),
       ..PersonForm::default()
     };
 
@@ -38,6 +39,7 @@ mod tests {
 
     let site_form = SiteForm {
       name: "test_site".into(),
+      public_key: Some("pubkey".to_string()),
       ..Default::default()
     };
 
@@ -46,6 +48,7 @@ mod tests {
     let new_community = CommunityForm {
       name: "TIL_site_agg".into(),
       title: "nada".to_owned(),
+      public_key: Some("pubkey".to_string()),
       ..CommunityForm::default()
     };
 
