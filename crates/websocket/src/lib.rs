@@ -146,6 +146,7 @@ pub enum UserOperation {
   PurgeCommunity,
   PurgePost,
   PurgeComment,
+  GetToken,
 }
 
 #[derive(EnumString, Display, Debug, Clone)]
@@ -191,6 +192,7 @@ pub enum UserOperationCrud {
   PiTip,
   PiPaymentFound,
   PiLogin,
+  Web3Login,
 }
 
 pub trait OperationType {}

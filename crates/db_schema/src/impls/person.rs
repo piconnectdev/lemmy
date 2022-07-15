@@ -335,6 +335,14 @@ impl Person {
       .filter(extra_user_id.eq(from_name))
       .first::<Person>(conn)
   }
+  
+  pub fn find_by_web3_address(conn: &PgConnection, from_name: &str) -> Result<Person, Error> {
+    person
+      .filter(deleted.eq(false))
+      .filter(local.eq(true))
+      .filter(web3_address.eq(from_name))
+      .first::<Person>(conn)
+  }
 
 }
 

@@ -44,6 +44,21 @@ pub struct CaptchaResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct GetToken {}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetTokenResponse {
+  pub ok: Option<TokenResponse>, // Will be None if captchas are disabled
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TokenResponse {
+  pub png: String, // A Base64 encoded png
+  pub wav: String, // A Base64 encoded wav audio
+  pub uuid: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SaveUserSettings {
   pub show_nsfw: Option<bool>,
   pub show_scores: Option<bool>,

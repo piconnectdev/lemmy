@@ -36,6 +36,7 @@ pub async fn match_websocket_operation(
     // User ops
     UserOperation::Login => do_websocket_operation::<Login>(context, id, op, data).await,
     UserOperation::GetCaptcha => do_websocket_operation::<GetCaptcha>(context, id, op, data).await,
+    UserOperation::GetToken => do_websocket_operation::<GetToken>(context, id, op, data).await,
     UserOperation::GetReplies => do_websocket_operation::<GetReplies>(context, id, op, data).await,
     UserOperation::AddAdmin => do_websocket_operation::<AddAdmin>(context, id, op, data).await,
     UserOperation::GetUnreadRegistrationApplicationCount => {

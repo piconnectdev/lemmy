@@ -31,12 +31,12 @@ use lemmy_utils::{
   error::LemmyError,
   ConnectionId,
 };
-use lemmy_websocket::{LemmyContext};
+use lemmy_websocket::{LemmyContext, messages::CheckToken};
 use sha2::{Digest, Sha256, };
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for PiLogin {
+impl PerformCrud for Web3Login {
   type Response = LoginResponse;
 
   async fn perform(
@@ -44,9 +44,9 @@ impl PerformCrud for PiLogin {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
-    // Call login from client after Pi.authenticate
+    // Call from client after Pi.authenticate
 
-    let data: &PiLogin = &self;
+    let data: &Web3Login = &self;
     let settings = SETTINGS.to_owned();
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
@@ -58,13 +58,16 @@ impl PerformCrud for PiLogin {
       //return Err(LemmyError::from_message("registration_closed"));
     }
     // Hide Pi user name, not store pi_uid
-    let mut _pi_username = data.pi_username.clone();
-    let mut _pi_uid = data.pi_uid.clone();
-    let _pi_token = data.pi_token.clone();
+    let mut _address = data.address.clone();
+    let mut _signer = data.signature.clone();
+    let _token = data.token.clone();
+    let _cliTime = data.cli_time;
 
-    println!("PiLogin is processing for {} {} {} ", _pi_uid.clone(), _pi_username.clone(), _pi_token.clone());
+    println!("Web3Login is processing for {} {} {} ", _address.clone(), _token.clone(), _signer.clone());
 
-    // First, valid user token
+    // TODO: First, valid user address
+    // Check user if exists on blockchain
+    /*
     let user_dto = match pi_me(context.client(), &data.pi_token.clone()).await {
       Ok(dto) => {
         _pi_username = dto.username.clone();
@@ -77,16 +80,17 @@ impl PerformCrud for PiLogin {
         return Err(LemmyError::from_message(&err_type));
       }
     };
-
+   */
     let mut sha256 = Sha256::new();
     sha256.update(settings.pi_seed());
-    sha256.update(_pi_username.clone());
-    let _pi_alias: String = format!("{:X}", sha256.finalize());
-    let _pi_alias2 = _pi_alias.clone();
-    let _pi_alias3 = _pi_alias.clone();
+    sha256.update(_address.clone());
+    //let _pi_alias: String = format!("{:X}", sha256.finalize());
+    let _alias: String = _address.clone();
+    let _alias2 = _alias.clone();
+    let _alias3 = _alias.clone();
     //let _pi_alias = data.pi_username.to_owned();
 
-    let mut username = _pi_username.clone();
+    let mut username = _address.clone();
     let mut _new_user: Sensitive<String> = Sensitive::from(username.clone());
     let mut _new_password = Sensitive::from("".to_string()); //info.password.to_owned();
 
@@ -102,7 +106,8 @@ impl PerformCrud for PiLogin {
         _new_password =  info.password.clone();
       },
       None =>{
-        
+        let err_type = format!("Server Error: Web3 user not provided: {}", &data.address);
+        return Err(LemmyError::from_message(&err_type));
       }
     }
 
@@ -112,6 +117,22 @@ impl PerformCrud for PiLogin {
     })
     .await??;
 
+    // If its not the admin, check the token
+    if !no_admins {
+      let check = context
+        .chat_server()
+        .send(CheckToken {
+          uuid: data
+                .token.clone(),
+          answer: "".to_string(),
+        })
+        .await?;
+      if !check {
+        return Err(LemmyError::from_message("token_incorrect"));
+      }
+    }
+
+    // TODO: Verify signature
 
     if create_new {
       password_length_check(&_new_password)?;
@@ -148,7 +169,7 @@ impl PerformCrud for PiLogin {
 
     // Find user exist ?
     let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_alias)
+      Person::find_by_web3_address(&conn, &_alias)
     })
     .await?
     {
@@ -168,7 +189,7 @@ impl PerformCrud for PiLogin {
       None => {
         if !create_new {
           let err_type = format!("Hi {}, you must register before login.", &username);
-          println!("{} {}", _pi_uid.clone(), err_type);
+          println!("{} {}", _address.clone(), err_type);
           return Err(LemmyError::from_message(&err_type));
         }
       }
@@ -184,8 +205,8 @@ impl PerformCrud for PiLogin {
        {
          Ok(lcu) => lcu, 
          Err(_e) => {
-           let err_type = format!("PiLogin local user not found {} {} {}", _pi_username.clone(), username.clone(),  _e.to_string());
-           println!("{} {}", _pi_uid.clone(), err_type);
+           let err_type = format!("Web3 local user not found {} {} {}", _address.clone(), username.clone(),  _e.to_string());
+           println!("{} {}", _address.clone(), err_type);
            return Err(LemmyError::from_error_message(_e, &err_type));
         
           //  return Ok(PiRegisterResponse {
@@ -247,7 +268,7 @@ impl PerformCrud for PiLogin {
 
     // We have to create both a person, and local_user
     if !create_new {
-      let err_type = format!("Auto create new account for Pioneers is disabled {} {}", &_new_user.to_string().clone(), &_pi_uid.clone());
+      let err_type = format!("Auto create new account for web3 is disabled {} {}", &_new_user.to_string().clone(), &_address.clone());
       println!("{}", err_type);
       //return LemmyError::from_error_message(e, &err_type)?;
       return Err(LemmyError::from_message(&err_type).into());
@@ -273,10 +294,10 @@ impl PerformCrud for PiLogin {
     };
 
     match person {
-      Some(per) => {
-        if extra_user_id != per.extra_user_id {
+      Some(other) => {
+        if extra_user_id != other.extra_user_id {
           let err_type = format!("User {} is exist and belong to other Pi Account ", &_new_user.to_string().clone());
-          println!("{} {} {}", _pi_username.clone(), err_type, &_pi_alias2);
+          println!("{} {} {}", username.clone(), err_type, &_alias2);
           result = false;
           //return LemmyError::from_error_message(e, &err_type)?;
           //return Err(LemmyError::from_message(&err_type).into());
@@ -318,7 +339,8 @@ impl PerformCrud for PiLogin {
       inbox_url: Some(generate_inbox_url(&actor_id)?),
       shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
       admin: None,
-      extra_user_id: Some(_pi_alias2),
+      extra_user_id: Some(_alias2.clone()),
+      //web3_address: Some(_alias2.clone()),
       ..PersonForm::default()
     };
 
@@ -332,7 +354,7 @@ impl PerformCrud for PiLogin {
       Ok(p) => Some(p),
       Err(_e) => {
       let err_type = format!("PiLogin: user_already_exists: {} {}, exists{},  err:{}", 
-                             &_new_user.to_string().clone(), _pi_alias3, pi_exist, _e.to_string());
+                             &_new_user.to_string().clone(), _alias3, pi_exist, _e.to_string());
       return Err(LemmyError::from_message(&err_type));
       },
     };

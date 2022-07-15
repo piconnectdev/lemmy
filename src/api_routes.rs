@@ -166,6 +166,14 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
         web::resource("/user/get_captcha")
           .wrap(rate_limit.post())
           .route(web::get().to(route_get::<GetCaptcha>)),
+          
+      )
+      .service(
+        // Handle captcha separately
+        web::resource("/user/get_token")
+          .wrap(rate_limit.post())
+          .route(web::get().to(route_get::<GetToken>)),
+          
       )
       // User actions
       .service(
@@ -185,6 +193,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           .route("/block", web::post().to(route_post::<BlockPerson>))
           // Account actions. I don't like that they're in /user maybe /accounts
           .route("/login", web::post().to(route_post::<Login>))
+          .route("/web3login", web::post().to(route_post_crud::<Web3Login>))
           .route(
             "/delete_account",
             web::post().to(route_post_crud::<DeleteAccount>),

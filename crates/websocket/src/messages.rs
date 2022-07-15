@@ -147,3 +147,18 @@ pub struct CheckCaptcha {
   pub uuid: String,
   pub answer: String,
 }
+
+#[derive(Message, Debug)]
+#[rtype(result = "()")]
+pub struct TokenItem {
+  pub uuid: String,
+  pub answer: String,
+  pub expires: chrono::NaiveDateTime,
+}
+
+#[derive(Message)]
+#[rtype(bool)]
+pub struct CheckToken {
+  pub uuid: String,
+  pub answer: String,
+}

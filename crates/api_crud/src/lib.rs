@@ -133,6 +133,9 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::PiLogin => {
       do_websocket_operation::<PiLogin>(context, id, op, data).await
     }
+    UserOperationCrud::Web3Login => {
+      do_websocket_operation::<Web3Login>(context, id, op, data).await
+    }
   }
 }
 

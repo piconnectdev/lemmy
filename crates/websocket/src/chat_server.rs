@@ -86,6 +86,9 @@ pub struct ChatServer {
   /// A list of the current captchas
   pub(super) captchas: Vec<CaptchaItem>,
 
+    /// A list of the current tokens
+  pub(super) tokens: Vec<TokenItem>,
+
   message_handler: MessageHandlerType,
   message_handler_crud: MessageHandlerCrudType,
 
@@ -122,6 +125,7 @@ impl ChatServer {
       pool,
       rate_limiter,
       captchas: Vec::new(),
+      tokens: Vec::new(),
       message_handler,
       message_handler_crud,
       client,
@@ -490,6 +494,7 @@ impl ChatServer {
         let user_operation = UserOperation::from_str(op)?;
         let passed = match user_operation {
           UserOperation::GetCaptcha => rate_limiter.post().check(ip),
+          UserOperation::GetToken => rate_limiter.post().check(ip),
           UserOperation::Search => rate_limiter.search().check(ip),
           _ => rate_limiter.message().check(ip),
         };

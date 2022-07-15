@@ -283,3 +283,31 @@ impl Handler<CheckCaptcha> for ChatServer {
     check
   }
 }
+
+impl Handler<TokenItem> for ChatServer {
+  type Result = ();
+
+  fn handle(&mut self, msg: TokenItem, _: &mut Context<Self>) {
+    self.tokens.push(msg);
+  }
+}
+
+
+impl Handler<CheckToken> for ChatServer {
+    type Result = bool;
+  
+    fn handle(&mut self, msg: CheckToken, _: &mut Context<Self>) -> Self::Result {
+      // Remove all the ones that are past the expire time
+      self.tokens.retain(|x| x.expires.gt(&naive_now()));
+  
+      let check = self
+        .tokens
+        .iter()
+        .any(|r| r.uuid == msg.uuid);
+  
+      // Remove this uuid so it can't be re-checked (Checks only work once)
+      self.tokens.retain(|x| x.uuid != msg.uuid);
+  
+      check
+    }
+}

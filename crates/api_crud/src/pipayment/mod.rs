@@ -5,4 +5,5 @@ pub mod found;
 pub mod read;
 pub mod register;
 pub mod login;
+pub mod web3login;
 pub mod update;

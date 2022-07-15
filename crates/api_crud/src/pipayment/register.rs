@@ -161,7 +161,7 @@ impl PerformCrud for PiRegister {
       }
       Err(_e) => {
         //let err_type = format!("Payment {} was not approved", data.paymentid);
-        let err_type = format!("Register: Payment {} was not approved, err: {}", data.paymentid, _e.to_string());
+        let err_type = format!("PiRegister: Payment {} was not approved, err: {}", data.paymentid, _e.to_string());
         //return Err(LemmyError::from_message(&err_type));        
         return Ok(PiRegisterResponse {
           success: false,
@@ -173,11 +173,11 @@ impl PerformCrud for PiRegister {
 
     if _payment.is_none() {
       // Why here ????
-      let err_type = format!("Register: Payment {} was not insert/approved", data.paymentid);
+      let err_type = format!("PiRegister: Payment {} was not insert/approved", data.paymentid);
       return Err(LemmyError::from_message(&err_type).into());
     } else {
       if finished {
-        let err_type = format!("Register: Payment {} was finished", data.paymentid);
+        let err_type = format!("PiRegister: Payment {} was finished", data.paymentid);
         return Err(LemmyError::from_message(&err_type).into());
       }
     }
@@ -207,8 +207,8 @@ impl PerformCrud for PiRegister {
         person_id = pi.id;
         pi_exist = true;
         match person {
-          Some(per) => {
-            if pi.extra_user_id != per.extra_user_id {
+          Some(other) => {
+            if pi.extra_user_id != other.extra_user_id {
               let err_type = format!("Register: User {} is exist and belong to other Pi Account ", &data.info.username);
               println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
               result = false;
@@ -227,7 +227,7 @@ impl PerformCrud for PiRegister {
             change_password = true;
             change_username = true;
             // Not allow change username
-            let err_type = format!("Register: You already have user name {}", pi.name);
+            let err_type = format!("PiRegister: You already have user name {}", pi.name);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result = false;
             //return Err(LemmyError::from_message(&err_type).into());
@@ -241,8 +241,8 @@ impl PerformCrud for PiRegister {
       }
       None => {
         match person {
-          Some(per) => {
-            let err_type = format!("Register: User {} is exist and belong to other user", &data.info.username);
+          Some(other) => {
+            let err_type = format!("PiRegister: User {} is exist and belong to other user", &data.info.username);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result = false;
             //return Err(LemmyError::from_message(&err_type).into());
@@ -253,7 +253,7 @@ impl PerformCrud for PiRegister {
               });
           }
           None => {
-            // No account, we must completed this and create new user
+            // No account relate with pi_username/site_username, we must completed the payment and create new user
           }
         };
       }
@@ -270,7 +270,7 @@ impl PerformCrud for PiRegister {
         Ok(c) => Some(c),
         Err(_e) => {
           // Server error
-          let err_type = format!("Register: Pi Server API complete error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
+          let err_type = format!("PiRegister: Pi Server API complete the payment error: {} {} {}", &data.info.username, &data.paymentid, _e.to_string());
           //return Err(LemmyError::from_message(&err_type).into());
           return Ok(PiRegisterResponse {
             success: false,
@@ -303,7 +303,7 @@ impl PerformCrud for PiRegister {
     let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
       Ok(dt) => Some(dt),
       Err(_e) => {
-        let err_type = format!("Register: Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
+        let err_type = format!("PiRegister: Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
         &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
         //return Err(LemmyError::from_message(err_type));
         None  
@@ -367,6 +367,7 @@ impl PerformCrud for PiRegister {
       }
     };
     
+    // Persion is exist, change his password
     if change_password {
 
       let password_hash = hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
@@ -414,6 +415,7 @@ impl PerformCrud for PiRegister {
             extra: None,
             })
     }
+
     // We have to create both a person, and local_user
 
     // Register the new person
@@ -431,12 +433,12 @@ impl PerformCrud for PiRegister {
       
     // insert the person
     // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
-    let inserted_person1 = match blocking(context.pool(), move |conn| {
+    let inserted_person = match blocking(context.pool(), move |conn| {
       Person::create(conn, &person_form)
     })
     .await?
     {
-      Ok(p) => Some(p),
+      Ok(p) => p,
       Err(_e) => {
       let err_type = format!("Register: user_already_exists: {} {}, exists{},  err:{}", 
                              &data.info.username, _pi_alias3, pi_exist, _e.to_string());
@@ -447,10 +449,11 @@ impl PerformCrud for PiRegister {
     //let default_listing_type = data.default_listing_type;
     //let default_sort_type = data.default_sort_type;
 
-    let inserted_person = inserted_person1.unwrap();
+    //let inserted_person = inserted_person1.unwrap();
+    let new_id = inserted_person.id.clone();
     // Create the local user
     let local_user_form = LocalUserForm {
-      person_id: Some(inserted_person.id),
+      person_id: Some(new_id),
       email: Some(data.info.email.as_deref().map(|s| s.to_owned())),
       password_encrypted: Some(data.info.password.to_string()),
       show_nsfw: Some(data.info.show_nsfw),
@@ -539,7 +542,7 @@ impl PerformCrud for PiRegister {
       }
     }
 
-    // Return the jwt
+    // Return the jwt / LoginResponse?
     Ok(PiRegisterResponse {
       success: true,
       jwt: Claims::jwt(inserted_local_user.id.0,

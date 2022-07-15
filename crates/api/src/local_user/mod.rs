@@ -4,6 +4,7 @@ mod block;
 mod change_password;
 mod change_password_after_reset;
 mod get_captcha;
+mod get_token;
 mod list_banned;
 mod login;
 mod notifications;
