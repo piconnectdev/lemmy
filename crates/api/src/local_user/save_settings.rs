@@ -43,6 +43,10 @@ impl Perform for SaveUserSettings {
     let bot_account = data.bot_account;
     let email_deref = data.email.as_deref().map(|e| e.to_owned());
     let email = diesel_option_overwrite(&email_deref);
+    let pi_address = diesel_option_overwrite(&data.pi_address);
+    let web3_address = diesel_option_overwrite(&data.web3_address);
+    let sol_address = diesel_option_overwrite(&data.sol_address);
+    let dap_address = diesel_option_overwrite(&data.dap_address);
 
     if let Some(Some(email)) = &email {
       let previous_email = local_user_view.local_user.email.clone().unwrap_or_default();

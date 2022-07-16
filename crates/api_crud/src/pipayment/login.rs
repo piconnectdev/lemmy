@@ -373,62 +373,6 @@ impl PerformCrud for PiLogin {
       }
     };
 
-    let main_community_keypair = generate_actor_keypair()?;
-
-    // Create the main community if it doesn't exist
-    let main_community = match blocking(context.pool(), move |conn| {
-      Community::read_from_name(conn, "main", false)
-    })
-    .await?
-    {
-      Ok(c) => c,
-      Err(_e) => {
-        let default_community_name = "main";
-        let actor_id = generate_local_apub_endpoint(EndpointType::Community, default_community_name, &settings.get_protocol_and_hostname())?;
-        let community_form = CommunityForm {
-          name: default_community_name.to_string(),
-          title: "The Default Community".to_string(),
-          description: Some("The Default Community".to_string()),
-          actor_id: Some(actor_id.to_owned()),
-          private_key: Some(Some(main_community_keypair.private_key)),
-          public_key: Some(main_community_keypair.public_key),
-          followers_url: Some(generate_followers_url(&actor_id)?),
-          inbox_url: Some(generate_inbox_url(&actor_id)?),
-          shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
-          ..CommunityForm::default()
-        };
-        blocking(context.pool(), move |conn| {
-          Community::create(conn, &community_form)
-        })
-        .await??
-      }
-    };
-
-    // Sign them up for main community no matter what
-    let community_follower_form = CommunityFollowerForm {
-      community_id: main_community.id,
-      person_id: inserted_person.id,
-      pending: false,
-    };
-
-    let follow = move |conn: &'_ _| CommunityFollower::follow(conn, &community_follower_form);
-    if blocking(context.pool(), follow).await?.is_err() {
-      //return Err(LemmyError::from_message("Register: community_follower_already_exists").into());
-    };
-
-    // If its an admin, add them as a mod and follower to main
-    // if no_admins {
-    //   let community_moderator_form = CommunityModeratorForm {
-    //     community_id: main_community.id,
-    //     person_id: inserted_person.id,
-    //   };
-
-    //   let join = move |conn: &'_ _| CommunityModerator::join(conn, &community_moderator_form);
-    //   if blocking(context.pool(), join).await?.is_err() {
-    //     return Err(LemmyError::from_message("community_moderator_already_exists").into());
-    //   }
-    // }
-
     // Return the jwt
     Ok(LoginResponse {
       jwt: Some(

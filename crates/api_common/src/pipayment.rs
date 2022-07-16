@@ -54,11 +54,28 @@ pub struct PiRegisterResponse {
 }
 
 #[derive(Deserialize)]
+pub struct PiRegisterFree {
+  pub pi_username: String,
+  pub pi_uid: PiUserId,
+  pub pi_token: String,
+  pub info: Register,
+}
+
+#[derive(Deserialize)]
 pub struct PiLogin {
   pub pi_username: String,
   pub pi_uid: PiUserId,
   pub pi_token: String,
   pub info: Option<Login>,
+}
+
+#[derive(Deserialize)]
+pub struct Web3Register {
+  pub address: String,
+  pub signature: String,
+  pub token: String,
+  pub cli_time: i64,
+  pub info: Register,
 }
 
 #[derive(Deserialize)]
