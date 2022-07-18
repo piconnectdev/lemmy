@@ -1,23 +1,14 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{utils::{blocking,}, pipayment::*};
+use lemmy_api_common::{pipayment::*, utils::blocking};
 use lemmy_db_schema::{
+  impls::pipayment::PiPayment_, newtypes::PaymentId, source::pipayment::*, traits::Crud,
   utils::naive_now,
-  source::{
-    pipayment::*,
-  },
-  impls::pipayment::PiPayment_,
-  traits::Crud,
-  newtypes::PaymentId,
 };
 
-use lemmy_utils::{
-  settings::SETTINGS,
-  ConnectionId, 
-  error::LemmyError,
-};
-use lemmy_websocket::{LemmyContext};
+use lemmy_utils::{error::LemmyError, settings::SETTINGS, ConnectionId};
+use lemmy_websocket::LemmyContext;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
@@ -30,8 +21,7 @@ impl PerformCrud for PiPaymentFound {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiPaymentFoundResponse, LemmyError> {
-
-    let settings= SETTINGS.to_owned();
+    let settings = SETTINGS.to_owned();
     let data: &PiPaymentFound = self;
 
     //check_slurs(&data.pi_username, &context.settings().slur_regex())?;
@@ -85,7 +75,7 @@ impl PerformCrud for PiPaymentFound {
         txlink = c.tx_link.clone();
         memo = c.memo.clone();
         Some(c)
-      },
+      }
       Err(_e) => None,
     };
 
@@ -99,23 +89,31 @@ impl PerformCrud for PiPaymentFound {
 
     //let dto_read = pi_payment(context.client(), &data.paymentid.clone()).await?;
     let dto_read = match pi_payment(context.client(), &data.paymentid.clone()).await {
-      Ok(c) => { 
+      Ok(c) => {
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
-        cancelled = c.status.cancelled;          
+        cancelled = c.status.cancelled;
         memo = c.memo.clone();
-        dto_source = 1;     
+        dto_source = 1;
         c
-      },
+      }
       Err(_e) => {
         // Pi Server error
-        let err_type = format!("Pi Server: error while check payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+        let err_type = format!(
+          "Pi Server: error while check payment: user {}, paymentid {} error: {}",
+          &data.pi_username,
+          &data.paymentid,
+          _e.to_string()
+        );
         return Err(LemmyError::from_message(&err_type));
       }
     };
 
     if cancelled {
-      let err_type = format!("Pi Server: payment cancelled: user {}, paymentid {}", &data.pi_username, &data.paymentid);
+      let err_type = format!(
+        "Pi Server: payment cancelled: user {}, paymentid {}",
+        &data.pi_username, &data.paymentid
+      );
       return Err(LemmyError::from_message(&err_type));
     }
 
@@ -124,10 +122,15 @@ impl PerformCrud for PiPaymentFound {
         Ok(c) => {
           dto_source = 2;
           Some(c)
-        },
+        }
         Err(_e) => {
           // Pi Server error
-          let err_type = format!("Pi Server: Error while approve: user {}, paymentid {} error: {}", &data.pi_username, &data.paymentid, _e.to_string());
+          let err_type = format!(
+            "Pi Server: Error while approve: user {}, paymentid {} error: {}",
+            &data.pi_username,
+            &data.paymentid,
+            _e.to_string()
+          );
           //let err_type = _e.to_string();
           return Err(LemmyError::from_message(&err_type));
         }
@@ -136,27 +139,36 @@ impl PerformCrud for PiPaymentFound {
       if !completed {
         let tx = dto_read.transaction.clone();
         match tx {
-            Some(_tx) => {
+          Some(_tx) => {
             txid = _tx.txid;
-            dto = match pi_complete(context.client(), &data.paymentid.clone(), &txid.clone() ).await {
+            dto = match pi_complete(context.client(), &data.paymentid.clone(), &txid.clone()).await
+            {
               Ok(c) => {
                 dto_source = 3;
                 Some(c)
-              },
+              }
               Err(_e) => {
                 // Pi Server error
-                let err_type = format!("Pi Server: Error while completed: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+                let err_type = format!(
+                  "Pi Server: Error while completed: user {}, paymentid {} error: {}",
+                  &data.pi_username,
+                  &data.paymentid,
+                  _e.to_string()
+                );
                 return Err(LemmyError::from_message(&err_type));
               }
             };
-          },
+          }
           None => {
-            let err_type = format!("Pi Server: Error while completed, no transaction: user {}, paymentid {}", &data.pi_username,  &data.paymentid);
+            let err_type = format!(
+              "Pi Server: Error while completed, no transaction: user {}, paymentid {}",
+              &data.pi_username, &data.paymentid
+            );
             return Err(LemmyError::from_message(&err_type));
           }
         };
       };
-      finished = true;         
+      finished = true;
     }
 
     let mut _payment_dto = PiPaymentDto {
@@ -169,28 +181,42 @@ impl PerformCrud for PiPaymentFound {
       _payment_dto = dto_read;
     }
 
-    _payment_dto.status.developer_approved  =  true;
+    _payment_dto.status.developer_approved = true;
 
-    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
+    let create_at = match chrono::NaiveDateTime::parse_from_str(
+      &_payment_dto.created_at,
+      "%Y-%m-%dT%H:%M:%S%.f%Z",
+    ) {
       Ok(dt) => Some(dt),
       Err(_e) => {
-        let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
-        &data.pi_username, &data.paymentid, _payment_dto.created_at, _e.to_string() );
+        let err_type = format!(
+          "Pi Server: get payment datetime error: user {}, paymentid {} {} {}",
+          &data.pi_username,
+          &data.paymentid,
+          _payment_dto.created_at,
+          _e.to_string()
+        );
         //return Err(LemmyError::from_message(&err_type));
         None
       }
     };
 
-    let _comment = format!("UpdatePaymentFound;dto_source:{};pi_pid:{};memo:{};{}", dto_source, data.paymentid.clone(), memo.clone(), comment);
+    let _comment = format!(
+      "UpdatePaymentFound;dto_source:{};pi_pid:{};memo:{};{}",
+      dto_source,
+      data.paymentid.clone(),
+      memo.clone(),
+      comment
+    );
     let mut payment_form = PiPaymentForm {
       person_id: None,
       ref_id: ref_id.clone(),
       testnet: settings.pinetwork.pi_testnet,
       finished: finished,
       updated: updated,
-      pi_uid: data.pi_uid, //data.pi_uid
+      pi_uid: data.pi_uid,         //data.pi_uid
       pi_username: "".to_string(), //data.pi_username.clone(), Hide user name
-      comment: Some(_comment), //"".to_string(),
+      comment: Some(_comment),     //"".to_string(),
 
       identifier: data.paymentid.clone(),
       user_uid: _payment_dto.user_uid.clone(), //"".to_string(), //_payment_dto.user_uid,
@@ -228,16 +254,21 @@ impl PerformCrud for PiPaymentFound {
       .await?
       {
         Ok(payment) => {
-            payment_id = payment.id;
-            Some(payment)
-        },
+          payment_id = payment.id;
+          Some(payment)
+        }
         Err(_e) => {
           // let err_type = if e.to_string() == "value too long for type character varying(200)" {
           //   "post_title_too_long"
           // } else {
           //   "couldnt_create_post"
           // };
-          let err_type = format!("Error insert payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+          let err_type = format!(
+            "Error insert payment: user {}, paymentid {} error: {}",
+            &data.pi_username,
+            &data.paymentid,
+            _e.to_string()
+          );
 
           return Err(LemmyError::from_message(&err_type));
         }
@@ -257,7 +288,12 @@ impl PerformCrud for PiPaymentFound {
           // } else {
           //   "couldnt_create_post"
           // };
-          let err_type = format!("Error update payment: user {}, paymentid {} error: {}", &data.pi_username,  &data.paymentid, _e.to_string());
+          let err_type = format!(
+            "Error update payment: user {}, paymentid {} error: {}",
+            &data.pi_username,
+            &data.paymentid,
+            _e.to_string()
+          );
           return Err(LemmyError::from_message(&err_type));
         }
       };

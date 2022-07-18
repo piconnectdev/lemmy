@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-psql -U lemmy -d postgres -c "DROP DATABASE lemmy;"
+psql -U lemmy -d postgres -c "DROP DATABASE IF EXISTS lemmy;"
 psql -U lemmy -d postgres -c "CREATE DATABASE lemmy;"
 
 export LEMMY_DATABASE_URL=postgres://lemmy:12345678@localhost:5432/lemmy

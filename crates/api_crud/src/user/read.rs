@@ -5,7 +5,7 @@ use lemmy_api_common::{
   utils::{blocking, check_private_instance, get_local_user_view_from_jwt_opt},
 };
 use lemmy_apub::{fetcher::resolve_actor_identifier, objects::person::ApubPerson};
-use lemmy_db_schema::{source::person::Person, newtypes::PersonId};
+use lemmy_db_schema::{newtypes::PersonId, source::person::Person};
 use lemmy_db_views::{comment_view::CommentQueryBuilder, post_view::PostQueryBuilder};
 use lemmy_db_views_actor::structs::{CommunityModeratorView, PersonViewSafe};
 use lemmy_utils::{error::LemmyError, ConnectionId};
@@ -58,9 +58,9 @@ impl PerformCrud for GetPersonDetails {
           Err(_e) => {
             let name = id.clone();
             resolve_actor_identifier::<ApubPerson, Person>(&name, context)
-            .await
-            .map_err(|_e| _e.with_message("couldnt_find_that_username_or_email"))?
-            .id
+              .await
+              .map_err(|_e| _e.with_message("couldnt_find_that_username_or_email"))?
+              .id
             //let person = blocking(context.pool(), move |conn| {
             //  Person::find_by_name(conn, &name)
             //})
@@ -73,10 +73,10 @@ impl PerformCrud for GetPersonDetails {
             // .await?;
             // person
             //   .map_err(|_| LemmyError::from_message("couldnt_find_that_username_or_email"))?
-            //   .id  
+            //   .id
           }
         }
-      },
+      }
       None => {
         if let Some(username) = &data.username {
           resolve_actor_identifier::<ApubPerson, Person>(username, context)
@@ -90,23 +90,23 @@ impl PerformCrud for GetPersonDetails {
         }
       }
     };
-/*
-    let person_details_id = match data.person_id {
-      Some(id) => id,
-      None => {
-        if let Some(username) = &data.username {
-          resolve_actor_identifier::<ApubPerson, Person>(username, context)
-            .await
-            .map_err(|e| e.with_message("couldnt_find_that_username_or_email"))?
-            .id
-        } else {
-          return Err(LemmyError::from_message(
-            "couldnt_find_that_username_or_email",
-          ));
-        }
-      }
-    };
-*/
+    /*
+        let person_details_id = match data.person_id {
+          Some(id) => id,
+          None => {
+            if let Some(username) = &data.username {
+              resolve_actor_identifier::<ApubPerson, Person>(username, context)
+                .await
+                .map_err(|e| e.with_message("couldnt_find_that_username_or_email"))?
+                .id
+            } else {
+              return Err(LemmyError::from_message(
+                "couldnt_find_that_username_or_email",
+              ));
+            }
+          }
+        };
+    */
     let person_id = local_user_view.map(|uv| uv.person.id);
 
     // You don't need to return settings for the user, since this comes back with GetSite

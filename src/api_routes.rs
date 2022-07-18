@@ -1,7 +1,7 @@
 use actix_web::*;
 use lemmy_api::Perform;
 use lemmy_api_common::{
-  comment::*, community::*, person::*, pipayment::*, post::*, site::*, websocket::*,
+  comment::*, community::*, person::*, pipayment::*, post::*, site::*, web3::*, websocket::*,
 };
 use lemmy_api_crud::PerformCrud;
 use lemmy_utils::rate_limit::RateLimit;
@@ -166,14 +166,12 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
         web::resource("/user/get_captcha")
           .wrap(rate_limit.post())
           .route(web::get().to(route_get::<GetCaptcha>)),
-          
       )
       .service(
         // Handle captcha separately
         web::resource("/user/get_token")
           .wrap(rate_limit.post())
           .route(web::get().to(route_get::<GetToken>)),
-          
       )
       // User actions
       .service(
@@ -193,7 +191,6 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           .route("/block", web::post().to(route_post::<BlockPerson>))
           // Account actions. I don't like that they're in /user maybe /accounts
           .route("/login", web::post().to(route_post::<Login>))
-          .route("/web3login", web::post().to(route_post_crud::<Web3Login>))
           .route(
             "/delete_account",
             web::post().to(route_post_crud::<DeleteAccount>),
@@ -249,7 +246,15 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           .route("/community", web::post().to(route_post::<PurgeCommunity>))
           .route("/post", web::post().to(route_post::<PurgePost>))
           .route("/comment", web::post().to(route_post::<PurgeComment>)),
-      )      
+      )
+      // Web3
+      .service(
+        web::scope("/web3")
+          .wrap(rate_limit.message())
+          .route("/register", web::post().to(route_post_crud::<Web3Register>))
+          .route("/login", web::post().to(route_post_crud::<Web3Login>))
+          .route("/web3login", web::post().to(route_post_crud::<Web3Login>)),
+      )
       // Pi Payment
       .service(
         web::scope("/pi")
@@ -257,11 +262,14 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           .route("/found", web::post().to(route_post_crud::<PiPaymentFound>))
           .route("/agree", web::post().to(route_post_crud::<PiAgreeRegister>))
           .route("/register", web::post().to(route_post_crud::<PiRegister>))
+          .route(
+            "/register_with_fee",
+            web::post().to(route_post_crud::<PiRegisterWithFee>),
+          )
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
           .route("/complete", web::post().to(route_post_crud::<PiTip>))
-          .route("/login", web::post().to(route_post_crud::<PiLogin>))
-          //.route("/payment", web::get().to(route_get_crud::<GetPayment>)),
-          //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
+          .route("/login", web::post().to(route_post_crud::<PiLogin>)), //.route("/payment", web::get().to(route_get_crud::<GetPayment>)),
+                                                                        //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
       ),
   );
 }

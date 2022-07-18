@@ -1,23 +1,26 @@
+use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
 use bcrypt::{hash, DEFAULT_COST};
 use lemmy_api_common::{
-  person::LoginResponse,
   pipayment::*,
   utils::{blocking, honeypot_check, password_length_check},
 };
 use lemmy_apub::{
-  generate_inbox_url, generate_local_apub_endpoint, generate_shared_inbox_url, EndpointType,
+  generate_followers_url, generate_inbox_url, generate_local_apub_endpoint,
+  generate_shared_inbox_url, EndpointType,
 };
 use lemmy_db_schema::{
-  newtypes::PersonId,
+  impls::pipayment::PiPayment_,
+  newtypes::{CommunityId, PaymentId, PersonId},
   source::{
+    community::*,
     local_user::{LocalUser, LocalUserForm},
     person::*,
     pipayment::*,
     site::*,
   },
-  traits::{ApubActor, Crud},
+  traits::{ApubActor, Crud, Followable, Joinable},
   utils::naive_now,
 };
 use lemmy_db_views::structs::LocalUserView;
@@ -36,16 +39,16 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for PiRegister {
-  type Response = LoginResponse;
+impl PerformCrud for PiRegisterWithFee {
+  type Response = PiRegisterResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  ) -> Result<PiRegisterResponse, LemmyError> {
     let settings = SETTINGS.to_owned();
-    let data: &PiRegister = &self;
+    let data: &PiRegisterWithFee = &self;
 
     // no email verification, or applications if the site is not setup yet
     let (mut email_verification, mut require_application) = (false, false);
@@ -85,26 +88,26 @@ impl PerformCrud for PiRegister {
     .await??;
 
     // If its not the admin, check the captcha
-    if !no_admins && settings.captcha.enabled {
-      let check = context
-        .chat_server()
-        .send(CheckCaptcha {
-          uuid: data
-            .info
-            .captcha_uuid
-            .to_owned()
-            .unwrap_or_else(|| "".to_string()),
-          answer: data
-            .info
-            .captcha_answer
-            .to_owned()
-            .unwrap_or_else(|| "".to_string()),
-        })
-        .await?;
-      if !check {
-        return Err(LemmyError::from_message("captcha_incorrect").into());
-      }
-    }
+    // if !no_admins && settings.captcha.enabled {
+    //   let check = context
+    //     .chat_server()
+    //     .send(CheckCaptcha {
+    //       uuid: data
+    //         .info
+    //         .captcha_uuid
+    //         .to_owned()
+    //         .unwrap_or_else(|| "".to_string()),
+    //       answer: data
+    //         .info
+    //         .captcha_answer
+    //         .to_owned()
+    //         .unwrap_or_else(|| "".to_string()),
+    //     })
+    //     .await?;
+    //   if !check {
+    //     return Err(LemmyError::from_message("captcha_incorrect").into());
+    //   }
+    // }
 
     check_slurs(&data.info.username, &context.settings().slur_regex())?;
 
@@ -118,7 +121,13 @@ impl PerformCrud for PiRegister {
         data.pi_username.to_owned(),
         &data.info.username
       );
-      return Err(LemmyError::from_message("register:invalid_username"));
+      //return Err(LemmyError::from_message("register:invalid_username"));
+      let err_type = format!("Register: invalid username {}", &data.info.username);
+      return Ok(PiRegisterResponse {
+        success: false,
+        jwt: format!(""),
+        extra: Some(format!("{}", err_type)),
+      });
     }
     let actor_id = generate_local_apub_endpoint(
       EndpointType::Person,
@@ -131,20 +140,68 @@ impl PerformCrud for PiRegister {
     sha256.update(settings.pi_seed());
     sha256.update(data.pi_username.to_owned());
     let _pi_alias: String = format!("{:X}", sha256.finalize());
-    //let _pi_alias = data.pi_username.to_owned();
     let _pi_alias2 = _pi_alias.clone();
     let _pi_alias3 = _pi_alias.clone();
+    //let _pi_alias = data.pi_username.to_owned();
 
     let _pi_uid = data.pi_uid.clone();
+    let _payment_id = data.paymentid.to_owned();
     let _new_user = data.info.username.to_owned();
     let _new_user2 = data.info.username.to_owned();
     let _new_password = data.info.password.to_owned();
 
+    let mut approved = false;
+    let mut completed = false;
+    let mut finished = false;
+    let payment_id: PaymentId;
     let person_id: PersonId;
     let mut pi_exist = false;
+    let mut dto: Option<PiPaymentDto> = None;
 
-    let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &_new_user)
+    let mut _payment = match blocking(context.pool(), move |conn| {
+      PiPayment::find_by_pipayment_id(&conn, &_payment_id)
+    })
+    .await?
+    {
+      Ok(c) => {
+        approved = c.approved;
+        completed = c.completed;
+        payment_id = c.id;
+        finished = c.finished;
+        Some(c)
+      }
+      Err(_e) => {
+        //let err_type = format!("Payment {} was not approved", data.paymentid);
+        let err_type = format!(
+          "PiRegister: Payment {} was not approved, err: {}",
+          data.paymentid,
+          _e.to_string()
+        );
+        //return Err(LemmyError::from_message(&err_type));
+        return Ok(PiRegisterResponse {
+          success: false,
+          jwt: format!(""),
+          extra: Some(format!("{}", err_type)),
+        });
+      }
+    };
+
+    if _payment.is_none() {
+      // Why here ????
+      let err_type = format!(
+        "PiRegister: Payment {} was not insert/approved",
+        data.paymentid
+      );
+      return Err(LemmyError::from_message(&err_type).into());
+    } else {
+      if finished {
+        let err_type = format!("PiRegister: Payment {} was finished", data.paymentid);
+        return Err(LemmyError::from_message(&err_type).into());
+      }
+    }
+
+    let pi_person = match blocking(context.pool(), move |conn| {
+      Person::find_by_pi_name(&conn, &_pi_alias)
     })
     .await?
     {
@@ -152,8 +209,8 @@ impl PerformCrud for PiRegister {
       Err(_e) => None,
     };
 
-    let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_alias)
+    let person = match blocking(context.pool(), move |conn| {
+      Person::find_by_name(&conn, &_new_user)
     })
     .await?
     {
@@ -171,12 +228,17 @@ impl PerformCrud for PiRegister {
           Some(other) => {
             if pi.extra_user_id != other.extra_user_id {
               let err_type = format!(
-                "PiRegister: User {} is exist and belong to other Pi Account ",
+                "Register: User {} is exist and belong to other Pi Account ",
                 &data.info.username
               );
               println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
               result = false;
-              return Err(LemmyError::from_message(&err_type).into());
+              //return Err(LemmyError::from_message(&err_type).into());
+              return Ok(PiRegisterResponse {
+                success: false,
+                jwt: format!(""),
+                extra: Some(format!("{}", err_type)),
+              });
             } else {
               // Same name and account: change password ???
               change_password = true;
@@ -207,7 +269,12 @@ impl PerformCrud for PiRegister {
             );
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result = false;
-            return Err(LemmyError::from_message(&err_type).into());
+            //return Err(LemmyError::from_message(&err_type).into());
+            return Ok(PiRegisterResponse {
+              success: false,
+              jwt: format!(""),
+              extra: Some(format!("{}", err_type)),
+            });
           }
           None => {
             // No account relate with pi_username/site_username, we must completed the payment and create new user
@@ -216,7 +283,133 @@ impl PerformCrud for PiRegister {
       }
     }
 
-    // Person is exist, change his password
+    if !completed {
+      dto = match pi_complete(
+        context.client(),
+        &data.paymentid.clone(),
+        &data.txid.clone(),
+      )
+      .await
+      {
+        Ok(c) => Some(c),
+        Err(_e) => {
+          // Server error
+          let err_type = format!(
+            "PiRegister: Pi Server API complete the payment error: {} {} {}",
+            &data.info.username,
+            &data.paymentid,
+            _e.to_string()
+          );
+          //return Err(LemmyError::from_message(&err_type).into());
+          return Ok(PiRegisterResponse {
+            success: false,
+            jwt: format!(""),
+            extra: Some(format!("{}", err_type)),
+          });
+        }
+      };
+    }
+
+    let mut _payment_dto = PiPaymentDto {
+      ..PiPaymentDto::default()
+    };
+    _payment_dto.status.developer_approved = true;
+    _payment_dto.status.developer_completed = true;
+    _payment_dto.status.transaction_verified = true;
+    if dto.is_some() {
+      _payment_dto = dto.unwrap();
+    }
+
+    /// TODO: UUID check
+    let refid = match &data.info.captcha_uuid {
+      Some(uid) => match Uuid::parse_str(uid) {
+        Ok(uidx) => Some(uidx),
+        Err(_e) => None,
+      },
+      None => None,
+    };
+
+    let create_at = match chrono::NaiveDateTime::parse_from_str(
+      &_payment_dto.created_at,
+      "%Y-%m-%dT%H:%M:%S%.f%Z",
+    ) {
+      Ok(dt) => Some(dt),
+      Err(_e) => {
+        let err_type = format!(
+          "PiRegister: Pi Server: get payment datetime error: user {}, paymentid {} {} {}",
+          &data.pi_username,
+          &data.paymentid,
+          _payment_dto.created_at,
+          _e.to_string()
+        );
+        //return Err(LemmyError::from_message(err_type));
+        None
+      }
+    };
+
+    // Update relate payment
+    let mut payment_form = PiPaymentForm {
+      person_id: None,
+      ref_id: refid,
+      testnet: settings.pinetwork.pi_testnet,
+      finished: true,
+      updated: Some(naive_now()),
+      pi_uid: data.pi_uid,
+      pi_username: "".to_string(), // data.pi_username.clone(), Hide username
+      comment: data.comment.clone(),
+
+      identifier: data.paymentid.clone(),
+      user_uid: _payment_dto.user_uid,
+      amount: _payment_dto.amount,
+      memo: _payment_dto.memo,
+      to_address: _payment_dto.to_address,
+      created_at: create_at,
+      approved: _payment_dto.status.developer_approved,
+      verified: _payment_dto.status.transaction_verified,
+      completed: _payment_dto.status.developer_completed,
+      cancelled: _payment_dto.status.cancelled,
+      user_cancelled: _payment_dto.status.user_cancelled,
+      tx_link: "".to_string(),
+      tx_id: "".to_string(),
+      tx_verified: false,
+      metadata: _payment_dto.metadata,
+      extras: None,
+      //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
+      //..PiPaymentForm::default()
+    };
+
+    match _payment_dto.transaction {
+      Some(tx) => {
+        payment_form.tx_link = tx._link;
+        payment_form.tx_verified = tx.verified;
+        payment_form.tx_id = tx.txid;
+      }
+      None => {}
+    }
+
+    let updated_payment = match blocking(context.pool(), move |conn| {
+      PiPayment::update(&conn, payment_id, &payment_form)
+    })
+    .await?
+    {
+      Ok(payment) => payment,
+      Err(_e) => {
+        let err_type = format!(
+          "Register: Update payment complete error: {} {} {}",
+          &data.info.username,
+          &data.paymentid,
+          _e.to_string()
+        );
+        //return Err(LemmyError::from_message(&err_type).into());
+        return Ok(PiRegisterResponse {
+          success: false,
+          jwt: format!(""),
+          extra: Some(format!("{}", err_type)),
+        });
+      }
+    };
+
+    // Persion is exist, change his password
     if change_password {
       let password_hash =
         hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
@@ -230,11 +423,17 @@ impl PerformCrud for PiRegister {
         Ok(lcu) => lcu,
         Err(_e) => {
           let err_type = format!(
-            "PiRegister: Update local user not found {} {}",
+            "Register: Update local user not found {} {} {}",
             &data.info.username,
+            &data.paymentid,
             _e.to_string()
           );
           return Err(LemmyError::from_message(&err_type).into());
+          //  return Ok(PiRegisterResponse {
+          //   success: false,
+          //   jwt: format!(""),
+          //   extra: Some(format!("{}",err_type)),
+          //   });
         }
       };
       local_user_id = _local_user.local_user.id.clone();
@@ -247,28 +446,32 @@ impl PerformCrud for PiRegister {
         Ok(chp) => chp,
         Err(_e) => {
           let err_type = format!(
-            "PiRegister: Update local user password error {} {}",
+            "Register: Update local user password error {} {} {}",
             &data.info.username,
+            &data.paymentid,
             _e.to_string()
           );
-          return Err(LemmyError::from_message(&err_type).into());
+          //return Err(LemmyError::from_message(&err_type).into());
+          return Ok(PiRegisterResponse {
+            success: false,
+            jwt: format!(""),
+            extra: Some(format!("{}", err_type)),
+          });
         }
       };
-      return Ok(LoginResponse {
-        jwt: Some(
-          Claims::jwt(
-            local_user_id.0,
-            &context.secret().jwt_secret,
-            &context.settings().hostname,
-          )?
-          .into(),
-        ),
-        verify_email_sent: _local_user.local_user.email_verified,
-        registration_created: false,
+      return Ok(PiRegisterResponse {
+        success: true,
+        jwt: Claims::jwt(
+          local_user_id.0,
+          &context.secret().jwt_secret,
+          &context.settings().hostname,
+        )?,
+        extra: None,
       });
     }
 
     // We have to create both a person, and local_user
+
     // Register the new person
     let person_form = PersonForm {
       name: data.info.username.to_owned(),
@@ -301,6 +504,9 @@ impl PerformCrud for PiRegister {
         return Err(LemmyError::from_message(&err_type).into());
       }
     };
+
+    //let default_listing_type = data.default_listing_type;
+    //let default_sort_type = data.default_sort_type;
 
     //let inserted_person = inserted_person1.unwrap();
     let new_id = inserted_person.id.clone();
@@ -339,18 +545,17 @@ impl PerformCrud for PiRegister {
       }
     };
 
+    let main_community_keypair = generate_actor_keypair()?;
+
     // Return the jwt / LoginResponse?
-    Ok(LoginResponse {
-      jwt: Some(
-        Claims::jwt(
-          inserted_local_user.id.0,
-          &context.secret().jwt_secret,
-          &context.settings().hostname,
-        )?
-        .into(),
-      ),
-      verify_email_sent: false,
-      registration_created: false,
+    Ok(PiRegisterResponse {
+      success: true,
+      jwt: Claims::jwt(
+        inserted_local_user.id.0,
+        &context.secret().jwt_secret,
+        &context.settings().hostname,
+      )?,
+      extra: None,
     })
   }
 }

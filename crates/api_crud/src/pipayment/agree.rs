@@ -1,22 +1,22 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{utils::{blocking, password_length_check,}, pipayment::*};
+use lemmy_api_common::{
+  pipayment::*,
+  utils::{blocking, password_length_check},
+};
 use lemmy_db_schema::{
-  impls::{pipayment::PiPayment_},
-  source::{
-    person::*,
-    pipayment::*,
-    site::*,
-  },
+  impls::pipayment::PiPayment_,
+  newtypes::*,
+  source::{person::*, pipayment::*, site::*},
   traits::Crud,
-  newtypes::{*},
 };
 use lemmy_db_views_actor::structs::PersonViewSafe;
-use lemmy_utils::{  
+use lemmy_utils::{
+  error::LemmyError,
   settings::SETTINGS,
-  utils::{check_slurs, is_valid_actor_name,},
-  ConnectionId, error::LemmyError,
+  utils::{check_slurs, is_valid_actor_name},
+  ConnectionId,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256};
@@ -31,7 +31,6 @@ impl PerformCrud for PiAgreeRegister {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiAgreeResponse, LemmyError> {
-
     let settings = SETTINGS.to_owned();
     let data: &PiAgreeRegister = self;
 
@@ -77,7 +76,10 @@ impl PerformCrud for PiAgreeRegister {
 
     check_slurs(&data.info.username, &context.settings().slur_regex())?;
 
-    if !is_valid_actor_name(&data.info.username, context.settings().actor_name_max_length) {
+    if !is_valid_actor_name(
+      &data.info.username,
+      context.settings().actor_name_max_length,
+    ) {
       println!("Invalid username {}", &data.info.username);
       return Err(LemmyError::from_message("agree:invalid_username"));
     }
@@ -124,7 +126,7 @@ impl PerformCrud for PiAgreeRegister {
       let err_type = format!("Payment {} was approved", data.paymentid);
       return Ok(PiAgreeResponse {
         success: true,
-        id: None, 
+        id: None,
         paymentid: data.paymentid.to_owned(),
         extra: None,
       });
@@ -161,8 +163,8 @@ impl PerformCrud for PiAgreeRegister {
               result_string = err_type.clone();
               result = false
             } else {
-              // Same name and account: change password ???   
-              result = true;           
+              // Same name and account: change password ???
+              result = true;
             }
           }
           None => {
@@ -170,40 +172,48 @@ impl PerformCrud for PiAgreeRegister {
             let err_type = format!("Your account already exist: {}", pi.name);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result_string = err_type.clone();
-            result =  false;
+            result = false;
           }
         };
       }
       None => {
         match person {
           Some(per) => {
-            let err_type = format!("User {} is exist, create same user name is not allow!", &data.info.username);
+            let err_type = format!(
+              "User {} is exist, create same user name is not allow!",
+              &data.info.username
+            );
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
             result_string = err_type.clone();
             result = false;
           }
           None => {
             // No account, we approved this tx
-            result =  true;
+            result = true;
           }
         };
       }
     }
-    
+
     dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
       Ok(c) => Some(c),
       Err(_e) => {
         // Pi Server error
-        let err_type = format!("Pi Server Error: approve user {}, paymentid {}, error: {}", &data.info.username,  &data.paymentid, _e.to_string());
+        let err_type = format!(
+          "Pi Server Error: approve user {}, paymentid {}, error: {}",
+          &data.info.username,
+          &data.paymentid,
+          _e.to_string()
+        );
         //let err_type = _e.to_string();
         return Err(LemmyError::from_message(&err_type));
       }
     };
-    
+
     let mut _payment_dto = PiPaymentDto {
       ..PiPaymentDto::default()
     };
-    _payment_dto.status.developer_approved  =  true;
+    _payment_dto.status.developer_approved = true;
 
     if dto.is_some() {
       _payment_dto = dto.unwrap();
@@ -218,12 +228,17 @@ impl PerformCrud for PiAgreeRegister {
       None => None,
     };
 
-    let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
+    let create_at = match chrono::NaiveDateTime::parse_from_str(
+      &_payment_dto.created_at,
+      "%Y-%m-%dT%H:%M:%S%.f%Z",
+    ) {
       Ok(dt) => Some(dt),
       Err(_e) => {
-        let err_type = format!("Pi Server Error: get payment datetime error: user {}, paymentid {} {}", 
-        &data.info.username, &data.paymentid, _payment_dto.created_at );
-        //return Err(LemmyError::from_message((&err_type));  
+        let err_type = format!(
+          "Pi Server Error: get payment datetime error: user {}, paymentid {} {}",
+          &data.info.username, &data.paymentid, _payment_dto.created_at
+        );
+        //return Err(LemmyError::from_message((&err_type));
         None
       }
     };
@@ -237,12 +252,12 @@ impl PerformCrud for PiAgreeRegister {
       pi_uid: data.pi_uid,
       pi_username: "".to_string(), //data.pi_username.clone(), => Hide user info
       comment: data.comment.clone(), // Peer address
-      
+
       identifier: data.paymentid.clone(),
       user_uid: _payment_dto.user_uid,
       amount: _payment_dto.amount,
       memo: _payment_dto.memo,
-      to_address: _payment_dto.to_address,  // Site's own address
+      to_address: _payment_dto.to_address, // Site's own address
       created_at: create_at,
       approved: _payment_dto.status.developer_approved,
       verified: _payment_dto.status.transaction_verified,
@@ -268,20 +283,25 @@ impl PerformCrud for PiAgreeRegister {
     }
 
     //if !exist {
-      _payment = match blocking(context.pool(), move |conn| {
-        PiPayment::create(&conn, &payment_form)
-      })
-      .await?
-      {
-        Ok(payment) => {
-            pid = payment.id;
-            Some(payment)
-        },
-        Err(_e) => {
-          let err_type = format!("Error insert payment for agree: user {}, paymentid {} error: {}", &data.info.username,  &data.paymentid, _e.to_string());
-          return Err(LemmyError::from_message(&err_type));
-        }
-      };      
+    _payment = match blocking(context.pool(), move |conn| {
+      PiPayment::create(&conn, &payment_form)
+    })
+    .await?
+    {
+      Ok(payment) => {
+        pid = payment.id;
+        Some(payment)
+      }
+      Err(_e) => {
+        let err_type = format!(
+          "Error insert payment for agree: user {}, paymentid {} error: {}",
+          &data.info.username,
+          &data.paymentid,
+          _e.to_string()
+        );
+        return Err(LemmyError::from_message(&err_type));
+      }
+    };
     Ok(PiAgreeResponse {
       success: result,
       id: Some(pid),

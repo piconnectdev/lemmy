@@ -1,14 +1,20 @@
-use bcrypt::{hash, DEFAULT_COST};
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{utils::{blocking, password_length_check,}, person::*, pipayment::*, sensitive::Sensitive};
+use bcrypt::{hash, DEFAULT_COST};
+use lemmy_api_common::{
+  person::*,
+  sensitive::Sensitive,
+  utils::{blocking, password_length_check},
+  web3::*,
+};
 use lemmy_apub::{
-  generate_local_apub_endpoint, generate_followers_url, generate_inbox_url, generate_shared_inbox_url,
-  EndpointType,
+  generate_followers_url, generate_inbox_url, generate_local_apub_endpoint,
+  generate_shared_inbox_url, EndpointType,
 };
 use lemmy_db_schema::{
-  utils::naive_now,
+  newtypes::{CommunityId, PaymentId, PersonId},
+  schema::local_user::email_verified,
   source::{
     community::*,
     local_user::{LocalUser, LocalUserForm},
@@ -16,23 +22,21 @@ use lemmy_db_schema::{
     pipayment::*,
     site::*,
   },
-  traits::{Crud, ApubActor, Followable, },
-  newtypes::{CommunityId, PaymentId, PersonId,}, 
-  schema::local_user::email_verified,
+  traits::{ApubActor, Crud, Followable},
+  utils::naive_now,
 };
-use lemmy_db_views::{structs::LocalUserView};
+use lemmy_db_views::structs::LocalUserView;
 use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
-  settings::SETTINGS,
-  utils::{check_slurs, is_valid_actor_name,},
   error::LemmyError,
+  settings::SETTINGS,
+  utils::{check_slurs, eth_verify, is_valid_actor_name},
   ConnectionId,
 };
-use lemmy_websocket::{LemmyContext, messages::CheckToken};
-use sha2::{Digest, Sha256, };
+use lemmy_websocket::{messages::CheckToken, LemmyContext};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -59,32 +63,42 @@ impl PerformCrud for Web3Login {
     }
     // Hide Pi user name, not store pi_uid
     let mut _address = data.address.clone();
-    let mut _signer = data.signature.clone();
+    let mut signature = data.signature.clone();
     let _token = data.token.clone();
-    let _cliTime = data.cli_time;
+    let _cli_time = data.cli_time;
 
-    println!("Web3Login is processing for {} {} {} ", _address.clone(), _token.clone(), _signer.clone());
-
+    let text = format!(
+      "LOGIN:{};TOKEN:{};TIME:{}",
+      _address.clone(),
+      _token.clone(),
+      _cli_time.clone()
+    );
+    println!(
+      "Web3Login is processing for {} - {} {} {} ",
+      text.clone(),
+      _address.clone(),
+      _token.clone(),
+      data.signature.clone()
+    );
+    if !eth_verify(_address.clone(), text.clone(), signature) {
+      return Err(LemmyError::from_message("registration_closed"));
+    }
     // TODO: First, valid user address
     // Check user if exists on blockchain
     /*
-    let user_dto = match pi_me(context.client(), &data.pi_token.clone()).await {
-      Ok(dto) => {
-        _pi_username = dto.username.clone();
-        _pi_uid = dto.uid.clone();
-        Some(dto)
-      }
-      Err(_e) => {
-        // Pi Server error
-        let err_type = format!("Pi Server Error: User not found: {}, error: {}", &data.pi_username,  _e.to_string());
-        return Err(LemmyError::from_message(&err_type));
-      }
-    };
-   */
-    let mut sha256 = Sha256::new();
-    sha256.update(settings.pi_seed());
-    sha256.update(_address.clone());
-    //let _pi_alias: String = format!("{:X}", sha256.finalize());
+     let user_dto = match web3_exist(context.client(), &data.pi_token.clone()).await {
+       Ok(dto) => {
+         _pi_username = dto.username.clone();
+         _pi_uid = dto.uid.clone();
+         Some(dto)
+       }
+       Err(_e) => {
+         // Pi Server error
+         let err_type = format!("Pi Server Error: User not found: {}, error: {}", &data.pi_username,  _e.to_string());
+         return Err(LemmyError::from_message(&err_type));
+       }
+     };
+    */
     let _alias: String = _address.clone();
     let _alias2 = _alias.clone();
     let _alias3 = _alias.clone();
@@ -101,11 +115,11 @@ impl PerformCrud for Web3Login {
 
     match &data.info {
       Some(info) => {
-        create_new =  true;
+        create_new = true;
         _new_user = info.username_or_email.clone();
-        _new_password =  info.password.clone();
-      },
-      None =>{
+        _new_password = info.password.clone();
+      }
+      None => {
         let err_type = format!("Server Error: Web3 user not provided: {}", &data.address);
         return Err(LemmyError::from_message(&err_type));
       }
@@ -113,7 +127,7 @@ impl PerformCrud for Web3Login {
 
     // Check if there are admins. False if admins exist
     let no_admins = blocking(context.pool(), move |conn| {
-         PersonViewSafe::admins(conn).map(|a| a.is_empty())
+      PersonViewSafe::admins(conn).map(|a| a.is_empty())
     })
     .await??;
 
@@ -122,8 +136,7 @@ impl PerformCrud for Web3Login {
       let check = context
         .chat_server()
         .send(CheckToken {
-          uuid: data
-                .token.clone(),
+          uuid: data.token.clone(),
           answer: "".to_string(),
         })
         .await?;
@@ -141,18 +154,17 @@ impl PerformCrud for Web3Login {
       //   return Err(LemmyError::from_message("passwords_dont_match"));
       // }
 
-
       // // If its not the admin, check the captcha
       // if !no_admins && Settings::get().captcha.enabled {
       //   let check = context
       //     .chat_server()
       //     .send(CheckCaptcha {
-      //       uuid: 
+      //       uuid:
       //         info
       //         .captcha_uuid
       //         .to_owned()
       //         .unwrap_or_else(|| "".to_string()),
-      //       answer: 
+      //       answer:
       //         info
       //         .captcha_answer
       //         .to_owned()
@@ -163,8 +175,6 @@ impl PerformCrud for Web3Login {
       //     return Err(LemmyError::from_message("captcha_incorrect"));
       //   }
       // }
-
-      
     }
 
     // Find user exist ?
@@ -177,7 +187,6 @@ impl PerformCrud for Web3Login {
       Err(_e) => None,
     };
 
-  
     let mut extra_user_id = None;
     match pi_person {
       Some(pi) => {
@@ -194,30 +203,35 @@ impl PerformCrud for Web3Login {
         }
       }
     }
-    
-    if pi_exist {      
-       let local_user_id;
-       let username2 = username.clone();
-       let _local_user = match blocking(context.pool(), move |conn| {
-         LocalUserView::read_from_name(&conn, &username2.clone())
-       })
-       .await?
-       {
-         Ok(lcu) => lcu, 
-         Err(_e) => {
-           let err_type = format!("Web3 local user not found {} {} {}", _address.clone(), username.clone(),  _e.to_string());
-           println!("{} {}", _address.clone(), err_type);
-           return Err(LemmyError::from_error_message(_e, &err_type));
-        
+
+    if pi_exist {
+      let local_user_id;
+      let username2 = username.clone();
+      let _local_user = match blocking(context.pool(), move |conn| {
+        LocalUserView::read_from_name(&conn, &username2.clone())
+      })
+      .await?
+      {
+        Ok(lcu) => lcu,
+        Err(_e) => {
+          let err_type = format!(
+            "Web3 local user not found {} {} {}",
+            _address.clone(),
+            username.clone(),
+            _e.to_string()
+          );
+          println!("{} {}", _address.clone(), err_type);
+          return Err(LemmyError::from_error_message(_e, &err_type));
+
           //  return Ok(PiRegisterResponse {
           //   success: false,
           //   jwt: format!(""),
           //   extra: Some(format!("{}",err_type)),
           //   });
-         }
-       };
+        }
+      };
 
-       local_user_id = _local_user.local_user.id.clone();
+      local_user_id = _local_user.local_user.id.clone();
 
       //  let password_hash = hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
       if create_new {
@@ -228,9 +242,13 @@ impl PerformCrud for Web3Login {
         {
           Ok(lcu) => lcu,
           Err(_e) => {
-            let err_type = format!("PiLogin: Update local user password error {} {}", &username.clone(), _e.to_string());
+            let err_type = format!(
+              "PiLogin: Update local user password error {} {}",
+              &username.clone(),
+              _e.to_string()
+            );
             return Err(LemmyError::from_message(&err_type));
-            }
+          }
         };
       }
       // let _pi_uid_search = _pi_uid.clone();
@@ -245,7 +263,7 @@ impl PerformCrud for Web3Login {
       //   Err(_e) => {
       //     let err_type = format!("Invalid pi user id {}", &_new_user.clone());
       //     println!("{} {}", _pi_uid.clone(), err_type);
-      //     return Err(LemmyError::from_message(&err_type).into());    
+      //     return Err(LemmyError::from_message(&err_type).into());
       //   },
       // };
 
@@ -261,14 +279,16 @@ impl PerformCrud for Web3Login {
         ),
         verify_email_sent: false,
         registration_created: false,
-      })
-          
+      });
     } // Pi exist
-
 
     // We have to create both a person, and local_user
     if !create_new {
-      let err_type = format!("Auto create new account for web3 is disabled {} {}", &_new_user.to_string().clone(), &_address.clone());
+      let err_type = format!(
+        "Auto create new account for web3 is disabled {} {}",
+        &_new_user.to_string().clone(),
+        &_address.clone()
+      );
       println!("{}", err_type);
       //return LemmyError::from_error_message(e, &err_type)?;
       return Err(LemmyError::from_message(&err_type).into());
@@ -276,10 +296,10 @@ impl PerformCrud for Web3Login {
 
     check_slurs(&_new_user.clone(), &context.settings().slur_regex())?;
     if !is_valid_actor_name(&_new_user.clone(), context.settings().actor_name_max_length) {
-        //println!("Invalid username {} {}", _pi_username.to_owned(), &_new_user.clone());
-        //return LemmyError::from_error_message(e, &err_type)?;
-        return Err(LemmyError::from_message("register:invalid_username").into());
-    }  
+      //println!("Invalid username {} {}", _pi_username.to_owned(), &_new_user.clone());
+      //return LemmyError::from_error_message(e, &err_type)?;
+      return Err(LemmyError::from_message("register:invalid_username").into());
+    }
 
     let mut change_password = false;
 
@@ -296,7 +316,10 @@ impl PerformCrud for Web3Login {
     match person {
       Some(other) => {
         if extra_user_id != other.extra_user_id {
-          let err_type = format!("User {} is exist and belong to other Pi Account ", &_new_user.to_string().clone());
+          let err_type = format!(
+            "User {} is exist and belong to other Pi Account ",
+            &_new_user.to_string().clone()
+          );
           println!("{} {} {}", username.clone(), err_type, &_alias2);
           result = false;
           //return LemmyError::from_error_message(e, &err_type)?;
@@ -328,7 +351,11 @@ impl PerformCrud for Web3Login {
     };
 
     let actor_keypair = generate_actor_keypair()?;
-    let actor_id = generate_local_apub_endpoint(EndpointType::Person, &_new_user.clone(), &settings.get_protocol_and_hostname())?;
+    let actor_id = generate_local_apub_endpoint(
+      EndpointType::Person,
+      &_new_user.clone(),
+      &settings.get_protocol_and_hostname(),
+    )?;
 
     // Register the new person
     let person_form = PersonForm {
@@ -353,12 +380,16 @@ impl PerformCrud for Web3Login {
     {
       Ok(p) => Some(p),
       Err(_e) => {
-      let err_type = format!("PiLogin: user_already_exists: {} {}, exists{},  err:{}", 
-                             &_new_user.to_string().clone(), _alias3, pi_exist, _e.to_string());
-      return Err(LemmyError::from_message(&err_type));
-      },
+        let err_type = format!(
+          "PiLogin: user_already_exists: {} {}, exists{},  err:{}",
+          &_new_user.to_string().clone(),
+          _alias3,
+          pi_exist,
+          _e.to_string()
+        );
+        return Err(LemmyError::from_message(&err_type));
+      }
     };
-
 
     let inserted_person = inserted_tmp.unwrap();
     // Create the local user
@@ -406,7 +437,11 @@ impl PerformCrud for Web3Login {
       Ok(c) => c,
       Err(_e) => {
         let default_community_name = "main";
-        let actor_id = generate_local_apub_endpoint(EndpointType::Community, default_community_name, &settings.get_protocol_and_hostname())?;
+        let actor_id = generate_local_apub_endpoint(
+          EndpointType::Community,
+          default_community_name,
+          &settings.get_protocol_and_hostname(),
+        )?;
         let community_form = CommunityForm {
           name: default_community_name.to_string(),
           title: "The Default Community".to_string(),

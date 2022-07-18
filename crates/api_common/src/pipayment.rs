@@ -1,5 +1,5 @@
-use lemmy_db_schema::newtypes::{PaymentId, PiUserId,};
 use crate::person::*;
+use lemmy_db_schema::newtypes::{PaymentId, PiUserId};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -37,7 +37,7 @@ pub struct PiAgreeResponse {
 }
 
 #[derive(Deserialize)]
-pub struct PiRegister {
+pub struct PiRegisterWithFee {
   pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
@@ -54,7 +54,7 @@ pub struct PiRegisterResponse {
 }
 
 #[derive(Deserialize)]
-pub struct PiRegisterFree {
+pub struct PiRegister {
   pub pi_username: String,
   pub pi_uid: PiUserId,
   pub pi_token: String,
@@ -66,24 +66,6 @@ pub struct PiLogin {
   pub pi_username: String,
   pub pi_uid: PiUserId,
   pub pi_token: String,
-  pub info: Option<Login>,
-}
-
-#[derive(Deserialize)]
-pub struct Web3Register {
-  pub address: String,
-  pub signature: String,
-  pub token: String,
-  pub cli_time: i64,
-  pub info: Register,
-}
-
-#[derive(Deserialize)]
-pub struct Web3Login {
-  pub address: String,
-  pub signature: String,
-  pub token: String,
-  pub cli_time: i64,
   pub info: Option<Login>,
 }
 

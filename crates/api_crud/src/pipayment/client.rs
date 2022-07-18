@@ -1,30 +1,23 @@
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
-use lemmy_api_common::utils::{blocking};
+use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::{
-  utils::naive_now,
-  source::{
-    post::*,
-    comment::*,
-    pipayment::*,
-  },
-  traits::Crud,
   impls::pipayment::PiPayment_,
-  newtypes::{*, CommentId},
+  newtypes::{CommentId, *},
+  source::{comment::*, pipayment::*, post::*},
+  traits::Crud,
+  utils::naive_now,
 };
-use lemmy_utils::{
-  settings::SETTINGS,
-  request::retry,
-  error::LemmyError,
-};
-use lemmy_websocket::{
-  LemmyContext,
-};
+use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS};
+use lemmy_websocket::LemmyContext;
 use reqwest_middleware::ClientWithMiddleware;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-pub async fn pi_payment(client: &ClientWithMiddleware, id: &str) -> Result<PiPaymentDto, LemmyError> {
+pub async fn pi_payment(
+  client: &ClientWithMiddleware,
+  id: &str,
+) -> Result<PiPaymentDto, LemmyError> {
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/payments/{}", settings.pi_api_host(), id);
 
@@ -41,11 +34,14 @@ pub async fn pi_payment(client: &ClientWithMiddleware, id: &str) -> Result<PiPay
     .json::<PiPaymentDto>()
     .await
     .map_err(|e| LemmyError::from_error_message(e, ""))?;
-    //.map_err(|e| RecvError(e.to_string()))?;
+  //.map_err(|e| RecvError(e.to_string()))?;
   Ok(res)
 }
 
-pub async fn pi_approve(client: &ClientWithMiddleware, id: &str) -> Result<PiPaymentDto, LemmyError> {
+pub async fn pi_approve(
+  client: &ClientWithMiddleware,
+  id: &str,
+) -> Result<PiPaymentDto, LemmyError> {
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/payments/{}/approve", settings.pi_api_host(), id);
 
@@ -93,11 +89,7 @@ pub async fn pi_complete(
   Ok(res)
 }
 
-pub async fn pi_me(
-  client: &ClientWithMiddleware,
-  key: &str,
-) -> Result<PiUserDto, LemmyError> {
-
+pub async fn pi_me(client: &ClientWithMiddleware, key: &str) -> Result<PiUserDto, LemmyError> {
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/me", settings.pi_api_host());
 
@@ -116,7 +108,6 @@ pub async fn pi_me(
     .map_err(|e| LemmyError::from_error_message(e, "Fetch /me error"))?;
   Ok(res)
 }
-
 
 pub async fn pi_update_payment(
   context: &Data<LemmyContext>,
@@ -168,22 +159,22 @@ pub async fn pi_update_payment(
   if _payment.is_some() {
     if !approved {
       dto = match pi_approve(context.client(), &payment_id).await {
-          Ok(c) => Some(c),
-          Err(_e) => None,
+        Ok(c) => Some(c),
+        Err(_e) => None,
       };
     } else if !completed {
-        dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
-          Ok(c) => {
-            completed = true;
-            Some(c)
-          },
-          Err(_e) => None,
+      dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
+        Ok(c) => {
+          completed = true;
+          Some(c)
+        }
+        Err(_e) => None,
       };
     }
   } else {
-      dto = match pi_approve(context.client(), &payment_id).await {
-        Ok(c) => Some(c),
-        Err(_e) => None,
+    dto = match pi_approve(context.client(), &payment_id).await {
+      Ok(c) => Some(c),
+      Err(_e) => None,
     };
   }
 
@@ -221,15 +212,22 @@ pub async fn pi_update_payment(
   //   }
   // };
   let refid = person_id;
-  let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z"){
-    Ok(dt) => Some(dt),
-    Err(_e) => {
-      let err_type = format!("Pi Server: get payment datetime error: user {}, paymentid {} {} {}", 
-      &pi_username, &_payment_dto.identifier.clone(), _payment_dto.created_at, _e.to_string() );
-      //return Err(LemmyError::from_message(&err_type));  
-      None
-    }
-  };
+  let create_at =
+    match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z")
+    {
+      Ok(dt) => Some(dt),
+      Err(_e) => {
+        let err_type = format!(
+          "Pi Server: get payment datetime error: user {}, paymentid {} {} {}",
+          &pi_username,
+          &_payment_dto.identifier.clone(),
+          _payment_dto.created_at,
+          _e.to_string()
+        );
+        //return Err(LemmyError::from_message(&err_type));
+        None
+      }
+    };
 
   completed = _payment_dto.status.developer_completed.clone();
   let mut payment_form = PiPaymentForm {
@@ -239,7 +237,7 @@ pub async fn pi_update_payment(
     finished: false,
     updated: None,
     pi_uid: _pi_uid,
-    pi_username: _pi_user_alias.clone(),    
+    pi_username: _pi_user_alias.clone(),
     comment: comment,
 
     identifier: payment_id.clone(),
@@ -291,8 +289,7 @@ pub async fn pi_update_payment(
     payment_form.updated = Some(naive_now());
     //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
     // TODO: UUID check
-    if completed 
-    {
+    if completed {
       payment_form.finished = true;
       if payment_form.memo == "wepi:post" {
         let link = Some(payment_form.tx_link.clone());
@@ -307,14 +304,16 @@ pub async fn pi_update_payment(
             .await?
             {
               Ok(p) => {
-                println!("Post: Success update blockchain link, id:{} link:{}", comment2.clone(), link2.clone());
+                println!(
+                  "Post: Success update blockchain link, id:{} link:{}",
+                  comment2.clone(),
+                  link2.clone()
+                );
                 Some(p)
               }
-              Err(_e) => {
-                None
-              }
-            };          
-          },
+              Err(_e) => None,
+            };
+          }
           Err(e) => {
             //None
           }
@@ -333,19 +332,19 @@ pub async fn pi_update_payment(
             .await?
             {
               Ok(c) => {
-                println!("Comment: Success update blockchain link, id:{} link:{}", c.id, link2.clone());
+                println!(
+                  "Comment: Success update blockchain link, id:{} link:{}",
+                  c.id,
+                  link2.clone()
+                );
                 Some(c)
               }
-              Err(_e) => {
-                None
-              }
+              Err(_e) => None,
             };
           }
-          Err(e) => {
-          }
+          Err(e) => {}
         };
-
-      }   
+      }
     }
     pmt = _payment.unwrap();
     pid = pmt.id;

@@ -1,5 +1,7 @@
 use actix_web::{web, web::Data};
-use lemmy_api_common::{comment::*, community::*, person::*, post::*, site::*, pipayment::*};
+use lemmy_api_common::{
+  comment::*, community::*, person::*, pipayment::*, post::*, site::*, web3::*,
+};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{serialize_websocket_message, LemmyContext, UserOperationCrud};
 use serde::Deserialize;
@@ -11,6 +13,7 @@ mod post;
 mod private_message;
 mod site;
 mod user;
+mod web3;
 
 #[async_trait::async_trait(?Send)]
 pub trait PerformCrud {
@@ -121,17 +124,19 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::PiRegister => {
       do_websocket_operation::<PiRegister>(context, id, op, data).await
     }
+    UserOperationCrud::PiRegisterWithFee => {
+      do_websocket_operation::<PiRegisterWithFee>(context, id, op, data).await
+    }
     UserOperationCrud::PiApprove => {
       do_websocket_operation::<PiApprove>(context, id, op, data).await
     }
-    UserOperationCrud::PiTip => {
-      do_websocket_operation::<PiTip>(context, id, op, data).await
-    }
+    UserOperationCrud::PiTip => do_websocket_operation::<PiTip>(context, id, op, data).await,
     UserOperationCrud::PiPaymentFound => {
       do_websocket_operation::<PiPaymentFound>(context, id, op, data).await
     }
-    UserOperationCrud::PiLogin => {
-      do_websocket_operation::<PiLogin>(context, id, op, data).await
+    UserOperationCrud::PiLogin => do_websocket_operation::<PiLogin>(context, id, op, data).await,
+    UserOperationCrud::Web3Register => {
+      do_websocket_operation::<Web3Register>(context, id, op, data).await
     }
     UserOperationCrud::Web3Login => {
       do_websocket_operation::<Web3Login>(context, id, op, data).await

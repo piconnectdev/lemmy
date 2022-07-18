@@ -188,11 +188,13 @@ pub enum UserOperationCrud {
   // PiPayment
   PiAgreeRegister,
   PiRegister,
+  PiRegisterWithFee,
   PiApprove,
   PiTip,
   PiPaymentFound,
   PiLogin,
   Web3Login,
+  Web3Register,
 }
 
 pub trait OperationType {}

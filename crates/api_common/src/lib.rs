@@ -9,6 +9,7 @@ pub mod sensitive;
 pub mod site;
 #[cfg(feature = "full")]
 pub mod utils;
+pub mod web3;
 pub mod websocket;
 
 pub extern crate lemmy_db_schema;

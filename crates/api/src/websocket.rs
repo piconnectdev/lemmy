@@ -1,12 +1,12 @@
 use crate::Perform;
 use actix_web::web::Data;
 use lemmy_api_common::{utils::get_local_user_view_from_jwt, websocket::*};
+use lemmy_db_schema::newtypes::CommunityId;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{
   messages::{JoinCommunityRoom, JoinModRoom, JoinPostRoom, JoinUserRoom},
   LemmyContext,
 };
-use lemmy_db_schema::newtypes::{CommunityId,};
 use uuid::Uuid;
 #[async_trait::async_trait(?Send)]
 impl Perform for UserJoin {
@@ -66,7 +66,7 @@ impl Perform for CommunityJoin {
               CommunityId(xid)
             }
           }
-        },
+        }
         None => {
           let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
           CommunityId(xid)
