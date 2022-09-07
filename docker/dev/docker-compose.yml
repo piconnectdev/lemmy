@@ -39,7 +39,7 @@ services:
       - lemmy
 
   postgres:
-    image: postgres:12-alpine
+    image: postgres:14-alpine
     ports:
       # use a different port so it doesnt conflict with postgres running on the host
       - "5433:5432"
@@ -50,6 +50,7 @@ services:
     volumes:
       - ./volumes/postgres:/var/lib/postgresql/data
     restart: always
+    command: ["postgres", "-c", "session_preload_libraries=auto_explain", "-c", "auto_explain.log_min_duration=5ms", "-c", "auto_explain.log_analyze=true"]
 
   pictrs:
     image: asonix/pictrs:0.3.1

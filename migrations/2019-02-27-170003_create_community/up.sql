@@ -70,7 +70,7 @@ create table community_user_ban (
 insert into community (name, title, category_id, creator_id) values ('main', 'The Default Community', 1, '00000000-0000-0000-0000-000000000001');
 
 create table site (
-  id bigserial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   name varchar(20) not null unique,
   description text,
   creator_id uuid references user_ on update cascade on delete cascade not null,

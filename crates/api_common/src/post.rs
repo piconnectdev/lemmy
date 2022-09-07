@@ -1,10 +1,10 @@
 use crate::sensitive::Sensitive;
 use lemmy_db_schema::{
-  newtypes::{CommunityId, DbUrl, PostId, PostReportId},
+  newtypes::{CommentId, CommunityId, DbUrl, LanguageId, PostId, PostReportId},
   ListingType,
   SortType,
 };
-use lemmy_db_views::structs::{CommentView, PostReportView, PostView};
+use lemmy_db_views::structs::{PostReportView, PostView};
 use lemmy_db_views_actor::structs::{CommunityModeratorView, CommunityView};
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -17,6 +17,7 @@ pub struct CreatePost {
   pub body: Option<String>,
   pub honeypot: Option<String>,
   pub nsfw: Option<bool>,
+  pub language_id: Option<LanguageId>,
   pub auth: Sensitive<String>,
 }
 
@@ -27,7 +28,8 @@ pub struct PostResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct GetPost {
-  pub id: PostId,
+  pub id: Option<PostId>,
+  pub comment_id: Option<CommentId>,
   pub auth: Option<Sensitive<String>>,
 }
 
@@ -35,7 +37,6 @@ pub struct GetPost {
 pub struct GetPostResponse {
   pub post_view: PostView,
   pub community_view: CommunityView,
-  pub comments: Vec<CommentView>,
   pub moderators: Vec<CommunityModeratorView>,
   pub online: usize,
 }
@@ -71,6 +72,7 @@ pub struct EditPost {
   pub url: Option<Url>,
   pub body: Option<String>,
   pub nsfw: Option<bool>,
+  pub language_id: Option<LanguageId>,
   pub auth: Sensitive<String>,
 }
 

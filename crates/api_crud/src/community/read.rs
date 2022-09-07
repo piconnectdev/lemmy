@@ -48,7 +48,7 @@ impl PerformCrud for GetCommunity {
         let uuid = Uuid::parse_str(&id.clone());
         match uuid {
           Ok(u) => CommunityId(u),
-          Err(e) => {
+          Err(_e) => {
             let name = data.id.to_owned().unwrap_or_else(|| "main".to_string());
             blocking(context.pool(), move |conn| {
               Community::read_from_name(conn, &name, false)

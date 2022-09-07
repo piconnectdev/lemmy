@@ -1,4 +1,3 @@
-use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
 use bcrypt::{hash, DEFAULT_COST};
@@ -17,7 +16,7 @@ use lemmy_db_schema::{
     person::*,
     site::*,
   },
-  traits::{ApubActor, Crud},
+  traits::{Crud},
 };
 use lemmy_db_views::structs::LocalUserView;
 use lemmy_db_views_actor::structs::PersonViewSafe;
@@ -34,7 +33,6 @@ use lemmy_websocket::{
   messages::{CheckCaptcha, CheckToken},
   LemmyContext,
 };
-use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for Web3Register {
@@ -51,7 +49,7 @@ impl PerformCrud for Web3Register {
     // no email verification, or applications if the site is not setup yet
     let (mut email_verification, mut require_application) = (false, false);
 
-    let mut result = true;
+    let mut _result = true;
     // Make sure site has open registration
     if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
       if !site.open_registration {
@@ -62,7 +60,7 @@ impl PerformCrud for Web3Register {
     }
 
     let mut _address = data.address.clone();
-    let mut signature = data.signature.clone();
+    let mut _signature = data.signature.clone();
     let _token = data.token.clone();
     let _cli_time = data.cli_time;
 
@@ -79,7 +77,8 @@ impl PerformCrud for Web3Register {
       _token.clone(),
       data.signature.clone()
     );
-    if !eth_verify(_address.clone(), text.clone(), signature) {
+
+    if !eth_verify(_address.clone(), text.clone(), _signature) {
       return Err(LemmyError::from_message("registration_closed"));
     }
 
@@ -158,6 +157,7 @@ impl PerformCrud for Web3Register {
       return Err(LemmyError::from_message("register:invalid_username"));
       //let err_type = format!("Register: invalid username {}", &data.info.username);
     }
+
     let actor_id = generate_local_apub_endpoint(
       EndpointType::Person,
       &data.info.username,
@@ -199,7 +199,6 @@ impl PerformCrud for Web3Register {
     };
 
     let mut change_password = false;
-    let mut change_username = false;
     match other_person {
       Some(op) => {
         person_id = op.id;
@@ -212,7 +211,7 @@ impl PerformCrud for Web3Register {
                 &data.info.username
               );
               println!("{} {} {}", data.address.clone(), err_type, &_alias2);
-              result = false;
+              _result = false;
               return Err(LemmyError::from_message(&err_type).into());
               // return Ok(PiRegisterResponse {
               //   success: false,
@@ -226,32 +225,25 @@ impl PerformCrud for Web3Register {
           }
           None => {
             change_password = true;
-            change_username = true;
             // Not allow change username
-            let err_type = format!("PiRegister: You already have user name {}", op.name);
+            let err_type = format!("Web3Register: You already have user name {}, change password", op.name);
             println!("{} {} {}", data.address.clone(), err_type, &_alias2);
-            result = false;
-            //return Err(LemmyError::from_message(&err_type).into());
-            // return Ok(PiRegisterResponse {
-            //   success: false,
-            //   jwt: format!(""),
-            //   extra: Some(format!("{}",err_type)),
-            //   });
+            _result = false;
           }
         };
       }
       None => {
         match person {
-          Some(other) => {
+          Some(_other) => {
             let err_type = format!(
               "Web3Register: User {} is exist and belong to other user",
               &data.info.username
             );
-            println!("{} {} {}", _alias2.clone(), err_type, &_alias2);
+            println!("{} {} {}", data.address.clone(), err_type, &_alias2);
             return Err(LemmyError::from_message(&err_type).into());
           }
           None => {
-            // No account relate with pi_username/site_username, we must completed the payment and create new user
+            // No account relate with web3_address/site_username, we must completed the registration and create new user
           }
         };
       }
@@ -259,7 +251,7 @@ impl PerformCrud for Web3Register {
 
     // Person is exist, change his password
     if change_password {
-      let password_hash =
+      let _password_hash =
         hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
 
       let local_user_id;
@@ -307,7 +299,7 @@ impl PerformCrud for Web3Register {
           .into(),
         ),
         verify_email_sent: false,
-        registration_created: false,
+        registration_created: _local_user.local_user.accepted_application,
       });
     }
 
@@ -326,7 +318,6 @@ impl PerformCrud for Web3Register {
     };
 
     // insert the person
-    // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
     let inserted_person = match blocking(context.pool(), move |conn| {
       Person::create(conn, &person_form)
     })
@@ -335,7 +326,7 @@ impl PerformCrud for Web3Register {
       Ok(p) => p,
       Err(_e) => {
         let err_type = format!(
-          "Register: user_already_exists: {} {}, exists{},  err:{}",
+          "Web3Register: user_already_exists: {} {}, exists{},  err:{}",
           &data.info.username,
           _alias3,
           _exist,
@@ -367,9 +358,9 @@ impl PerformCrud for Web3Register {
         let err_type = if _e.to_string()
           == "duplicate key value violates unique constraint \"local_user_email_key\""
         {
-          "Register: email_already_exists"
+          "Web3Register: email_already_exists"
         } else {
-          "Register: user_already_exists"
+          "Web3Register: user_already_exists"
         };
 
         // If the local user creation errored, then delete that person
@@ -382,7 +373,7 @@ impl PerformCrud for Web3Register {
       }
     };
 
-    // Return the jwt / LoginResponse?
+    // Return the jwt / LoginResponse
     Ok(LoginResponse {
       jwt: Some(
         Claims::jwt(

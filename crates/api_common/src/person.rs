@@ -1,6 +1,11 @@
 use crate::sensitive::Sensitive;
 use lemmy_db_views::structs::{CommentView, PostView, PrivateMessageView};
-use lemmy_db_views_actor::structs::{CommunityModeratorView, PersonMentionView, PersonViewSafe};
+use lemmy_db_views_actor::structs::{
+  CommentReplyView,
+  CommunityModeratorView,
+  PersonMentionView,
+  PersonViewSafe,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -9,7 +14,15 @@ pub struct Login {
   pub password: Sensitive<String>,
 }
 use lemmy_db_schema::{
-  newtypes::{CommunityId, PersonId, PersonMentionId, PrivateMessageId},
+  newtypes::{
+    CommentReplyId,
+    CommunityId,
+    LanguageId,
+    PersonId,
+    PersonMentionId,
+    PrivateMessageId,
+  },
+  CommentSortType,
   SortType,
 };
 
@@ -65,7 +78,7 @@ pub struct SaveUserSettings {
   pub theme: Option<String>,
   pub default_sort_type: Option<i16>,
   pub default_listing_type: Option<i16>,
-  pub lang: Option<String>,
+  pub interface_language: Option<String>,
   pub avatar: Option<String>,
   pub banner: Option<String>,
   pub display_name: Option<String>,
@@ -78,11 +91,13 @@ pub struct SaveUserSettings {
   pub show_bot_accounts: Option<bool>,
   pub show_read_posts: Option<bool>,
   pub show_new_post_notifs: Option<bool>,
+  pub discussion_languages: Option<Vec<LanguageId>>,
+  pub auth: Sensitive<String>,
   pub pi_address: Option<String>,
   pub web3_address: Option<String>,
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
-  pub auth: Sensitive<String>,
+  pub cosmos_address: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -124,7 +139,7 @@ pub struct GetPersonDetailsResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct GetRepliesResponse {
-  pub replies: Vec<CommentView>,
+  pub replies: Vec<CommentReplyView>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -190,7 +205,7 @@ pub struct BlockPersonResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct GetReplies {
-  pub sort: Option<SortType>,
+  pub sort: Option<CommentSortType>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub unread_only: Option<bool>,
@@ -199,7 +214,7 @@ pub struct GetReplies {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct GetPersonMentions {
-  pub sort: Option<SortType>,
+  pub sort: Option<CommentSortType>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub unread_only: Option<bool>,
@@ -216,6 +231,18 @@ pub struct MarkPersonMentionAsRead {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PersonMentionResponse {
   pub person_mention_view: PersonMentionView,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct MarkCommentReplyAsRead {
+  pub comment_reply_id: CommentReplyId,
+  pub read: bool,
+  pub auth: Sensitive<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CommentReplyResponse {
+  pub comment_reply_view: CommentReplyView,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

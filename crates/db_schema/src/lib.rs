@@ -30,6 +30,7 @@ pub enum SortType {
   Active,
   Hot,
   New,
+  Old,
   TopDay,
   TopWeek,
   TopMonth,
@@ -39,12 +40,19 @@ pub enum SortType {
   NewComments,
 }
 
+#[derive(EnumString, Display, Debug, Serialize, Deserialize, Clone, Copy)]
+pub enum CommentSortType {
+  Hot,
+  Top,
+  New,
+  Old,
+}
+
 #[derive(EnumString, Display, Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum ListingType {
   All,
   Local,
   Subscribed,
-  Community,
 }
 
 #[derive(EnumString, Display, Debug, Serialize, Deserialize, Clone, Copy)]
@@ -62,4 +70,24 @@ pub enum SubscribedType {
   Subscribed,
   NotSubscribed,
   Pending,
+}
+
+#[derive(EnumString, Display, Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub enum ModlogActionType {
+  All,
+  ModRemovePost,
+  ModLockPost,
+  ModStickyPost,
+  ModRemoveComment,
+  ModRemoveCommunity,
+  ModBanFromCommunity,
+  ModAddCommunity,
+  ModTransferCommunity,
+  ModAdd,
+  ModBan,
+  ModHideCommunity,
+  AdminPurgePerson,
+  AdminPurgeCommunity,
+  AdminPurgePost,
+  AdminPurgeComment,
 }

@@ -7,6 +7,7 @@ use lemmy_api_common::{
 use lemmy_db_schema::{
   source::{
     local_user::{LocalUser, LocalUserForm},
+    local_user_language::LocalUserLanguage,
     person::{Person, PersonForm},
     site::Site,
   },
@@ -47,6 +48,7 @@ impl Perform for SaveUserSettings {
     let web3_address = diesel_option_overwrite(&data.web3_address);
     let sol_address = diesel_option_overwrite(&data.sol_address);
     let dap_address = diesel_option_overwrite(&data.dap_address);
+    let cosmos_address = diesel_option_overwrite(&data.cosmos_address);
 
     if let Some(Some(email)) = &email {
       let previous_email = local_user_view.local_user.email.clone().unwrap_or_default();
@@ -116,11 +118,12 @@ impl Perform for SaveUserSettings {
       ban_expires: None,
       extra_user_id: None,
       verified: false,
-      pi_address: None,
       private_seeds: None,
-      sol_address: None,
-      web3_address: None,
-      dap_address: None,
+      pi_address,
+      web3_address,
+      sol_address,
+      dap_address,
+      cosmos_address,
       cert: None,
       tx: None,
     };
@@ -130,6 +133,20 @@ impl Perform for SaveUserSettings {
     })
     .await?
     .map_err(|e| LemmyError::from_error_message(e, "user_already_exists"))?;
+
+    if let Some(discussion_languages) = data.discussion_languages.clone() {
+      // An empty array is a "clear" / set all languages
+      let languages = if discussion_languages.is_empty() {
+        None
+      } else {
+        Some(discussion_languages)
+      };
+
+      blocking(context.pool(), move |conn| {
+        LocalUserLanguage::update_user_languages(conn, languages, local_user_id)
+      })
+      .await??;
+    }
 
     let local_user_form = LocalUserForm {
       person_id: Some(person_id),
@@ -141,7 +158,7 @@ impl Perform for SaveUserSettings {
       theme: data.theme.to_owned(),
       default_sort_type,
       default_listing_type,
-      lang: data.lang.to_owned(),
+      interface_language: data.interface_language.to_owned(),
       show_avatars: data.show_avatars,
       show_read_posts: data.show_read_posts,
       show_new_post_notifs: data.show_new_post_notifs,

@@ -4,11 +4,6 @@
 DROP VIEW person_alias_1;
 DROP VIEW person_alias_2;
 
-alter table person add column web3_address text;
-alter table person add column sol_address text;
-alter table person add column dap_address text;
-alter table person add column cert text;
-alter table person add column tx text;
 
 create view person_alias_1 as select * from person;
 create view person_alias_2 as select * from person;

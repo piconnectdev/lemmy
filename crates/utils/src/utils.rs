@@ -9,6 +9,7 @@ use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use url::Url;
 use web3::signing::{keccak256, recover};
+use chrono::naive;
 
 static MENTIONS_REGEX: Lazy<Regex> = Lazy::new(|| {
   Regex::new(r"@(?P<name>[\w.]+)@(?P<domain>[a-zA-Z0-9._:-]+)").expect("compile regex")
@@ -168,29 +169,17 @@ pub fn get_ip(conn_info: &ConnectionInfo) -> IpAddr {
   )
 }
 
-pub fn clean_url_params(mut url: Url) -> Url {
+pub fn clean_url_params(url: &Url) -> Url {
+  let mut url_out = url.to_owned();
   if url.query().is_some() {
     let new_query = url
       .query_pairs()
       .filter(|q| !CLEAN_URL_PARAMS_REGEX.is_match(&q.0))
       .map(|q| format!("{}={}", q.0, q.1))
       .join("&");
-    url.set_query(Some(&new_query));
+    url_out.set_query(Some(&new_query));
   }
-  url
-}
-
-pub fn clean_optional_text(text: &Option<String>) -> Option<String> {
-  if let Some(text) = text {
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-      None
-    } else {
-      Some(trimmed.to_owned())
-    }
-  } else {
-    None
-  }
+  url_out
 }
 
 pub fn eth_message(message: String) -> [u8; 32] {
@@ -217,7 +206,7 @@ pub fn eth_verify(account: String, nonce: String, signature: String) -> bool {
   assert!(pubkey.is_ok());
   let pubkey = pubkey.unwrap();
   let pubkey = format!("{:02X?}", pubkey);
-  //println!("eth_verify: {} {:?} {:?}", account, message, pubkey);
+  println!("eth_verify: {} {:?} {:?}", account, message, pubkey);
   true
 }
 
@@ -232,12 +221,12 @@ mod tests {
   #[test]
   fn test_clean_url_params() {
     let url = Url::parse("https://example.com/path/123?utm_content=buffercf3b2&utm_medium=social&username=randomuser&id=123").unwrap();
-    let cleaned = clean_url_params(url);
+    let cleaned = clean_url_params(&url);
     let expected = Url::parse("https://example.com/path/123?username=randomuser&id=123").unwrap();
     assert_eq!(expected.to_string(), cleaned.to_string());
 
     let url = Url::parse("https://example.com/path/123").unwrap();
-    let cleaned = clean_url_params(url.clone());
+    let cleaned = clean_url_params(&url);
     assert_eq!(url.to_string(), cleaned.to_string());
   }
 
@@ -273,5 +262,9 @@ mod tests {
     );
     let add = format!("0x{}", hex::encode(key.public().address()));
     eth_verify(add, message.clone(), sig);
+    //let updated: Option<chrono::NaiveDateTime>
+    let updated: Option<chrono::NaiveDateTime> = None;//chrono::prelude::Utc::now().naive_utc();
+    println!("NaiveDateTime: {:?}", updated);
+
   }
 }

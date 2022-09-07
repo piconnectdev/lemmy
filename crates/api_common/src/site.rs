@@ -1,7 +1,9 @@
 use crate::sensitive::Sensitive;
 use lemmy_db_schema::{
   newtypes::{CommentId, CommunityId, PersonId, PostId, *},
+  source::language::Language,
   ListingType,
+  ModlogActionType,
   SearchType,
   SortType,
 };
@@ -88,6 +90,8 @@ pub struct GetModlog {
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub auth: Option<Sensitive<String>>,
+  pub type_: Option<ModlogActionType>,
+  pub other_person_id: Option<PersonId>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -127,6 +131,7 @@ pub struct CreateSite {
   pub default_theme: Option<String>,
   pub default_post_listing_type: Option<String>,
   pub auth: Sensitive<String>,
+  pub hide_modlog_mod_names: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -148,6 +153,7 @@ pub struct EditSite {
   pub default_post_listing_type: Option<String>,
   pub legal_information: Option<String>,
   pub auth: Sensitive<String>,
+  pub hide_modlog_mod_names: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -168,6 +174,7 @@ pub struct GetSiteResponse {
   pub version: String,
   pub my_user: Option<MyUserInfo>,
   pub federated_instances: Option<FederatedInstances>, // Federation may be disabled
+  pub all_languages: Vec<Language>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -177,6 +184,7 @@ pub struct MyUserInfo {
   pub moderates: Vec<CommunityModeratorView>,
   pub community_blocks: Vec<CommunityBlockView>,
   pub person_blocks: Vec<PersonBlockView>,
+  pub discussion_languages: Vec<Language>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

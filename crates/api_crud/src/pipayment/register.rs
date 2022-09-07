@@ -14,14 +14,13 @@ use lemmy_db_schema::{
   source::{
     local_user::{LocalUser, LocalUserForm},
     person::*,
-    pipayment::*,
     site::*,
   },
-  traits::{ApubActor, Crud},
+  traits::{ Crud},
   utils::naive_now,
 };
 use lemmy_db_views::structs::LocalUserView;
-use lemmy_db_views_actor::{person_view::*, structs::PersonViewSafe};
+use lemmy_db_views_actor::{ structs::PersonViewSafe};
 
 use lemmy_utils::{
   apub::generate_actor_keypair,
@@ -162,7 +161,6 @@ impl PerformCrud for PiRegister {
     };
 
     let mut change_password = false;
-    let mut change_username = false;
     match pi_person {
       Some(pi) => {
         person_id = pi.id;
@@ -184,7 +182,6 @@ impl PerformCrud for PiRegister {
           }
           None => {
             change_password = true;
-            change_username = true;
             // Not allow change username
             let err_type = format!("PiRegister: You already have user name {}", pi.name);
             println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);

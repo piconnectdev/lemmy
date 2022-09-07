@@ -1,8 +1,8 @@
 use crate::sensitive::Sensitive;
 use lemmy_db_schema::{
-  newtypes::{CommentId, CommentReportId, CommunityId, LocalUserId, PostId},
+  newtypes::{CommentId, CommentReportId, CommunityId, LanguageId, LocalUserId, PostId},
+  CommentSortType,
   ListingType,
-  SortType,
 };
 use lemmy_db_views::structs::{CommentReportView, CommentView};
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ pub struct CreateComment {
   pub content: String,
   pub post_id: PostId,
   pub parent_id: Option<CommentId>,
+  pub language_id: Option<LanguageId>,
   pub form_id: Option<String>,
   pub auth: Sensitive<String>,
 }
@@ -24,8 +25,10 @@ pub struct GetComment {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct EditComment {
-  pub content: String,
   pub comment_id: CommentId,
+  pub content: Option<String>,
+  pub distinguished: Option<bool>,
+  pub language_id: Option<LanguageId>,
   pub form_id: Option<String>,
   pub auth: Sensitive<String>,
 }
@@ -42,13 +45,6 @@ pub struct RemoveComment {
   pub comment_id: CommentId,
   pub removed: bool,
   pub reason: Option<String>,
-  pub auth: Sensitive<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct MarkCommentAsRead {
-  pub comment_id: CommentId,
-  pub read: bool,
   pub auth: Sensitive<String>,
 }
 
@@ -76,11 +72,14 @@ pub struct CreateCommentLike {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct GetComments {
   pub type_: Option<ListingType>,
-  pub sort: Option<SortType>,
+  pub sort: Option<CommentSortType>,
+  pub max_depth: Option<i32>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub community_id: Option<CommunityId>,
   pub community_name: Option<String>,
+  pub post_id: Option<PostId>,
+  pub parent_id: Option<CommentId>,
   pub saved_only: Option<bool>,
   pub auth: Option<Sensitive<String>>,
 }

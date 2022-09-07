@@ -3,7 +3,7 @@ use crate::{
   local_instance,
   mentions::MentionOrValue,
   objects::{comment::ApubComment, person::ApubPerson, post::ApubPost},
-  protocol::Source,
+  protocol::{objects::LanguageTag, Source},
 };
 use activitypub_federation::{
   core::object_id::ObjectId,
@@ -15,7 +15,7 @@ use activitypub_federation::{
 use activitystreams_kinds::object::NoteType;
 use chrono::{DateTime, FixedOffset};
 use lemmy_api_common::utils::blocking;
-use lemmy_db_schema::{newtypes::CommentId, source::post::Post, traits::Crud};
+use lemmy_db_schema::{source::post::Post, traits::Crud};
 use lemmy_utils::error::LemmyError;
 use lemmy_websocket::LemmyContext;
 use serde::{Deserialize, Serialize};
@@ -44,6 +44,9 @@ pub struct Note {
   pub(crate) updated: Option<DateTime<FixedOffset>>,
   #[serde(default)]
   pub(crate) tag: Vec<MentionOrValue>,
+  // lemmy extension
+  pub(crate) distinguished: Option<bool>,
+  pub(crate) language: Option<LanguageTag>,
 }
 
 impl Note {
@@ -51,7 +54,7 @@ impl Note {
     &self,
     context: &LemmyContext,
     request_counter: &mut i32,
-  ) -> Result<(ApubPost, Option<CommentId>), LemmyError> {
+  ) -> Result<(ApubPost, Option<ApubComment>), LemmyError> {
     // Fetch parent comment chain in a box, otherwise it can cause a stack overflow.
     let parent = Box::pin(
       self
@@ -61,16 +64,14 @@ impl Note {
     );
     match parent.deref() {
       PostOrComment::Post(p) => {
-        // Workaround because I cant figure out how to get the post out of the box (and we dont
-        // want to stackoverflow in a deep comment hierarchy).
-        let post_id = p.id;
-        let post = blocking(context.pool(), move |conn| Post::read(conn, post_id)).await??;
-        Ok((post.into(), None))
+        let post = p.deref().to_owned();
+        Ok((post, None))
       }
       PostOrComment::Comment(c) => {
         let post_id = c.post_id;
         let post = blocking(context.pool(), move |conn| Post::read(conn, post_id)).await??;
-        Ok((post.into(), Some(c.id)))
+        let comment = c.deref().to_owned();
+        Ok((post.into(), Some(comment)))
       }
     }
   }

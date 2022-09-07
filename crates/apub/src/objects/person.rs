@@ -171,6 +171,7 @@ impl ApubObject for ApubPerson {
       web3_address: None,
       sol_address: None,
       dap_address: None,
+      cosmos_address: None,
       cert: None,
       tx : None,
     };

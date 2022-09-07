@@ -36,6 +36,7 @@ pub struct Person {
   pub web3_address: Option<String>,
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
+  pub cosmos_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
 }
@@ -68,6 +69,7 @@ pub struct PersonSafe {
   pub web3_address: Option<String>,
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
+  pub cosmos_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
 }
@@ -103,6 +105,7 @@ pub struct PersonAlias1 {
   pub web3_address: Option<String>,
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
+  pub cosmos_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
 }
@@ -134,6 +137,7 @@ pub struct PersonSafeAlias1 {
   pub web3_address: Option<String>,
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
+  pub cosmos_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
 }
@@ -169,6 +173,7 @@ pub struct PersonAlias2 {
   pub web3_address: Option<String>,
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
+  pub cosmos_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
 }
@@ -200,6 +205,7 @@ pub struct PersonSafeAlias2 {
   pub web3_address: Option<String>,
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
+  pub cosmos_address: Option<String>,
   pub cert: Option<String>,
   pub tx : Option<String>,
 }
@@ -235,6 +241,7 @@ pub struct PersonForm {
   pub web3_address: Option<Option<String>>,
   pub sol_address: Option<Option<String>>,
   pub dap_address: Option<Option<String>>,
+  pub cosmos_address: Option<Option<String>>,
   pub cert: Option<Option<String>>,
   pub tx : Option<Option<String>>,
 }

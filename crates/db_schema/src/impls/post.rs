@@ -398,6 +398,7 @@ mod tests {
       thumbnail_url: None,
       ap_id: inserted_post.ap_id.to_owned(),
       local: true,
+      language_id: Default::default(),
       cert: None,
       tx: None,
     };

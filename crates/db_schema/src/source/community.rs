@@ -63,7 +63,7 @@ pub struct CommunitySafe {
 pub struct CommunityForm {
   pub name: String,
   pub title: String,
-  pub description: Option<String>,
+  pub description: Option<Option<String>>,
   pub removed: Option<bool>,
   pub published: Option<chrono::NaiveDateTime>,
   pub updated: Option<chrono::NaiveDateTime>,

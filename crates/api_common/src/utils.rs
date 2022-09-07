@@ -1,5 +1,7 @@
 use crate::{request::purge_image_from_pictrs, sensitive::Sensitive, site::FederatedInstances};
+use chrono::NaiveDateTime;
 use lemmy_db_schema::{
+  impls::person::is_banned,
   newtypes::{CommunityId, LocalUserId, PersonId, PostId},
   source::{
     comment::Comment,
@@ -18,7 +20,7 @@ use lemmy_db_schema::{
   ListingType,
 };
 use lemmy_db_views::{
-  comment_view::CommentQueryBuilder,
+  comment_view::CommentQuery,
   structs::{LocalUserSettingsView, LocalUserView},
 };
 use lemmy_db_views_actor::structs::{
@@ -45,16 +47,14 @@ where
 {
   let pool = pool.clone();
   let blocking_span = tracing::info_span!("blocking operation");
-  let res = actix_web::web::block(move || {
+  actix_web::web::block(move || {
     let entered = blocking_span.enter();
     let conn = pool.get()?;
     let res = (f)(&conn);
     drop(entered);
     Ok(res) as Result<T, LemmyError>
   })
-  .await?;
-
-  res
+  .await?
 }
 
 #[tracing::instrument(skip_all)]
@@ -129,15 +129,11 @@ pub async fn get_local_user_view_from_jwt(
   let local_user_id = LocalUserId(claims.sub);
   let local_user_view =
     blocking(pool, move |conn| LocalUserView::read(conn, local_user_id)).await??;
-  // Check for a site ban
-  if local_user_view.person.is_banned() {
-    return Err(LemmyError::from_message("site_ban"));
-  }
-
-  // Check for user deletion
-  if local_user_view.person.deleted {
-    return Err(LemmyError::from_message("deleted"));
-  }
+  check_user_valid(
+    local_user_view.person.banned,
+    local_user_view.person.ban_expires,
+    local_user_view.person.deleted,
+  )?;
 
   check_validator_time(&local_user_view.local_user.validator_time, &claims)?;
 
@@ -146,7 +142,7 @@ pub async fn get_local_user_view_from_jwt(
 
 /// Checks if user's token was issued before user's password reset.
 pub fn check_validator_time(
-  validator_time: &chrono::NaiveDateTime,
+  validator_time: &NaiveDateTime,
   claims: &Claims,
 ) -> Result<(), LemmyError> {
   let user_validation_time = validator_time.timestamp();
@@ -170,41 +166,50 @@ pub async fn get_local_user_view_from_jwt_opt(
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn get_local_user_settings_view_from_jwt(
-  jwt: &Sensitive<String>,
-  pool: &DbPool,
-  secret: &Secret,
-) -> Result<LocalUserSettingsView, LemmyError> {
-  let claims = Claims::decode(jwt.as_ref(), &secret.jwt_secret)
-    .map_err(|e| e.with_message("not_logged_in"))?
-    .claims;
-  let local_user_id = LocalUserId(claims.sub);
-  let local_user_view = blocking(pool, move |conn| {
-    LocalUserSettingsView::read(conn, local_user_id)
-  })
-  .await??;
-  // Check for a site ban
-  if local_user_view.person.is_banned() {
-    return Err(LemmyError::from_message("site_ban"));
-  }
-
-  check_validator_time(&local_user_view.local_user.validator_time, &claims)?;
-
-  Ok(local_user_view)
-}
-
-#[tracing::instrument(skip_all)]
 pub async fn get_local_user_settings_view_from_jwt_opt(
   jwt: Option<&Sensitive<String>>,
   pool: &DbPool,
   secret: &Secret,
 ) -> Result<Option<LocalUserSettingsView>, LemmyError> {
   match jwt {
-    Some(jwt) => Ok(Some(
-      get_local_user_settings_view_from_jwt(jwt, pool, secret).await?,
-    )),
+    Some(jwt) => {
+      let claims = Claims::decode(jwt.as_ref(), &secret.jwt_secret)
+        .map_err(|e| e.with_message("not_logged_in"))?
+        .claims;
+      let local_user_id = LocalUserId(claims.sub);
+      let local_user_view = blocking(pool, move |conn| {
+        LocalUserSettingsView::read(conn, local_user_id)
+      })
+      .await??;
+      check_user_valid(
+        local_user_view.person.banned,
+        local_user_view.person.ban_expires,
+        local_user_view.person.deleted,
+      )?;
+
+      check_validator_time(&local_user_view.local_user.validator_time, &claims)?;
+
+      Ok(Some(local_user_view))
+    }
     None => Ok(None),
   }
+}
+pub fn check_user_valid(
+  banned: bool,
+  ban_expires: Option<NaiveDateTime>,
+  deleted: bool,
+) -> Result<(), LemmyError> {
+  // Check for a site ban
+  if is_banned(banned, ban_expires) {
+    return Err(LemmyError::from_message("site_ban"));
+  }
+
+  // check for account deletion
+  if deleted {
+    return Err(LemmyError::from_message("deleted"));
+  }
+
+  Ok(())
 }
 
 #[tracing::instrument(skip_all)]
@@ -400,7 +405,7 @@ pub async fn send_password_reset_email(
   .await??;
 
   let email = &user.local_user.email.to_owned().expect("email");
-  let lang = get_user_lang(user);
+  let lang = get_interface_language(user);
   let subject = &lang.password_reset_subject(&user.person.name);
   let protocol_and_hostname = settings.get_protocol_and_hostname();
   let reset_link = format!("{}/password_change/{}", protocol_and_hostname, &token);
@@ -427,7 +432,7 @@ pub async fn send_verification_email(
   );
   blocking(pool, move |conn| EmailVerification::create(conn, &form)).await??;
 
-  let lang = get_user_lang(user);
+  let lang = get_interface_language(user);
   let subject = lang.verify_email_subject(&settings.hostname);
   let body = lang.verify_email_body(&settings.hostname, &user.person.name, verify_link);
   send_email(&subject, new_email, &user.person.name, &body, settings)?;
@@ -440,14 +445,14 @@ pub fn send_email_verification_success(
   settings: &Settings,
 ) -> Result<(), LemmyError> {
   let email = &user.local_user.email.to_owned().expect("email");
-  let lang = get_user_lang(user);
+  let lang = get_interface_language(user);
   let subject = &lang.email_verified_subject(&user.person.actor_id);
   let body = &lang.email_verified_body();
   send_email(subject, email, &user.person.name, body, settings)
 }
 
-pub fn get_user_lang(user: &LocalUserView) -> Lang {
-  let user_lang = LanguageId::new(user.local_user.lang.clone());
+pub fn get_interface_language(user: &LocalUserView) -> Lang {
+  let user_lang = LanguageId::new(user.local_user.interface_language.clone());
   Lang::from_language_id(&user_lang).unwrap_or_else(|| {
     let en = LanguageId::new("en");
     Lang::from_language_id(&en).expect("default language")
@@ -459,7 +464,7 @@ pub fn send_application_approved_email(
   settings: &Settings,
 ) -> Result<(), LemmyError> {
   let email = &user.local_user.email.to_owned().expect("email");
-  let lang = get_user_lang(user);
+  let lang = get_interface_language(user);
   let subject = lang.registration_approved_subject(&user.person.actor_id);
   let body = lang.registration_approved_body(&settings.hostname);
   send_email(&subject, email, &user.person.name, &body, settings)
@@ -481,7 +486,7 @@ pub async fn check_registration_application(
     })
     .await??;
     if let Some(deny_reason) = registration.deny_reason {
-      let lang = get_user_lang(local_user_view);
+      let lang = get_interface_language(local_user_view);
       let registration_denied_message = format!("{}: {}", lang.registration_denied(), &deny_reason);
       return Err(LemmyError::from_message(&registration_denied_message));
     } else {
@@ -660,10 +665,12 @@ pub async fn remove_user_data_in_community(
   // Comments
   // TODO Diesel doesn't allow updates with joins, so this has to be a loop
   let comments = blocking(pool, move |conn| {
-    CommentQueryBuilder::create(conn)
-      .creator_id(banned_person_id)
-      .community_id(community_id)
-      .limit(std::i64::MAX)
+    CommentQuery::builder()
+      .conn(conn)
+      .creator_id(Some(banned_person_id))
+      .community_id(Some(community_id))
+      .limit(Some(i64::MAX))
+      .build()
       .list()
   })
   .await??;

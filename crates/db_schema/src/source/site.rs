@@ -1,4 +1,4 @@
-use crate::newtypes::DbUrl;
+use crate::newtypes::{DbUrl, SiteId };
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "full")]
@@ -8,7 +8,7 @@ use crate::schema::site;
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", table_name = "site")]
 pub struct Site {
-  pub id: i64,
+  pub id: SiteId,
   pub name: String,
   pub sidebar: Option<String>,
   pub published: chrono::NaiveDateTime,
@@ -32,6 +32,7 @@ pub struct Site {
   pub default_theme: String,
   pub default_post_listing_type: String,
   pub legal_information: Option<String>,
+  pub hide_modlog_mod_names: bool,
 }
 
 #[derive(Default)]
@@ -60,5 +61,6 @@ pub struct SiteForm {
   pub public_key: Option<String>,
   pub default_theme: Option<String>,
   pub default_post_listing_type: Option<String>,
-  pub legal_information: Option<String>,
+  pub legal_information: Option<Option<String>>,
+  pub hide_modlog_mod_names: Option<bool>,
 }

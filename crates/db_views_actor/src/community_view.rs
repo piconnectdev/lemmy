@@ -7,13 +7,15 @@ use lemmy_db_schema::{
   source::{
     community::{Community, CommunityFollower, CommunitySafe},
     community_block::CommunityBlock,
+    local_user::LocalUser,
   },
-  traits::{MaybeOptional, ToSafe, ViewToVec},
+  traits::{ToSafe, ViewToVec},
   utils::{functions::hot_rank, fuzzy_search, limit_and_offset},
   ListingType,
   SortType,
 };
-use uuid::Uuid;
+use typed_builder::TypedBuilder;
+
 type CommunityViewTuple = (
   CommunitySafe,
   CommunityAggregates,
@@ -33,8 +35,8 @@ impl CommunityView {
     //let person_id_join = my_person_id.unwrap_or(PersonId(
     //  Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
     //));
-    let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-    let person_id_join = my_person_id.unwrap_or(PersonId(uuid));
+    let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    let person_id_join = my_person_id.unwrap_or(PersonId(uuid.clone()));
 
     let (community, counts, follower, blocked) = community::table
       .find(community_id)
@@ -97,71 +99,26 @@ impl CommunityView {
   }
 }
 
-pub struct CommunityQueryBuilder<'a> {
+#[derive(TypedBuilder)]
+#[builder(field_defaults(default))]
+pub struct CommunityQuery<'a> {
+  #[builder(!default)]
   conn: &'a PgConnection,
   listing_type: Option<ListingType>,
   sort: Option<SortType>,
-  my_person_id: Option<PersonId>,
-  show_nsfw: Option<bool>,
+  local_user: Option<&'a LocalUser>,
   search_term: Option<String>,
   page: Option<i64>,
   limit: Option<i64>,
 }
 
-impl<'a> CommunityQueryBuilder<'a> {
-  pub fn create(conn: &'a PgConnection) -> Self {
-    CommunityQueryBuilder {
-      conn,
-      my_person_id: None,
-      listing_type: None,
-      sort: None,
-      show_nsfw: None,
-      search_term: None,
-      page: None,
-      limit: None,
-    }
-  }
-
-  pub fn listing_type<T: MaybeOptional<ListingType>>(mut self, listing_type: T) -> Self {
-    self.listing_type = listing_type.get_optional();
-    self
-  }
-
-  pub fn sort<T: MaybeOptional<SortType>>(mut self, sort: T) -> Self {
-    self.sort = sort.get_optional();
-    self
-  }
-
-  pub fn show_nsfw<T: MaybeOptional<bool>>(mut self, show_nsfw: T) -> Self {
-    self.show_nsfw = show_nsfw.get_optional();
-    self
-  }
-
-  pub fn search_term<T: MaybeOptional<String>>(mut self, search_term: T) -> Self {
-    self.search_term = search_term.get_optional();
-    self
-  }
-
-  pub fn my_person_id<T: MaybeOptional<PersonId>>(mut self, my_person_id: T) -> Self {
-    self.my_person_id = my_person_id.get_optional();
-    self
-  }
-
-  pub fn page<T: MaybeOptional<i64>>(mut self, page: T) -> Self {
-    self.page = page.get_optional();
-    self
-  }
-
-  pub fn limit<T: MaybeOptional<i64>>(mut self, limit: T) -> Self {
-    self.limit = limit.get_optional();
-    self
-  }
-
+impl<'a> CommunityQuery<'a> {
   pub fn list(self) -> Result<Vec<CommunityView>, Error> {
     // TODO: UUID check
     // The left join below will return None in this case
-    let uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-    let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));
+    let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    // let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));
+    let person_id_join = self.local_user.map(|l| l.person_id).unwrap_or(PersonId(uuid.clone()));
 
     let mut query = community::table
       .inner_join(community_aggregates::table)
@@ -240,12 +197,12 @@ impl<'a> CommunityQueryBuilder<'a> {
     }
 
     // Don't show blocked communities or nsfw communities if not enabled in profile
-    if self.my_person_id.is_some() {
+    if self.local_user.is_some() {
       query = query.filter(community_block::person_id.is_null());
       query = query.filter(community::nsfw.eq(false).or(local_user::show_nsfw.eq(true)));
     } else {
       // No person in request, only show nsfw communities if show_nsfw passed into request
-      if !self.show_nsfw.unwrap_or(false) {
+      if !self.local_user.map(|l| l.show_nsfw).unwrap_or(false) {
         query = query.filter(community::nsfw.eq(false));
       }
     }
@@ -266,10 +223,10 @@ impl ViewToVec for CommunityView {
   type DbTuple = CommunityViewTuple;
   fn from_tuple_to_vec(items: Vec<Self::DbTuple>) -> Vec<Self> {
     items
-      .iter()
+      .into_iter()
       .map(|a| Self {
-        community: a.0.to_owned(),
-        counts: a.1.to_owned(),
+        community: a.0,
+        counts: a.1,
         subscribed: CommunityFollower::to_subscribed_type(&a.2),
         blocked: a.3.is_some(),
       })

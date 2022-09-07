@@ -4,7 +4,10 @@ use crate::{
   local_instance,
   mentions::collect_non_local_mentions,
   objects::{read_from_string_or_source, verify_is_remote_object},
-  protocol::{objects::note::Note, Source},
+  protocol::{
+    objects::{note::Note, LanguageTag},
+    Source,
+  },
   PostOrComment,
 };
 use activitypub_federation::{
@@ -20,6 +23,7 @@ use lemmy_db_schema::{
   source::{
     comment::{Comment, CommentForm},
     community::Community,
+    language::Language,
     person::Person,
     post::Post,
   },
@@ -98,13 +102,18 @@ impl ApubObject for ApubComment {
     })
     .await??;
 
-    let in_reply_to = if let Some(comment_id) = self.parent_id {
+    let in_reply_to = if let Some(comment_id) = self.parent_comment_id() {
       let parent_comment =
         blocking(context.pool(), move |conn| Comment::read(conn, comment_id)).await??;
       ObjectId::<PostOrComment>::new(parent_comment.ap_id)
     } else {
       ObjectId::<PostOrComment>::new(post.ap_id)
     };
+    let language = self.language_id;
+    let language = blocking(context.pool(), move |conn| {
+      Language::read_from_id(conn, language)
+    })
+    .await??;
     let maa =
       collect_non_local_mentions(&self, ObjectId::new(community.actor_id), context, &mut 0).await?;
 
@@ -121,6 +130,8 @@ impl ApubObject for ApubComment {
       published: Some(convert_datetime(self.published)),
       updated: self.updated.map(convert_datetime),
       tag: maa.tags,
+      distinguished: Some(self.distinguished),
+      language: LanguageTag::new(language),
     };
 
     Ok(note)
@@ -170,27 +181,37 @@ impl ApubObject for ApubComment {
       .attributed_to
       .dereference(context, local_instance(context), request_counter)
       .await?;
-    let (post, parent_comment_id) = note.get_parents(context, request_counter).await?;
+    let (post, parent_comment) = note.get_parents(context, request_counter).await?;
 
     let content = read_from_string_or_source(&note.content, &note.media_type, &note.source);
     let content_slurs_removed = remove_slurs(&content, &context.settings().slur_regex());
 
+    let language = note.language.map(|l| l.identifier);
+    let language = blocking(context.pool(), move |conn| {
+      Language::read_id_from_code_opt(conn, language.as_deref())
+    })
+    .await??;
+
     let form = CommentForm {
       creator_id: creator.id,
       post_id: post.id,
-      parent_id: parent_comment_id,
       content: content_slurs_removed,
       removed: None,
-      read: None,
       published: note.published.map(|u| u.naive_local()),
       updated: note.updated.map(|u| u.naive_local()),
       deleted: None,
       ap_id: Some(note.id.into()),
+      distinguished: note.distinguished,
       local: Some(false),
+      language_id: language,
       cert: None,
       tx: None,
     };
-    let comment = blocking(context.pool(), move |conn| Comment::upsert(conn, &form)).await??;
+    let parent_comment_path = parent_comment.map(|t| t.0.path);
+    let comment = blocking(context.pool(), move |conn| {
+      Comment::create(conn, &form, parent_comment_path.as_ref())
+    })
+    .await??;
     Ok(comment.into())
   }
 }

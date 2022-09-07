@@ -1,4 +1,4 @@
-use crate::newtypes::{CommentId, CommunityId, PersonId, PostId, *};
+use crate::newtypes::{SiteId, CommentId, CommunityId, PersonId, PostId, *};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "full")]
@@ -20,6 +20,7 @@ pub struct CommentAggregates {
   pub upvotes: i64,
   pub downvotes: i64,
   pub published: chrono::NaiveDateTime,
+  pub child_count: i32,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
@@ -71,7 +72,7 @@ pub struct PostAggregates {
 #[cfg_attr(feature = "full", table_name = "site_aggregates")]
 pub struct SiteAggregates {
   pub id: SiteAggregatesId,
-  pub site_id: i64,
+  pub site_id: SiteId,
   pub users: i64,
   pub posts: i64,
   pub comments: i64,

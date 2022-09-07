@@ -11,19 +11,23 @@ table! {
 }
 
 table! {
+  use diesel_ltree::sql_types::Ltree;
+  use diesel::sql_types::*;
+
     comment (id) {
         id -> Uuid,
         creator_id -> Uuid,
         post_id -> Uuid,
-        parent_id -> Nullable<Uuid>,
         content -> Text,
         removed -> Bool,
-        read -> Bool,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
         deleted -> Bool,
         ap_id -> Varchar,
         local -> Bool,
+        path -> Ltree,
+        distinguished -> Bool,
+        language_id -> Int4,
         //private_id -> Uuid,
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,
@@ -38,6 +42,7 @@ table! {
         upvotes -> Int8,
         downvotes -> Int8,
         published -> Timestamp,
+        child_count ->  Int4,
     }
 }
 
@@ -157,7 +162,7 @@ table! {
         theme -> Varchar,
         default_sort_type -> Int2,
         default_listing_type -> Int2,
-        lang -> Varchar,
+        interface_language -> Varchar,
         show_avatars -> Bool,
         send_notifications_to_email -> Bool,
         validator_time -> Timestamp,
@@ -319,7 +324,8 @@ table! {
         pi_address -> Nullable<Text>,
         web3_address -> Nullable<Text>,
         sol_address -> Nullable<Text>,
-        dap_address -> Nullable<Text>,   
+        dap_address -> Nullable<Text>,
+        cosmos_address -> Nullable<Text>,   
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,        
     }
@@ -355,6 +361,16 @@ table! {
 }
 
 table! {
+    comment_reply (id) {
+        id -> Uuid,
+        recipient_id -> Uuid,
+        comment_id -> Uuid,
+        read -> Bool,
+        published -> Timestamp,
+    }
+}
+
+table! {
     post (id) {
         id -> Uuid,
         name -> Varchar,
@@ -375,6 +391,8 @@ table! {
         thumbnail_url -> Nullable<Text>,
         ap_id -> Varchar,
         local -> Bool,
+        language_id -> Int4,
+
         //private_id -> Uuid,
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,
@@ -460,10 +478,9 @@ table! {
 
 table! {
     site (id) {
-        id -> BigInt,
+        id -> Uuid,
         name -> Varchar,
         sidebar -> Nullable<Text>,
-        //creator_id -> Uuid,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
         enable_downvotes -> Bool,
@@ -485,13 +502,14 @@ table! {
         default_theme -> Text,
         default_post_listing_type -> Text,
         legal_information -> Nullable<Text>,
+        hide_modlog_mod_names -> Bool,
     }
 }
 
 table! {
     site_aggregates (id) {
         id -> Uuid,
-        site_id -> BigInt,
+        site_id -> Uuid,
         users -> Int8,
         posts -> Int8,
         comments -> Int8,
@@ -522,22 +540,22 @@ table! {
 }
 
 // These are necessary since diesel doesn't have self joins / aliases
-table! {
-    comment_alias_1 (id) {
-        id -> Uuid,
-        creator_id -> Uuid,
-        post_id -> Uuid,
-        parent_id -> Nullable<Uuid>,
-        content -> Text,
-        removed -> Bool,
-        read -> Bool,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        deleted -> Bool,
-        ap_id -> Varchar,
-        local -> Bool,
-    }
-}
+// table! {
+//     comment_alias_1 (id) {
+//         id -> Uuid,
+//         creator_id -> Uuid,
+//         post_id -> Uuid,
+//         parent_id -> Nullable<Uuid>,
+//         content -> Text,
+//         removed -> Bool,
+//         read -> Bool,
+//         published -> Timestamp,
+//         updated -> Nullable<Timestamp>,
+//         deleted -> Bool,
+//         ap_id -> Varchar,
+//         local -> Bool,
+//     }
+// }
 
 table! {
     person_alias_1 (id) {
@@ -569,6 +587,7 @@ table! {
         web3_address -> Nullable<Text>,
         sol_address -> Nullable<Text>,
         dap_address -> Nullable<Text>,   
+        cosmos_address -> Nullable<Text>,
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,
     }
@@ -603,7 +622,8 @@ table! {
         pi_address -> Nullable<Text>,
         web3_address -> Nullable<Text>,
         sol_address -> Nullable<Text>,
-        dap_address -> Nullable<Text>,   
+        dap_address -> Nullable<Text>,
+        cosmos_address -> Nullable<Text>,   
         cert -> Nullable<Text>,
         tx -> Nullable<Text>,
     }
@@ -721,9 +741,25 @@ table! {
 
 //joinable!(pipayment -> person (person_id));
 
-joinable!(comment_alias_1 -> person_alias_1 (creator_id));
-joinable!(comment -> comment_alias_1 (parent_id));
+table! {
+    language (id) {
+        id -> Int4,
+        code -> Text,
+        name -> Text,
+    }
+}
+
+
+table! {
+    local_user_language(id) {
+        id -> Int4,
+        local_user_id -> Uuid,
+        language_id -> Int4,
+    }
+}
+
 joinable!(person_mention -> person_alias_1 (recipient_id));
+joinable!(comment_reply -> person_alias_1 (recipient_id));
 joinable!(post -> person_alias_1 (creator_id));
 joinable!(comment -> person_alias_1 (creator_id));
 
@@ -770,6 +806,8 @@ joinable!(person_aggregates -> person (person_id));
 joinable!(person_ban -> person (person_id));
 joinable!(person_mention -> comment (comment_id));
 joinable!(person_mention -> person (recipient_id));
+joinable!(comment_reply -> comment (comment_id));
+joinable!(comment_reply -> person (recipient_id));
 joinable!(post -> community (community_id));
 joinable!(post -> person (creator_id));
 joinable!(post_aggregates -> post (post_id));
@@ -786,6 +824,10 @@ joinable!(registration_application -> local_user (local_user_id));
 joinable!(registration_application -> person (admin_id));
 joinable!(mod_hide_community -> person (mod_person_id));
 joinable!(mod_hide_community -> community (community_id));
+joinable!(post -> language (language_id));
+joinable!(comment -> language (language_id));
+joinable!(local_user_language -> language (language_id));
+joinable!(local_user_language -> local_user (local_user_id));
 
 joinable!(admin_purge_comment -> person (admin_person_id));
 joinable!(admin_purge_comment -> post (post_id));
@@ -825,6 +867,7 @@ allow_tables_to_appear_in_same_query!(
   person_ban,
   person_block,
   person_mention,
+  comment_reply,
   post,
   post_aggregates,
   post_like,
@@ -834,7 +877,6 @@ allow_tables_to_appear_in_same_query!(
   private_message,
   site,
   site_aggregates,
-  comment_alias_1,
   person_alias_1,
   person_alias_2,
   admin_purge_comment,
@@ -842,6 +884,8 @@ allow_tables_to_appear_in_same_query!(
   admin_purge_person,
   admin_purge_post,
   email_verification,
-  pipayment,
-  registration_application
+  registration_application,
+  language,
+  local_user_language,
+  pipayment
 );
