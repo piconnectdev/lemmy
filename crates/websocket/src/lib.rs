@@ -185,16 +185,16 @@ pub enum UserOperationCrud {
   GetPrivateMessages,
   EditPrivateMessage,
   DeletePrivateMessage,
-  // PiPayment
-  PiAgreeRegister,
+  // Web3/PiNetwork
+  Web3Register,
+  Web3Login,
+  PiPaymentFound,
   PiRegister,
+  PiLogin,
+  PiAgreeRegister,
   PiRegisterWithFee,
   PiApprove,
   PiTip,
-  PiPaymentFound,
-  PiLogin,
-  Web3Login,
-  Web3Register,
 }
 
 pub trait OperationType {}

@@ -118,11 +118,12 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::GetComments => {
       do_websocket_operation::<GetComments>(context, id, op, data).await
     }
-    UserOperationCrud::PiAgreeRegister => {
-      do_websocket_operation::<PiAgreeRegister>(context, id, op, data).await
-    }
     UserOperationCrud::PiRegister => {
       do_websocket_operation::<PiRegister>(context, id, op, data).await
+    }
+    UserOperationCrud::PiLogin => do_websocket_operation::<PiLogin>(context, id, op, data).await,
+    UserOperationCrud::PiAgreeRegister => {
+      do_websocket_operation::<PiAgreeRegister>(context, id, op, data).await
     }
     UserOperationCrud::PiRegisterWithFee => {
       do_websocket_operation::<PiRegisterWithFee>(context, id, op, data).await
@@ -134,7 +135,6 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::PiPaymentFound => {
       do_websocket_operation::<PiPaymentFound>(context, id, op, data).await
     }
-    UserOperationCrud::PiLogin => do_websocket_operation::<PiLogin>(context, id, op, data).await,
     UserOperationCrud::Web3Register => {
       do_websocket_operation::<Web3Register>(context, id, op, data).await
     }
