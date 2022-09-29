@@ -145,7 +145,8 @@ impl ApubObject for ApubPrivateMessage {
       ap_id: Some(note.id.into()),
       local: Some(false),
       secured: None,
-      cert: None,
+      auth_sign: None, 
+      srv_sign: None,
       tx: None,
     };
     let pm = blocking(context.pool(), move |conn| {

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct CreatePrivateMessage {
   pub content: String,
   pub recipient_id: PersonId,
+  pub auth_sign: Option<String>,
   pub auth: Sensitive<String>,
 }
 
@@ -14,6 +15,7 @@ pub struct CreatePrivateMessage {
 pub struct EditPrivateMessage {
   pub private_message_id: PrivateMessageId,
   pub content: String,
+  pub auth_sign: Option<String>,
   pub auth: Sensitive<String>,
 }
 

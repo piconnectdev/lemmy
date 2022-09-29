@@ -289,7 +289,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimit) {
           )
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
           .route("/complete", web::post().to(route_post_crud::<PiTip>)),
-                                                                        //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
+          //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
       ),
   );
 }

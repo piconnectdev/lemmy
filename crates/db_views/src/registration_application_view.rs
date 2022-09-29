@@ -289,7 +289,8 @@ mod tests {
         sol_address: inserted_sara_person.sol_address.clone(),
         dap_address:inserted_sara_person.dap_address.clone(),
         cosmos_address:inserted_sara_person.cosmos_address.clone(),
-        cert: inserted_sara_person.cert.clone(),
+        auth_sign: inserted_sara_person.auth_sign.clone(),
+        srv_sign: inserted_sara_person.srv_sign.clone(),
         tx: inserted_sara_person.tx.clone(),
       },
       admin: None,
@@ -368,7 +369,8 @@ mod tests {
       sol_address: inserted_timmy_person.sol_address.clone(),
       dap_address:inserted_timmy_person.dap_address.clone(),
       cosmos_address:inserted_timmy_person.cosmos_address.clone(),
-      cert: inserted_timmy_person.cert.clone(),
+      auth_sign: inserted_timmy_person.auth_sign.clone(),
+      srv_sign: inserted_timmy_person.srv_sign.clone(),      
       tx: inserted_timmy_person.tx.clone(),
     });
     assert_eq!(read_sara_app_view_after_approve, expected_sara_app_view);

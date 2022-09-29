@@ -189,7 +189,8 @@ mod tests {
       ap_id: inserted_private_message.ap_id.to_owned(),
       local: true,
       secured: None,
-      cert: None,
+      auth_sign: None, 
+      srv_sign: None,
       tx: None,
     };
 

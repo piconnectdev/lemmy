@@ -91,6 +91,7 @@ pub struct SaveUserSettings {
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
   pub cosmos_address: Option<String>,
+  pub auth_sign: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

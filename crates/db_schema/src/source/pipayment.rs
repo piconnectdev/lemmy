@@ -13,7 +13,7 @@ use std::fmt::Debug;
 //#[derive(Default)]
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
-#[cfg_attr(feature = "full", table_name = "pipayment")]
+#[diesel(table_name = pipayment)]
 pub struct PiPayment {
   pub id: PaymentId,
   pub person_id: Option<PersonId>,

@@ -28,9 +28,8 @@ pub struct Post {
   pub ap_id: DbUrl,
   pub local: bool,
   pub language_id: LanguageId,
-
-  //pub private_id: PostId,
-  pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 
@@ -57,7 +56,8 @@ pub struct PostForm {
   pub ap_id: Option<DbUrl>,
   pub local: Option<bool>,
   pub language_id: Option<LanguageId>,
-  pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  //pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 

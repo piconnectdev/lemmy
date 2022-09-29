@@ -172,6 +172,8 @@ pub struct GetSiteResponse {
   pub my_user: Option<MyUserInfo>,
   pub federated_instances: Option<FederatedInstances>, // Federation may be disabled
   pub all_languages: Vec<Language>,
+  pub creator: String,
+  pub signer: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

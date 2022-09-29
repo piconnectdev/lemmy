@@ -28,8 +28,9 @@ table! {
         path -> Ltree,
         distinguished -> Bool,
         language_id -> Int4,
-        //private_id -> Uuid,
-        cert -> Nullable<Text>,
+        //cert -> Nullable<Text>,
+        auth_sign -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,
     }
 }
@@ -103,7 +104,7 @@ table! {
         shared_inbox_url -> Nullable<Varchar>,
         hidden -> Bool,
         posting_restricted_to_mods -> Bool,
-		cert -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,        
     }
 }
@@ -326,7 +327,8 @@ table! {
         sol_address -> Nullable<Text>,
         dap_address -> Nullable<Text>,
         cosmos_address -> Nullable<Text>,   
-        cert -> Nullable<Text>,
+        auth_sign -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,        
     }
 }
@@ -392,18 +394,17 @@ table! {
         ap_id -> Varchar,
         local -> Bool,
         language_id -> Int4,
-
-        //private_id -> Uuid,
-        cert -> Nullable<Text>,
+        auth_sign -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,
     }
 }
 
 table! {
     person_post_aggregates (id) {
-        id -> Int4,
-        person_id -> Int4,
-        post_id -> Int4,
+        id -> Uuid,
+        person_id -> Uuid,
+        post_id -> Uuid,
         read_comments -> Int8,
         published -> Timestamp,
     }
@@ -481,7 +482,8 @@ table! {
         ap_id -> Varchar,
         local -> Bool,
         secured -> Nullable<Text>,
-        cert -> Nullable<Text>,
+        auth_sign -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,
     }
 }
@@ -528,6 +530,7 @@ table! {
         legal_information -> Nullable<Text>,
         application_email_admins -> Bool,
         hide_modlog_mod_names -> Bool,
+        srv_sign -> Nullable<Text>,
     }
 }
 

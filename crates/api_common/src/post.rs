@@ -18,6 +18,7 @@ pub struct CreatePost {
   pub honeypot: Option<String>,
   pub nsfw: Option<bool>,
   pub language_id: Option<LanguageId>,
+  pub auth_sign: Option<String>,
   pub auth: Sensitive<String>,
 }
 
@@ -73,6 +74,7 @@ pub struct EditPost {
   pub body: Option<String>,
   pub nsfw: Option<bool>,
   pub language_id: Option<LanguageId>,
+  pub auth_sign: Option<String>,
   pub auth: Sensitive<String>,
 }
 

@@ -496,11 +496,11 @@ pub async fn send_new_applicant_email_to_admins(
   );
 
   for admin in &admins {
-    let email = &admin.local_user.email.to_owned().expect("email");
-    let lang = get_interface_language_from_settings(admin);
-    let subject = lang.new_application_subject(applicant_username, &settings.hostname);
-    let body = lang.new_application_body(applications_link);
-    send_email(&subject, email, &admin.person.name, &body, settings)?;
+    //let email = &admin.local_user.email.to_owned().expect("email");
+    //let lang = get_interface_language_from_settings(admin);
+    //let subject = lang.new_application_subject(applicant_username, &settings.hostname);
+    //let body = lang.new_application_body(applications_link);
+    //send_email(&subject, email, &admin.person.name, &body, settings)?;
   }
   Ok(())
 }

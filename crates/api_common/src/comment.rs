@@ -14,6 +14,7 @@ pub struct CreateComment {
   pub parent_id: Option<CommentId>,
   pub language_id: Option<LanguageId>,
   pub form_id: Option<String>,
+  pub auth_sign: Option<String>,
   pub auth: Sensitive<String>,
 }
 
@@ -30,6 +31,7 @@ pub struct EditComment {
   pub distinguished: Option<bool>,
   pub language_id: Option<LanguageId>,
   pub form_id: Option<String>,
+  pub auth_sign: Option<String>,
   pub auth: Sensitive<String>,
 }
 

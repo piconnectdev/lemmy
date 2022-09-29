@@ -384,7 +384,7 @@ mod tests {
         hidden: false,
         posting_restricted_to_mods: false,
         published: inserted_community.published,
-        cert: None,
+        srv_sign: None,
         tx: None,
       },
       creator: PersonSafe {
@@ -412,7 +412,8 @@ mod tests {
         sol_address: None,
         web3_address: None,
         cosmos_address: None,
-        cert: None,
+        auth_sign: None,
+        srv_sign: None,
         tx: None,
       },
       post_creator: PersonSafe {
@@ -440,7 +441,8 @@ mod tests {
         sol_address: None,
         web3_address: None,
         cosmos_address: None,
-        cert: None,
+        auth_sign: None,
+        srv_sign: None,
         tx: None,
       },
       creator_banned_from_community: false,
@@ -490,7 +492,8 @@ mod tests {
       sol_address: None,
       web3_address: None,
       cosmos_address: None,
-      cert: None,
+      auth_sign: None,
+      srv_sign: None,
       tx: None,
     };
 
@@ -556,7 +559,8 @@ mod tests {
       sol_address: None,
       web3_address: None,
       cosmos_address: None,
-      cert: None,
+      auth_sign: None,
+      srv_sign: None,
       tx: None,
     });
 

@@ -340,7 +340,9 @@ mod tests {
       distinguished: false,
       local: true,
       language_id: LanguageId::default(),
-      cert: None,
+      // cert: None,
+      auth_sign: None, 
+      srv_sign: None,
       tx: None,
     };
 

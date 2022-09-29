@@ -172,7 +172,8 @@ impl ApubObject for ApubPerson {
       sol_address: None,
       dap_address: None,
       cosmos_address: None,
-      cert: None,
+      auth_sign: None, 
+      srv_sign: None,
       tx : None,
     };
     let person = blocking(context.pool(), move |conn| {

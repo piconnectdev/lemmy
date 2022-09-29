@@ -49,6 +49,7 @@ impl Perform for SaveUserSettings {
     let sol_address = diesel_option_overwrite(&data.sol_address);
     let dap_address = diesel_option_overwrite(&data.dap_address);
     let cosmos_address = diesel_option_overwrite(&data.cosmos_address);
+    let auth_sign = diesel_option_overwrite(&data.auth_sign);
 
     if let Some(Some(email)) = &email {
       let previous_email = local_user_view.local_user.email.clone().unwrap_or_default();
@@ -124,7 +125,8 @@ impl Perform for SaveUserSettings {
       sol_address,
       dap_address,
       cosmos_address,
-      cert: None,
+      auth_sign, 
+      srv_sign: None, 
       tx: None,
     };
 

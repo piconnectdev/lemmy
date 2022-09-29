@@ -791,7 +791,8 @@ mod tests {
         distinguished: false,
         path: data.inserted_comment_0.to_owned().path,
         language_id: LanguageId(0),
-        cert: None,
+        auth_sign: None,
+        srv_sign: None,
         tx: None,
 
       },
@@ -820,7 +821,8 @@ mod tests {
         sol_address: None,
         dap_address: None,
         cosmos_address: None,
-        cert: None,
+        auth_sign: None,
+        srv_sign: None,
         tx: None,
       },
       post: Post {
@@ -844,7 +846,8 @@ mod tests {
         ap_id: data.inserted_post.ap_id.to_owned(),
         local: true,
         language_id: Default::default(),
-        cert: None,
+        auth_sign: None,
+        srv_sign: None,
         tx: None,
       },
       community: CommunitySafe {
@@ -863,7 +866,7 @@ mod tests {
         hidden: false,
         posting_restricted_to_mods: false,
         published: data.inserted_community.published,
-        cert: None,
+        srv_sign: None,
         tx: None,
       },
       counts: CommentAggregates {

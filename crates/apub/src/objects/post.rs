@@ -217,7 +217,8 @@ impl ApubObject for ApubPost {
         ap_id: Some(page.id.clone().into()),
         local: Some(false),
         language_id: language,
-        cert: None,
+        auth_sign: None,
+        //srv_sign: None, 
         tx: None,
       }
     } else {

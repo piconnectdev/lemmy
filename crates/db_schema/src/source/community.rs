@@ -29,7 +29,7 @@ pub struct Community {
   pub shared_inbox_url: Option<DbUrl>,
   pub hidden: bool,
   pub posting_restricted_to_mods: bool,
-  pub cert: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,  
 }
 
@@ -53,7 +53,7 @@ pub struct CommunitySafe {
   pub banner: Option<DbUrl>,
   pub hidden: bool,
   pub posting_restricted_to_mods: bool,
-  pub cert: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 
@@ -81,7 +81,7 @@ pub struct CommunityForm {
   pub shared_inbox_url: Option<Option<DbUrl>>,
   pub hidden: Option<bool>,
   pub posting_restricted_to_mods: Option<bool>,
-  pub cert: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 

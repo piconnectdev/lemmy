@@ -204,8 +204,7 @@ impl ApubObject for ApubComment {
       distinguished: note.distinguished,
       local: Some(false),
       language_id: language,
-      cert: None,
-      tx: None,
+      ..CommentForm::default()
     };
     let parent_comment_path = parent_comment.map(|t| t.0.path);
     let comment = blocking(context.pool(), move |conn| {

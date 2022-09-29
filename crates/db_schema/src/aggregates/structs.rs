@@ -80,7 +80,7 @@ pub struct PostAggregates {
 #[cfg_attr(feature = "full", diesel(table_name = person_post_aggregates))]
 #[cfg_attr(feature = "full", diesel(belongs_to(crate::source::person::Person)))]
 pub struct PersonPostAggregates {
-  pub id: i32,
+  pub id: PersonPostAggregatesId,
   pub person_id: PersonId,
   pub post_id: PostId,
   pub read_comments: i64,

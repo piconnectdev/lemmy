@@ -47,9 +47,6 @@ impl PerformCrud for Web3Login {
         return Err(LemmyError::from_message("registration_closed"));
       }
     }
-    if !settings.web3_enabled {
-      return Err(LemmyError::from_message("registration_closed"));
-    }
 
     let mut _address = data.address.clone();
     let mut _signature = data.signature.clone();
@@ -77,7 +74,6 @@ impl PerformCrud for Web3Login {
         _token.clone(),
         data.signature.clone()
       );
-
       return Err(LemmyError::from_message("registration_closed"));
     }
     // TODO: First, valid user address

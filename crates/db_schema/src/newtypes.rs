@@ -276,6 +276,16 @@ impl fmt::Display for SiteAggregatesId {
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct PersonPostAggregatesId(pub Uuid);
+
+impl fmt::Display for PersonPostAggregatesId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct ModRemovePostId(pub Uuid);
 
 impl fmt::Display for ModRemovePostId {

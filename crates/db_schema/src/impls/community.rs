@@ -44,7 +44,7 @@ mod safe_type {
     banner,
     hidden,
     posting_restricted_to_mods,
-    cert,
+    srv_sign,
     tx,
 
   );
@@ -68,7 +68,7 @@ mod safe_type {
         banner,
         hidden,
         posting_restricted_to_mods,
-        cert,
+        srv_sign,
         tx,
       )
     }
@@ -425,7 +425,7 @@ mod tests {
       shared_inbox_url: None,
       hidden: false,
       posting_restricted_to_mods: false,
-      cert: None,
+      srv_sign: None,
       tx: None,
     };
 

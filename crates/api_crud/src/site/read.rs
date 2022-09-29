@@ -133,7 +133,8 @@ impl PerformCrud for GetSite {
     let federated_instances = build_federated_instances(context.pool(), context.settings()).await?;
 
     let all_languages = blocking(context.pool(), Language::read_all).await??;
-
+    let signer = context.settings().web3_signer();
+    let creator = context.settings().web3_admin();
     Ok(GetSiteResponse {
       site_view,
       admins,
@@ -142,6 +143,8 @@ impl PerformCrud for GetSite {
       my_user,
       federated_instances,
       all_languages,
+      creator,
+      signer,
     })
   }
 }

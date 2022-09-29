@@ -23,7 +23,8 @@ pub struct PrivateMessage {
   pub ap_id: DbUrl,
   pub local: bool,
   pub secured: Option<String>,
-  pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx: Option<String>,
 }
 
@@ -41,6 +42,7 @@ pub struct PrivateMessageForm {
   pub ap_id: Option<DbUrl>,
   pub local: Option<bool>,
   pub secured: Option<String>,
-  pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx: Option<String>,
 }

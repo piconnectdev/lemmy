@@ -405,7 +405,7 @@ mod tests {
         hidden: false,
         posting_restricted_to_mods: false,
         published: inserted_community.published,
-        cert: inserted_community.cert.clone(),
+        srv_sign: inserted_community.srv_sign.clone(),
         tx: inserted_community.tx.clone(),
       },
       creator: PersonSafe {
@@ -433,7 +433,8 @@ mod tests {
         sol_address: inserted_jessica.sol_address.clone(),
         dap_address:inserted_jessica.dap_address.clone(),
         cosmos_address:inserted_jessica.cosmos_address.clone(),
-        cert: inserted_jessica.cert.clone(),
+        auth_sign: inserted_jessica.auth_sign.clone(),
+        srv_sign: inserted_community.srv_sign.clone(),
         tx: inserted_jessica.tx.clone(),
       },
       comment_creator: PersonSafe {
@@ -461,7 +462,8 @@ mod tests {
         sol_address: inserted_timmy.sol_address.clone(),
         dap_address:inserted_timmy.dap_address.clone(),
         cosmos_address:inserted_timmy.cosmos_address.clone(),
-        cert: inserted_timmy.cert.clone(),
+        auth_sign: inserted_timmy.auth_sign.clone(),
+        srv_sign: inserted_community.srv_sign.clone(),
         tx: inserted_timmy.tx.clone(),
       },
       creator_banned_from_community: false,
@@ -507,7 +509,8 @@ mod tests {
       sol_address: inserted_sara.sol_address.clone(),
       dap_address:inserted_sara.dap_address.clone(),
       cosmos_address:inserted_sara.cosmos_address.clone(),
-      cert: inserted_sara.cert.clone(),
+      auth_sign: inserted_sara.auth_sign.clone(),
+      srv_sign: inserted_community.srv_sign.clone(),
       tx: inserted_sara.tx.clone(),
     };
 
@@ -575,7 +578,8 @@ mod tests {
       sol_address: inserted_timmy.sol_address.clone(),
       dap_address:inserted_timmy.dap_address.clone(),
       cosmos_address:inserted_timmy.cosmos_address.clone(),
-      cert: inserted_timmy.cert.clone(),
+      auth_sign: inserted_timmy.auth_sign.clone(),
+      srv_sign: inserted_community.srv_sign.clone(),
       tx: inserted_timmy.tx.clone(),
     });
 

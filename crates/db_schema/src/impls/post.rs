@@ -406,7 +406,8 @@ mod tests {
       ap_id: inserted_post.ap_id.to_owned(),
       local: true,
       language_id: Default::default(),
-      cert: None,
+      auth_sign: None, 
+      srv_sign: None,
       tx: None,
     };
 

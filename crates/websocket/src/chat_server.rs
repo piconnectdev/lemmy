@@ -86,7 +86,7 @@ pub struct ChatServer {
   /// A list of the current captchas
   pub(super) captchas: Vec<CaptchaItem>,
 
-    /// A list of the current tokens
+  /// A list of the current tokens
   pub(super) tokens: Vec<TokenItem>,
 
   message_handler: MessageHandlerType,

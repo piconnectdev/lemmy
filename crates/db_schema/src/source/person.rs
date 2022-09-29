@@ -37,7 +37,8 @@ pub struct Person {
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
   pub cosmos_address: Option<String>,
-  pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 
@@ -70,7 +71,8 @@ pub struct PersonSafe {
   pub sol_address: Option<String>,
   pub dap_address: Option<String>,
   pub cosmos_address: Option<String>,
-  pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 
@@ -106,6 +108,7 @@ pub struct PersonForm {
   pub sol_address: Option<Option<String>>,
   pub dap_address: Option<Option<String>>,
   pub cosmos_address: Option<Option<String>>,
-  pub cert: Option<Option<String>>,
+  pub auth_sign: Option<Option<String>>,
+  pub srv_sign: Option<String>,
   pub tx : Option<Option<String>>,
 }

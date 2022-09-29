@@ -2,6 +2,7 @@ use doku::Document;
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
 use url::Url;
+use ethsign::SecretKey;
 
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
 #[serde(default)]
@@ -58,6 +59,9 @@ pub struct Settings {
   #[default(PiNetworkConfig::default())]
   pub pinetwork: PiNetworkConfig,
 
+  #[default(Web3Config::default())]
+  pub web3: Web3Config,
+
   /// Whether the site is open for web3 registration.
   #[default(true)]
   pub open_enabled: bool,
@@ -69,6 +73,9 @@ pub struct Settings {
   /// Whether the site is open for web3 registration.
   #[default(false)]
   pub pi_enabled: bool,
+
+  #[default(None)]
+  pub secret_key: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
@@ -118,7 +125,7 @@ pub struct DatabaseConfig {
   pub pool_size: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
+#[derive(Debug, Deserialize, Serialize, Clone, Document, SmartDefault)]
 pub struct EmailConfig {
   /// Hostname and port of the smtp server
   #[doku(example = "localhost:25")]
@@ -251,4 +258,26 @@ pub struct PiNetworkConfig {
   #[default(Some("https://api.testnet.minepi.com/".to_string()))]
   pub pi_horizon_host: Option<String>,
 
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
+pub struct Web3Config {
+  // Allow non-pioneers register by email / username
+  #[default(false)]
+  pub enabled: bool,
+
+  // Key schema
+  #[default(0)]
+  pub key_schema: i32,
+
+  #[default(0)]
+  pub chain_id: i32,
+  #[default(None)]
+  pub admin: Option<String>,
+  #[default(None)]
+  pub signer: Option<String>,
+  #[default(None)]
+  pub signer_key: Option<String>,
+  #[default(None)]
+  pub api_host: Option<String>,
 }

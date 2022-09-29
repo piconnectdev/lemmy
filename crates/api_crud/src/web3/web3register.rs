@@ -68,24 +68,6 @@ impl PerformCrud for Web3Register {
     let _token = data.token.clone();
     let _cli_time = data.cli_time;
 
-    let text = format!(
-      "LOGIN:{};TOKEN:{};TIME:{}",
-      _address.clone(),
-      _token.clone(),
-      _cli_time.clone()
-    );
-    println!(
-      "Web3Login is processing for {} - {} {} {} ",
-      text.clone(),
-      _address.clone(),
-      _token.clone(),
-      data.signature.clone()
-    );
-
-    if !eth_verify(_address.clone(), text.clone(), _signature) {
-      return Err(LemmyError::from_message("registration_closed"));
-    }
-
     password_length_check(&data.info.password)?;
     honeypot_check(&data.info.honeypot)?;
 
@@ -144,6 +126,23 @@ impl PerformCrud for Web3Register {
       if !check {
         return Err(LemmyError::from_message("token_incorrect"));
       }
+
+      let text = format!(
+        "LOGIN:{};TOKEN:{};TIME:{}",
+        _address.clone(),
+        _token.clone(),
+        _cli_time.clone()
+      );
+      println!(
+        "Web3Registration is processing for {} - {} {} {} ",
+        text.clone(),
+        _address.clone(),
+        _token.clone(),
+        data.signature.clone()
+      );
+      if !eth_verify(_address.clone(), text.clone(), _signature) {
+        return Err(LemmyError::from_message("registration_closed"));
+      }  
     }
 
     check_slurs(&data.info.username, &context.settings().slur_regex())?;

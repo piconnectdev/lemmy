@@ -43,7 +43,8 @@ mod safe_type {
     sol_address,
     dap_address,
     cosmos_address,
-    cert,
+    auth_sign,
+    srv_sign,
     tx,
   );
 
@@ -75,7 +76,8 @@ mod safe_type {
         sol_address,
         dap_address,
         cosmos_address,
-        cert,
+        auth_sign,
+        srv_sign,
         tx,
       )
     }
@@ -320,7 +322,8 @@ mod tests {
       sol_address: None,
       dap_address: None,
       cosmos_address: None,
-      cert: None,
+      auth_sign: None, 
+      srv_sign: None,
       tx : None,
     };
 

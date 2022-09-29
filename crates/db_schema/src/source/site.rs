@@ -34,6 +34,7 @@ pub struct Site {
   pub legal_information: Option<String>,
   pub application_email_admins: bool,
   pub hide_modlog_mod_names: bool,
+  pub srv_sign: Option<String>,
 }
 
 #[derive(Default)]
@@ -65,4 +66,5 @@ pub struct SiteForm {
   pub legal_information: Option<Option<String>>,
   pub application_email_admins: Option<bool>,
   pub hide_modlog_mod_names: Option<bool>,
+  pub srv_sign: Option<String>,
 }

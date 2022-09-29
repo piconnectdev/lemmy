@@ -118,8 +118,6 @@ fn community_updates_2020_04_02(
       last_refreshed_at: Some(naive_now()),
       icon: Some(ccommunity.icon.to_owned()),
       banner: Some(ccommunity.banner.to_owned()),
-      cert: None,
-      tx: None,
       ..Default::default()
     };
 

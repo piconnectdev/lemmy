@@ -24,8 +24,9 @@ pub struct Comment {
   pub path: Ltree,
   pub distinguished: bool,
   pub language_id: LanguageId,
-  //pub private_id: CommentId,
-  pub cert: Option<String>,
+  // pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 
@@ -45,7 +46,9 @@ pub struct CommentForm {
   pub local: Option<bool>,
   pub distinguished: Option<bool>,
   pub language_id: Option<LanguageId>,
-  pub cert: Option<String>,
+  // pub cert: Option<String>,
+  pub auth_sign: Option<String>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 

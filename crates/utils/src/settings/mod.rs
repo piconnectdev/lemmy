@@ -8,7 +8,8 @@ use deser_hjson::from_str;
 use once_cell::sync::Lazy;
 use regex::{Regex, RegexBuilder};
 use std::{env, fs, io::Error};
-
+use ethsign::SecretKey;
+use rustc_hex::{FromHex, ToHex};
 pub mod structs;
 
 static DEFAULT_CONFIG_FILE: &str = "config/config.hjson";
@@ -22,6 +23,19 @@ static WEBFINGER_REGEX: Lazy<Regex> = Lazy::new(|| {
   ))
   .expect("compile webfinger regex")
 });
+
+pub static SECRETKEY: Lazy<SecretKey> =
+  Lazy::new(|| {
+    let str_key= match &SETTINGS.secret_key {
+        Some(str) => {str},
+        None => "4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7",
+    };
+    let secret: Vec<u8> = str_key
+    .from_hex()
+    .unwrap();
+    let key = SecretKey::from_raw(&secret).unwrap();
+    return key;
+  });
 
 impl Settings {
   /// Reads config from configuration file.
@@ -117,5 +131,14 @@ impl Settings {
   }
   pub fn pi_horizon_host(&self) -> String {
     self.pinetwork.pi_api_host.to_owned().unwrap_or_default()
+  }
+  pub fn web3_admin(&self) -> String {
+    self.web3.admin.to_owned().unwrap_or_default()
+  }
+  pub fn web3_signer(&self) -> String {
+    self.web3.signer.to_owned().unwrap_or_default()
+  }
+  pub fn web3_signer_key(&self) -> String {
+    self.web3.signer_key.to_owned().unwrap_or_default()
   }
 }
