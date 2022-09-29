@@ -61,7 +61,7 @@ impl PerformCrud for GetCommunity {
       },
       None => {
         let name = data.name.to_owned().unwrap_or_else(|| "main".to_string());
-        resolve_actor_identifier::<ApubCommunity, Community>(&name, context)
+        resolve_actor_identifier::<ApubCommunity, Community>(&name, context, true)
           .await
           .map_err(|e| e.with_message("couldnt_find_community"))?
           .id
