@@ -1,13 +1,11 @@
 use crate::Perform;
 use actix_web::web::Data;
 use lemmy_api_common::{utils::get_local_user_view_from_jwt, websocket::*};
-use lemmy_db_schema::newtypes::CommunityId;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{
   messages::{JoinCommunityRoom, JoinModRoom, JoinPostRoom, JoinUserRoom},
   LemmyContext,
 };
-use uuid::Uuid;
 #[async_trait::async_trait(?Send)]
 impl Perform for UserJoin {
   type Response = UserJoinResponse;
@@ -46,35 +44,8 @@ impl Perform for CommunityJoin {
     let data: &CommunityJoin = self;
 
     if let Some(ws_id) = websocket_id {
-      // TODO: UUID check
-      // let community_id = match Uuid::parse_str(&data.community_id.clone()) {
-      //   Ok(uid) => {
-      //       CommunityId(uid)
-      //   },
-      //   Err(e) => {
-      //     let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-      //     CommunityId(xid)
-      //   }
-      // };
-      let community_id = match &data.community_id {
-        Some(id) => {
-          let uuid = Uuid::parse_str(&id.clone());
-          match uuid {
-            Ok(u) => CommunityId(u),
-            Err(_e) => {
-              let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-              CommunityId(xid)
-            }
-          }
-        }
-        None => {
-          let xid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-          CommunityId(xid)
-        }
-      };
       context.chat_server().do_send(JoinCommunityRoom {
-        //community_id: data.community_id,
-        community_id: community_id,
+        community_id: data.community_id,
         id: ws_id,
       });
     }

@@ -477,6 +477,20 @@ table! {
 }
 
 table! {
+    private_message_report (id) {
+        id -> Uuid,
+        creator_id -> Uuid,
+        private_message_id -> Uuid,
+        original_pm_text -> Text,
+        reason -> Text,
+        resolved -> Bool,
+        resolver_id -> Nullable<Uuid>,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+    }
+}
+
+table! {
     site (id) {
         id -> Uuid,
         name -> Varchar,
@@ -536,96 +550,6 @@ table! {
         person_id -> Uuid,
         community_id -> Uuid,
         published -> Timestamp,
-    }
-}
-
-// These are necessary since diesel doesn't have self joins / aliases
-// table! {
-//     comment_alias_1 (id) {
-//         id -> Uuid,
-//         creator_id -> Uuid,
-//         post_id -> Uuid,
-//         parent_id -> Nullable<Uuid>,
-//         content -> Text,
-//         removed -> Bool,
-//         read -> Bool,
-//         published -> Timestamp,
-//         updated -> Nullable<Timestamp>,
-//         deleted -> Bool,
-//         ap_id -> Varchar,
-//         local -> Bool,
-//     }
-// }
-
-table! {
-    person_alias_1 (id) {
-        id -> Uuid,
-        name -> Varchar,
-        display_name -> Nullable<Varchar>,
-        avatar -> Nullable<Varchar>,
-        banned -> Bool,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        actor_id -> Varchar,
-        bio -> Nullable<Text>,
-        local -> Bool,
-        private_key -> Nullable<Text>,
-        public_key -> Text,
-        last_refreshed_at -> Timestamp,
-        banner -> Nullable<Varchar>,
-        deleted -> Bool,
-        inbox_url -> Varchar,
-        shared_inbox_url -> Nullable<Varchar>,
-        matrix_user_id -> Nullable<Text>,
-        admin -> Bool,
-        bot_account -> Bool,
-        ban_expires -> Nullable<Timestamp>,
-        //extra_user_id -> Nullable<Text>,
-        verified -> Bool,
-        //private_seeds -> Nullable<Text>,
-        pi_address -> Nullable<Text>,
-        web3_address -> Nullable<Text>,
-        sol_address -> Nullable<Text>,
-        dap_address -> Nullable<Text>,   
-        cosmos_address -> Nullable<Text>,
-        cert -> Nullable<Text>,
-        tx -> Nullable<Text>,
-    }
-}
-
-table! {
-    person_alias_2 (id) {
-        id -> Uuid,
-        name -> Varchar,
-        display_name -> Nullable<Varchar>,
-        avatar -> Nullable<Varchar>,
-        banned -> Bool,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        actor_id -> Varchar,
-        bio -> Nullable<Text>,
-        local -> Bool,
-        private_key -> Nullable<Text>,
-        public_key -> Text,
-        last_refreshed_at -> Timestamp,
-        banner -> Nullable<Varchar>,
-        deleted -> Bool,
-        inbox_url -> Varchar,
-        shared_inbox_url -> Nullable<Varchar>,
-        matrix_user_id -> Nullable<Text>,
-        admin -> Bool,
-        bot_account -> Bool,
-        ban_expires -> Nullable<Timestamp>,
-        //extra_user_id -> Nullable<Text>,
-        verified -> Bool,
-        //private_seeds -> Nullable<Text>,
-        pi_address -> Nullable<Text>,
-        web3_address -> Nullable<Text>,
-        sol_address -> Nullable<Text>,
-        dap_address -> Nullable<Text>,
-        cosmos_address -> Nullable<Text>,   
-        cert -> Nullable<Text>,
-        tx -> Nullable<Text>,
     }
 }
 
@@ -752,22 +676,13 @@ table! {
 
 table! {
     local_user_language(id) {
-        id -> Int4,
+        id -> Uuid,
         local_user_id -> Uuid,
         language_id -> Int4,
     }
 }
 
-joinable!(person_mention -> person_alias_1 (recipient_id));
-joinable!(comment_reply -> person_alias_1 (recipient_id));
-joinable!(post -> person_alias_1 (creator_id));
-joinable!(comment -> person_alias_1 (creator_id));
-
-joinable!(post_report -> person_alias_2 (resolver_id));
-joinable!(comment_report -> person_alias_2 (resolver_id));
-
 joinable!(person_block -> person (person_id));
-joinable!(person_block -> person_alias_1 (target_id));
 
 joinable!(comment -> person (creator_id));
 joinable!(comment -> post (post_id));
@@ -828,6 +743,7 @@ joinable!(post -> language (language_id));
 joinable!(comment -> language (language_id));
 joinable!(local_user_language -> language (language_id));
 joinable!(local_user_language -> local_user (local_user_id));
+joinable!(private_message_report -> private_message (private_message_id));
 
 joinable!(admin_purge_comment -> person (admin_person_id));
 joinable!(admin_purge_comment -> post (post_id));
@@ -875,10 +791,9 @@ allow_tables_to_appear_in_same_query!(
   post_report,
   post_saved,
   private_message,
+  private_message_report,
   site,
   site_aggregates,
-  person_alias_1,
-  person_alias_2,
   admin_purge_comment,
   admin_purge_community,
   admin_purge_person,

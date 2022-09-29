@@ -1,19 +1,17 @@
 use actix_web::{web, web::Data};
-use lemmy_api_common::{
-  comment::*, community::*, person::*, pipayment::*, post::*, site::*, web3::*,
-};
+use lemmy_api_common::{comment::*, community::*, person::*, post::*, private_message::*, site::*, web3::*, pipayment::*, };
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{serialize_websocket_message, LemmyContext, UserOperationCrud};
 use serde::Deserialize;
 
 mod comment;
 mod community;
-mod pipayment;
 mod post;
 mod private_message;
 mod site;
 mod user;
 mod web3;
+mod pipayment;
 
 #[async_trait::async_trait(?Send)]
 pub trait PerformCrud {

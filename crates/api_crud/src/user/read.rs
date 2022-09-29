@@ -35,48 +35,8 @@ impl PerformCrud for GetPersonDetails {
         .await?;
     check_private_instance(&local_user_view, context.pool()).await?;
 
-    // let show_nsfw = local_user_view.as_ref().map(|t| t.local_user.show_nsfw);
-    // let show_bot_accounts = local_user_view
-    //   .as_ref()
-    //   .map(|t| t.local_user.show_bot_accounts);
-    // let show_read_posts = local_user_view
-    //   .as_ref()
-    //   .map(|t| t.local_user.show_read_posts);
-
-    // TODO: UUID check
-    // TODO: person_id may be name.
-    // OLD: client pass person_id as name
-    // let username = data
-    //   .username
-    //   .to_owned()
-    //   .unwrap_or_else(|| "admin".to_string());
-    let person_details_id = match &data.person_id {
-      Some(id) => {
-        let uuid = Uuid::parse_str(&id.clone());
-        match uuid {
-          Ok(u) => PersonId(u),
-          Err(_e) => {
-            let name = id.clone();
-            resolve_actor_identifier::<ApubPerson, Person>(&name, context)
-              .await
-              .map_err(|_e| _e.with_message("couldnt_find_that_username_or_email"))?
-              .id
-            //let person = blocking(context.pool(), move |conn| {
-            //  Person::find_by_name(conn, &name)
-            //})
-            //.await?;
-            // let actor_id = build_actor_id_from_shortname(EndpointType::Person, &name)?;
-
-            // let person = blocking(context.pool(), move |conn| {
-            //   Person::read_from_apub_id(conn, &actor_id)
-            // })
-            // .await?;
-            // person
-            //   .map_err(|_| LemmyError::from_message("couldnt_find_that_username_or_email"))?
-            //   .id
-          }
-        }
-      }
+    let person_details_id = match data.person_id {
+      Some(id) => id,
       None => {
         if let Some(username) = &data.username {
           resolve_actor_identifier::<ApubPerson, Person>(username, context)
@@ -90,24 +50,6 @@ impl PerformCrud for GetPersonDetails {
         }
       }
     };
-    /*
-        let person_details_id = match data.person_id {
-          Some(id) => id,
-          None => {
-            if let Some(username) = &data.username {
-              resolve_actor_identifier::<ApubPerson, Person>(username, context)
-                .await
-                .map_err(|e| e.with_message("couldnt_find_that_username_or_email"))?
-                .id
-            } else {
-              return Err(LemmyError::from_message(
-                "couldnt_find_that_username_or_email",
-              ));
-            }
-          }
-        };
-    */
-    // let person_id = local_user_view.map(|uv| uv.person.id);
 
     // You don't need to return settings for the user, since this comes back with GetSite
     // `my_user`
@@ -121,44 +63,53 @@ impl PerformCrud for GetPersonDetails {
     let limit = data.limit;
     let saved_only = data.saved_only;
     let community_id = data.community_id;
+    let local_user = local_user_view.map(|l| l.local_user);
+    let local_user_clone = local_user.to_owned();
 
-    let (posts, comments) = blocking(context.pool(), move |conn | {
+    let posts = blocking(context.pool(), move |conn| {
       let posts_query = PostQuery::builder()
         .conn(conn)
         .sort(sort)
         .saved_only(saved_only)
-        .community_id(community_id)
-        .page(page)
-        .limit(limit);
-
-      let local_user = local_user_view.map(|l| l.local_user);
-      let comments_query = CommentQuery::builder()
-        .conn(conn)
         .local_user(local_user.as_ref())
-        .sort(sort.map(post_to_comment_sort_type))
-        .saved_only(saved_only)
         .community_id(community_id)
         .page(page)
         .limit(limit);
 
       // If its saved only, you don't care what creator it was
       // Or, if its not saved, then you only want it for that specific creator
-      let (posts, comments) = if !saved_only.unwrap_or(false) {
-        (
-          posts_query
-            .creator_id(Some(person_details_id))
-            .build()
-            .list()?,
-          comments_query
-            .creator_id(Some(person_details_id))
-            .build()
-            .list()?,
-        )
+      if !saved_only.unwrap_or(false) {
+        posts_query
+          .creator_id(Some(person_details_id))
+          .build()
+          .list()
       } else {
-        (posts_query.build().list()?, comments_query.build().list()?)
-      };
+        posts_query.build().list()
+      }
+    })
+    .await??;
 
-      Ok((posts, comments)) as Result<_, LemmyError>
+    let comments = blocking(context.pool(), move |conn| {
+      let comments_query = CommentQuery::builder()
+        .conn(conn)
+        .local_user(local_user_clone.as_ref())
+        .sort(sort.map(post_to_comment_sort_type))
+        .saved_only(saved_only)
+        .show_deleted_and_removed(Some(false))
+        .community_id(community_id)
+        .page(page)
+        .limit(limit);
+
+      // If its saved only, you don't care what creator it was
+      // Or, if its not saved, then you only want it for that specific creator
+      if !saved_only.unwrap_or(false) {
+        comments_query
+          .creator_id(Some(person_details_id))
+          .build()
+          .list()
+      } else {
+        comments_query.build().list()
+      }
     })
     .await??;
 

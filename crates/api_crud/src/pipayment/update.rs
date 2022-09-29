@@ -39,39 +39,6 @@ impl PerformCrud for PiTip {
       auth: data.auth.clone(),
     };
 
-    //let local_user_view = get_local_user_view_from_jwt(&data.auth, context.pool()).await?;
-
-    //check_slurs_opt(&data.paymentid)?;
-    //check_slurs_opt(&data.username)?;
-    /*
-    let found_payment = blocking(context.pool(), move |conn| {
-      Payment::find(data.paymentid.as_ref())
-    })
-    .await??;
-    let payment_url = payment_url;
-    */
-
-    // let payment_dto = pi_complete(
-    //   context.client(),
-    //   &payment_url.to_owned(),
-    //   &data.txid.to_owned(),
-    // )
-    // .await?;
-    //let payment_id = payment_dto;
-
-    /*
-    let payment_form = PaymentForm {
-      payment_id: found_payment.paymentid.as_ref(),
-      username: found_payment.username.as_ref(),
-      //updated: Some(naive_now()),
-    };
-
-    let update_payment = move |conn: &'_ _| Payment::update(conn, found_payment.id, &payment_form);
-    if blocking(context.pool(), update_payment).await?.is_err() {
-      return Err(LemmyError::from_message("couldnt_update_payment").into());
-    }
-    */
-    //let site_view = blocking(context.pool(), move |conn| SiteView::read(conn)).await??;
     let _payment = match pi_update_payment(context, &approve, _tx).await {
       Ok(c) => c,
       Err(e) => {

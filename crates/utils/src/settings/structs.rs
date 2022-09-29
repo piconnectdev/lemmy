@@ -57,6 +57,18 @@ pub struct Settings {
   
   #[default(PiNetworkConfig::default())]
   pub pinetwork: PiNetworkConfig,
+
+  /// Whether the site is open for web3 registration.
+  #[default(true)]
+  pub open_enabled: bool,
+
+  /// Whether the site is open for web3 registration.
+  #[default(true)]
+  pub web3_enabled: bool,
+
+  /// Whether the site is open for web3 registration.
+  #[default(false)]
+  pub pi_enabled: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]

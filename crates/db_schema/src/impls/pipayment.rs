@@ -8,12 +8,12 @@ use crate::{
 impl Crud for PiPayment {
   type Form = PiPaymentForm;
   type IdType = PaymentId;
-  fn read(conn: &PgConnection, pipayment_id: PaymentId) -> Result<Self, Error> {
+  fn read(conn: &mut PgConnection, pipayment_id: PaymentId) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
     pipayment.find(pipayment_id).first::<Self>(conn)
   }
 
-  fn create(conn: &PgConnection, new_payment: &PiPaymentForm) -> Result<Self, Error> {
+  fn create(conn: &mut PgConnection, new_payment: &PiPaymentForm) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
     insert_into(pipayment)
       .values(new_payment)
@@ -21,7 +21,7 @@ impl Crud for PiPayment {
   }
 
   fn update(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     payment_id: PaymentId,
     new_payment: &PiPaymentForm,
   ) -> Result<Self, Error> {
@@ -31,26 +31,26 @@ impl Crud for PiPayment {
       .get_result::<Self>(conn)
   }
 
-  fn delete(conn: &PgConnection, payment_id: PaymentId) -> Result<usize, Error> {
+  fn delete(conn: &mut PgConnection, payment_id: PaymentId) -> Result<usize, Error> {
     use crate::schema::pipayment::dsl::*;
     diesel::delete(pipayment.find(payment_id)).execute(conn)
   }
 }
 
 pub trait PiPayment_ {
-  fn find_by_pipayment_id(conn: &PgConnection, payment_id: &str) -> Result<PiPayment, Error>;
-  fn find_by_pi_uid(conn: &PgConnection, pi_uid: &PiUserId) -> Result<PiPayment, Error>;
+  fn find_by_pipayment_id(conn: &mut PgConnection, payment_id: &str) -> Result<PiPayment, Error>;
+  fn find_by_pi_uid(conn: &mut PgConnection, pi_uid: &PiUserId) -> Result<PiPayment, Error>;
 }
 
 impl PiPayment_ for PiPayment { 
-  fn find_by_pipayment_id(conn: &PgConnection, payment_id: &str) -> Result<Self, Error> {
+  fn find_by_pipayment_id(conn: &mut PgConnection, payment_id: &str) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
     pipayment
       .filter(identifier.eq(payment_id))
       .first::<Self>(conn)
   }
 
-  fn find_by_pi_uid(conn: &PgConnection, uid: &PiUserId) -> Result<Self, Error> {
+  fn find_by_pi_uid(conn: &mut PgConnection, uid: &PiUserId) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
     pipayment
       .filter(pi_uid.eq(uid))
@@ -70,7 +70,7 @@ use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment
   #[test]
   fn test_crud() {
     let settings = SETTINGS.to_owned();
-    let conn = establish_unpooled_connection();
+    let conn = &mut establish_unpooled_connection();
     let uid = Uuid::new_v4();
     let new_payment = PiPaymentForm {
       person_id: None,
@@ -83,8 +83,8 @@ use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment
       pi_username: "wepi".into(),
       comment: Some("wepi.social".into()),
 
-      identifier: uid.to_hyphenated().to_string(),
-      user_uid: uid.to_hyphenated().to_string(),
+      identifier: uid.hyphenated().to_string(),
+      user_uid: uid.hyphenated().to_string(),
       amount: 0.001,
       memo: "wepi.social".into(),
       to_address: "".into(),
@@ -102,7 +102,7 @@ use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment
       //..PiPaymentForm::default()
     };
 
-    let inserted_payment = PiPayment::create(&conn, &new_payment).unwrap();
+    let inserted_payment = PiPayment::create(conn, &new_payment).unwrap();
 
     let expected_payment = PiPayment {
       id: inserted_payment.id,
@@ -116,8 +116,8 @@ use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment
       pi_username: "wepi".into(),
       comment: Some("wepi.social".into()),
 
-      identifier: uid.to_hyphenated().to_string(),
-      user_uid: uid.to_hyphenated().to_string(),
+      identifier: uid.hyphenated().to_string(),
+      user_uid: uid.hyphenated().to_string(),
       amount: 0.001,
       memo: "wepi.social".into(),
       to_address: "".into(),
@@ -135,9 +135,9 @@ use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment
     };
 
 
-    let read_payment = PiPayment::read(&conn, inserted_payment.id).unwrap();
-    let updated_payment = PiPayment::update(&conn, inserted_payment.id, &new_payment).unwrap();
-    let num_deleted = PiPayment::delete(&conn, inserted_payment.id).unwrap();
+    let read_payment = PiPayment::read(conn, inserted_payment.id).unwrap();
+    let updated_payment = PiPayment::update(conn, inserted_payment.id, &new_payment).unwrap();
+    let num_deleted = PiPayment::delete(conn, inserted_payment.id).unwrap();
 
     assert_eq!(expected_payment, read_payment);
     assert_eq!(expected_payment, inserted_payment);

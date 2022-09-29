@@ -159,7 +159,7 @@ impl PerformCrud for PiRegisterWithFee {
     let mut dto: Option<PiPaymentDto> = None;
 
     let mut _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::find_by_pipayment_id(&conn, &_payment_id)
+      PiPayment::find_by_pipayment_id(conn, &_payment_id)
     })
     .await?
     {
@@ -201,7 +201,7 @@ impl PerformCrud for PiRegisterWithFee {
     }
 
     let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_alias)
+      Person::find_by_pi_name(conn, &_pi_alias)
     })
     .await?
     {
@@ -210,7 +210,7 @@ impl PerformCrud for PiRegisterWithFee {
     };
 
     let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &_new_user)
+      Person::find_by_name(conn, &_new_user)
     })
     .await?
     {
@@ -388,7 +388,7 @@ impl PerformCrud for PiRegisterWithFee {
     }
 
     let updated_payment = match blocking(context.pool(), move |conn| {
-      PiPayment::update(&conn, payment_id, &payment_form)
+      PiPayment::update(conn, payment_id, &payment_form)
     })
     .await?
     {
@@ -416,7 +416,7 @@ impl PerformCrud for PiRegisterWithFee {
 
       let local_user_id;
       let _local_user = match blocking(context.pool(), move |conn| {
-        LocalUserView::read_from_name(&conn, &_new_user2)
+        LocalUserView::read_from_name(conn, &_new_user2)
       })
       .await?
       {
@@ -439,7 +439,7 @@ impl PerformCrud for PiRegisterWithFee {
       local_user_id = _local_user.local_user.id.clone();
 
       let updated_local_user = match blocking(context.pool(), move |conn| {
-        LocalUser::update_password(&conn, local_user_id, &_new_password)
+        LocalUser::update_password(conn, local_user_id, &_new_password)
       })
       .await
       {
@@ -537,7 +537,7 @@ impl PerformCrud for PiRegisterWithFee {
 
         // If the local user creation errored, then delete that person
         blocking(context.pool(), move |conn| {
-          Person::delete(&conn, inserted_person.id)
+          Person::delete(conn, inserted_person.id)
         })
         .await??;
 

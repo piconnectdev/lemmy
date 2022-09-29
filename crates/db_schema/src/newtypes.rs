@@ -515,16 +515,32 @@ impl fmt::Display for PiUserId {
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct PrivateMessageReportId(pub Uuid);
+
+impl fmt::Display for PrivateMessageReportId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct LanguageId(pub i32);
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
-pub struct LocalUserLanguageId(pub i32);
+pub struct LocalUserLanguageId(pub Uuid);
+
+impl fmt::Display for LocalUserLanguageId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
 
 #[repr(transparent)]
-#[derive(Clone, PartialEq, Serialize, Deserialize, Debug)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "full", derive(AsExpression, FromSqlRow))]
-#[cfg_attr(feature = "full", sql_type = "diesel::sql_types::Text")]
+#[cfg_attr(feature = "full", diesel(sql_type = diesel::sql_types::Text))]
 pub struct DbUrl(pub(crate) Url);
 
 #[derive(Serialize, Deserialize)]

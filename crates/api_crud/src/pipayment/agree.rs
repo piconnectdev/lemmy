@@ -107,7 +107,7 @@ impl PerformCrud for PiAgreeRegister {
     let mut dto: Option<PiPaymentDto> = None;
 
     let mut _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::find_by_pipayment_id(&conn, &_payment_id)
+      PiPayment::find_by_pipayment_id(conn, &_payment_id)
     })
     .await?
     {
@@ -133,7 +133,7 @@ impl PerformCrud for PiAgreeRegister {
     }
 
     let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_alias)
+      Person::find_by_pi_name(conn, &_pi_alias)
     })
     .await?
     {
@@ -142,7 +142,7 @@ impl PerformCrud for PiAgreeRegister {
     };
 
     let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &_new_user)
+      Person::find_by_name(conn, &_new_user)
     })
     .await?
     {
@@ -284,7 +284,7 @@ impl PerformCrud for PiAgreeRegister {
 
     //if !exist {
     _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::create(&conn, &payment_form)
+      PiPayment::create(conn, &payment_form)
     })
     .await?
     {

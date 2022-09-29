@@ -47,11 +47,6 @@ pub struct Search {
   pub community_id: Option<String>,
   pub community_name: Option<String>,
   pub creator_id: Option<String>,
-  // pub type_: Option<String>,
-  // pub sort: Option<String>,
-  // pub listing_type: Option<String>,
-  
-  // pub creator_id: Option<PersonId>,
   pub type_: Option<SearchType>,
   pub sort: Option<SortType>,
   pub listing_type: Option<ListingType>,

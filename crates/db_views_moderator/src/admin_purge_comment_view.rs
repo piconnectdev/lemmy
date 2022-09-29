@@ -15,7 +15,7 @@ use lemmy_db_schema::{
 type AdminPurgeCommentViewTuple = (AdminPurgeComment, Option<PersonSafe>, Post);
 
 impl AdminPurgeCommentView {
-  pub fn list(conn: &PgConnection, params: ModlogListParams) -> Result<Vec<Self>, Error> {
+  pub fn list(conn: &mut PgConnection, params: ModlogListParams) -> Result<Vec<Self>, Error> {
     let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let admin_person_id_join = params.mod_person_id.unwrap_or(PersonId(uuid.clone()));
     let show_mod_names = !params.hide_modlog_names;

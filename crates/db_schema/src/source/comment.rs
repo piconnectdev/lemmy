@@ -5,10 +5,10 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "full")]
 use crate::schema::{comment, comment_like, comment_saved};
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(Queryable, Associations, Identifiable))]
-#[cfg_attr(feature = "full", belongs_to(crate::source::post::Post))]
-#[cfg_attr(feature = "full", table_name = "comment")]
+#[cfg_attr(feature = "full", diesel(belongs_to(crate::source::post::Post)))]
+#[cfg_attr(feature = "full", diesel(table_name = comment))]
 pub struct Comment {
   pub id: CommentId,
   pub creator_id: PersonId,
@@ -32,7 +32,7 @@ pub struct Comment {
 
 #[derive(Clone, Default)]
 #[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
-#[cfg_attr(feature = "full", table_name = "comment")]
+#[cfg_attr(feature = "full", diesel(table_name = comment))]
 pub struct CommentForm {
   pub creator_id: PersonId,
   pub post_id: PostId,
@@ -49,10 +49,10 @@ pub struct CommentForm {
   pub tx : Option<String>,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 #[cfg_attr(feature = "full", derive(Identifiable, Queryable, Associations))]
-#[cfg_attr(feature = "full", belongs_to(Comment))]
-#[cfg_attr(feature = "full", table_name = "comment_like")]
+#[cfg_attr(feature = "full", diesel(belongs_to(crate::source::comment::Comment)))]
+#[cfg_attr(feature = "full", diesel(table_name = comment_like))]
 pub struct CommentLike {
   pub id: CommentLikeId,
   pub person_id: PersonId,
@@ -64,7 +64,7 @@ pub struct CommentLike {
 
 #[derive(Clone)]
 #[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
-#[cfg_attr(feature = "full", table_name = "comment_like")]
+#[cfg_attr(feature = "full", diesel(table_name = comment_like))]
 pub struct CommentLikeForm {
   pub person_id: PersonId,
   pub comment_id: CommentId,
@@ -72,10 +72,10 @@ pub struct CommentLikeForm {
   pub score: i16,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "full", derive(Identifiable, Queryable, Associations))]
-#[cfg_attr(feature = "full", belongs_to(Comment))]
-#[cfg_attr(feature = "full", table_name = "comment_saved")]
+#[cfg_attr(feature = "full", diesel(belongs_to(crate::source::comment::Comment)))]
+#[cfg_attr(feature = "full", diesel(table_name = comment_saved))]
 pub struct CommentSaved {
   pub id: CommentSavedId,
   pub comment_id: CommentId,
@@ -84,7 +84,7 @@ pub struct CommentSaved {
 }
 
 #[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
-#[cfg_attr(feature = "full", table_name = "comment_saved")]
+#[cfg_attr(feature = "full", diesel(table_name = comment_saved))]
 pub struct CommentSavedForm {
   pub comment_id: CommentId,
   pub person_id: PersonId,

@@ -140,7 +140,7 @@ pub async fn pi_update_payment(
   let mut pid;
   let mut pmt;
   let mut _payment = match blocking(context.pool(), move |conn| {
-    PiPayment::find_by_pipayment_id(&conn, &_payment_id.to_owned())
+    PiPayment::find_by_pipayment_id(conn, &_payment_id.to_owned())
   })
   .await?
   {
@@ -271,7 +271,7 @@ pub async fn pi_update_payment(
   }
   if !exist {
     _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::create(&conn, &payment_form)
+      PiPayment::create(conn, &payment_form)
     })
     .await?
     {
@@ -299,7 +299,7 @@ pub async fn pi_update_payment(
           Ok(u) => {
             let post_id = PostId(u);
             let updated_post = match blocking(context.pool(), move |conn| {
-              Post::update_tx(&conn, post_id, &link.unwrap_or("".to_string()))
+              Post::update_tx(conn, post_id, &link.unwrap_or("".to_string()))
             })
             .await?
             {
@@ -327,7 +327,7 @@ pub async fn pi_update_payment(
           Ok(u) => {
             let comment_id = CommentId(u);
             let updated_comment = match blocking(context.pool(), move |conn| {
-              Comment::update_tx(&conn, comment_id, &link.unwrap_or("".to_string()))
+              Comment::update_tx(conn, comment_id, &link.unwrap_or("".to_string()))
             })
             .await?
             {
@@ -349,7 +349,7 @@ pub async fn pi_update_payment(
     pmt = _payment.unwrap();
     pid = pmt.id;
     let updated_payment = match blocking(context.pool(), move |conn| {
-      PiPayment::update(&conn, pid, &payment_form)
+      PiPayment::update(conn, pid, &payment_form)
     })
     .await?
     {

@@ -108,14 +108,7 @@ pub struct ResolveCommentReport {
   pub auth: Sensitive<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ResolveCommentReportResponse {
-  // TODO this should probably return the view
-  pub report_id: CommentReportId,
-  pub resolved: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ListCommentReports {
   pub page: Option<i64>,
   pub limit: Option<i64>,

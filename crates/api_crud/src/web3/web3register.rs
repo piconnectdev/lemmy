@@ -59,6 +59,10 @@ impl PerformCrud for Web3Register {
       require_application = site.require_application;
     }
 
+    if !settings.web3_enabled {
+      return Err(LemmyError::from_message("registration_closed"));
+    }
+
     let mut _address = data.address.clone();
     let mut _signature = data.signature.clone();
     let _token = data.token.clone();
@@ -155,7 +159,6 @@ impl PerformCrud for Web3Register {
         &data.info.username
       );
       return Err(LemmyError::from_message("register:invalid_username"));
-      //let err_type = format!("Register: invalid username {}", &data.info.username);
     }
 
     let actor_id = generate_local_apub_endpoint(
@@ -164,11 +167,6 @@ impl PerformCrud for Web3Register {
       &settings.get_protocol_and_hostname(),
     )?;
 
-    // Hide Pi user name, not store pi_uid
-    //let mut sha256 = Sha256::new();
-    //sha256.update(settings.pi_seed());
-    //sha256.update(data.pi_username.to_owned());
-    //let _pi_alias: String = format!("{:X}", sha256.finalize());
     let _alias = _address.clone();
     let _alias2 = _alias.clone();
     let _alias3 = _alias.clone();
@@ -181,7 +179,7 @@ impl PerformCrud for Web3Register {
     let mut _exist = false;
 
     let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &_new_user)
+      Person::find_by_name(conn, &_new_user)
     })
     .await?
     {
@@ -190,7 +188,7 @@ impl PerformCrud for Web3Register {
     };
 
     let other_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_web3_address(&conn, &_alias)
+      Person::find_by_web3_address(conn, &_alias)
     })
     .await?
     {
@@ -213,11 +211,6 @@ impl PerformCrud for Web3Register {
               println!("{} {} {}", data.address.clone(), err_type, &_alias2);
               _result = false;
               return Err(LemmyError::from_message(&err_type).into());
-              // return Ok(PiRegisterResponse {
-              //   success: false,
-              //   jwt: format!(""),
-              //   extra: Some(format!("{}",err_type)),
-              //   });
             } else {
               // Same name and account: change password ???
               change_password = true;
@@ -256,7 +249,7 @@ impl PerformCrud for Web3Register {
 
       let local_user_id;
       let _local_user = match blocking(context.pool(), move |conn| {
-        LocalUserView::read_from_name(&conn, &_new_user2)
+        LocalUserView::read_from_name(conn, &_new_user2)
       })
       .await?
       {
@@ -274,7 +267,7 @@ impl PerformCrud for Web3Register {
       local_user_id = _local_user.local_user.id.clone();
 
       let updated_local_user = match blocking(context.pool(), move |conn| {
-        LocalUser::update_password(&conn, local_user_id, &_new_password)
+        LocalUser::update_password(conn, local_user_id, &_new_password)
       })
       .await
       {
@@ -298,7 +291,7 @@ impl PerformCrud for Web3Register {
           )?
           .into(),
         ),
-        verify_email_sent: false,
+        verify_email_sent: _local_user.local_user.email_verified,
         registration_created: _local_user.local_user.accepted_application,
       });
     }
@@ -365,7 +358,7 @@ impl PerformCrud for Web3Register {
 
         // If the local user creation errored, then delete that person
         blocking(context.pool(), move |conn| {
-          Person::delete(&conn, inserted_person.id.clone())
+          Person::delete(conn, inserted_person.id.clone())
         })
         .await??;
 

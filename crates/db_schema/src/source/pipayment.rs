@@ -52,7 +52,7 @@ pub struct PiPayment {
 //#[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
 //#[cfg_attr(feature = "full", table_name = "pipayment")]
 #[derive(Insertable, AsChangeset)]
-#[table_name = "pipayment"]
+#[diesel(table_name = pipayment)]
 pub struct PiPaymentForm {
   // pub id: PaymentId,
   pub person_id: Option<PersonId>,

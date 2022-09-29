@@ -57,7 +57,7 @@ impl PerformCrud for PiPaymentFound {
     let mut dto: Option<PiPaymentDto> = None;
 
     let mut _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::find_by_pipayment_id(&conn, &_payment_id)
+      PiPayment::find_by_pipayment_id(conn, &_payment_id)
     })
     .await?
     {
@@ -249,7 +249,7 @@ impl PerformCrud for PiPaymentFound {
 
     if !exist {
       _payment = match blocking(context.pool(), move |conn| {
-        PiPayment::create(&conn, &payment_form)
+        PiPayment::create(conn, &payment_form)
       })
       .await?
       {
@@ -277,7 +277,7 @@ impl PerformCrud for PiPaymentFound {
       payment = _payment.unwrap();
       payment_id = payment.id;
       _payment = match blocking(context.pool(), move |conn| {
-        PiPayment::update(&conn, payment_id, &payment_form)
+        PiPayment::update(conn, payment_id, &payment_form)
       })
       .await?
       {

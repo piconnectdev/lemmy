@@ -1,8 +1,5 @@
 use crate::person::*;
-use lemmy_db_schema::newtypes::*;
 use serde::{Deserialize};
-use serde_json::Value;
-use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct Web3Register {

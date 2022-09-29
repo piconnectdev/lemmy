@@ -13,7 +13,6 @@ use lemmy_db_schema::{
     community_block,
     community_follower,
     community_person_ban,
-    language,
     local_user_language,
     person,
     person_block,
@@ -49,7 +48,7 @@ type CommentViewTuple = (
 
 impl CommentView {
   pub fn read(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     comment_id: CommentId,
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
@@ -156,7 +155,7 @@ impl CommentView {
 #[builder(field_defaults(default))]
 pub struct CommentQuery<'a> {
   #[builder(!default)]
-  conn: &'a PgConnection,
+  conn: &'a mut PgConnection,
   listing_type: Option<ListingType>,
   sort: Option<CommentSortType>,
   community_id: Option<CommunityId>,
@@ -167,6 +166,7 @@ pub struct CommentQuery<'a> {
   local_user: Option<&'a LocalUser>,
   search_term: Option<String>,
   saved_only: Option<bool>,
+  show_deleted_and_removed: Option<bool>,
   page: Option<i64>,
   limit: Option<i64>,
   max_depth: Option<i32>,
@@ -235,7 +235,6 @@ impl<'a> CommentQuery<'a> {
             .and(comment_like::person_id.eq(person_id_join)),
         ),
       )
-      .inner_join(language::table)
       .left_join(
         local_user_language::table.on(
           comment::language_id
@@ -314,6 +313,11 @@ impl<'a> CommentQuery<'a> {
 
     if self.saved_only.unwrap_or(false) {
       query = query.filter(comment_saved::id.is_not_null());
+    }
+
+    if !self.show_deleted_and_removed.unwrap_or(true) {
+      query = query.filter(comment::deleted.eq(false));
+      query = query.filter(comment::removed.eq(false));
     }
 
     if !self.local_user.map(|l| l.show_bot_accounts).unwrap_or(true) {
@@ -429,7 +433,7 @@ mod tests {
     inserted_community: Community,
   }
 
-  fn init_data(conn: &PgConnection) -> Data {
+  fn init_data(conn: &mut PgConnection) -> Data {
     let new_person = PersonForm {
       name: "timmy".into(),
       public_key: Some("pubkey".to_string()),
@@ -578,16 +582,16 @@ mod tests {
   #[test]
   #[serial]
   fn test_crud() {
-    let conn = establish_unpooled_connection();
-    let data = init_data(&conn);
+    let conn = &mut establish_unpooled_connection();
+    let data = init_data(conn);
 
-    let expected_comment_view_no_person = expected_comment_view(&data, &conn);
+    let expected_comment_view_no_person = expected_comment_view(&data, conn);
 
     let mut expected_comment_view_with_person = expected_comment_view_no_person.to_owned();
     expected_comment_view_with_person.my_vote = Some(1);
 
     let read_comment_views_no_person = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .post_id(Some(data.inserted_post.id))
       .build()
       .list()
@@ -599,7 +603,7 @@ mod tests {
     );
 
     let read_comment_views_with_person = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .post_id(Some(data.inserted_post.id))
       .local_user(Some(&data.inserted_local_user))
       .build()
@@ -615,7 +619,7 @@ mod tests {
     assert_eq!(5, read_comment_views_with_person.len());
 
     let read_comment_from_blocked_person = CommentView::read(
-      &conn,
+      conn,
       data.inserted_comment_1.id,
       Some(data.inserted_person.id),
     )
@@ -624,18 +628,18 @@ mod tests {
     // Make sure block set the creator blocked
     assert!(read_comment_from_blocked_person.creator_blocked);
 
-    cleanup(data, &conn);
+    cleanup(data, conn);
   }
 
   #[test]
   #[serial]
   fn test_comment_tree() {
-    let conn = establish_unpooled_connection();
-    let data = init_data(&conn);
+    let conn = &mut establish_unpooled_connection();
+    let data = init_data(conn);
 
     let top_path = data.inserted_comment_0.path.clone();
     let read_comment_views_top_path = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .post_id(Some(data.inserted_post.id))
       .parent_path(Some(top_path))
       .build()
@@ -644,7 +648,7 @@ mod tests {
 
     let child_path = data.inserted_comment_1.path.clone();
     let read_comment_views_child_path = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .post_id(Some(data.inserted_post.id))
       .parent_path(Some(child_path))
       .build()
@@ -664,7 +668,7 @@ mod tests {
     assert!(!child_comments.contains(&data.inserted_comment_2));
 
     let read_comment_views_top_max_depth = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .post_id(Some(data.inserted_post.id))
       .max_depth(Some(1))
       .build()
@@ -673,14 +677,14 @@ mod tests {
 
     // Make sure a depth limited one only has the top comment
     assert_eq!(
-      expected_comment_view(&data, &conn),
+      expected_comment_view(&data, conn),
       read_comment_views_top_max_depth[0]
     );
     assert_eq!(1, read_comment_views_top_max_depth.len());
 
     let child_path = data.inserted_comment_1.path.clone();
     let read_comment_views_parent_max_depth = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .post_id(Some(data.inserted_post.id))
       .parent_path(Some(child_path))
       .max_depth(Some(1))
@@ -696,19 +700,19 @@ mod tests {
       .eq("Comment 3"));
     assert_eq!(3, read_comment_views_parent_max_depth.len());
 
-    cleanup(data, &conn);
+    cleanup(data, conn);
   }
 
   #[test]
   #[serial]
   fn test_languages() {
-    let conn = establish_unpooled_connection();
-    let data = init_data(&conn);
+    let conn = &mut establish_unpooled_connection();
+    let data = init_data(conn);
 
     // by default, user has all languages enabled and should see all comments
     // (except from blocked user)
     let all_languages = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .local_user(Some(&data.inserted_local_user))
       .build()
       .list()
@@ -716,15 +720,15 @@ mod tests {
     assert_eq!(5, all_languages.len());
 
     // change user lang to finnish, should only show single finnish comment
-    let finnish_id = Language::read_id_from_code(&conn, "fi").unwrap();
+    let finnish_id = Language::read_id_from_code(conn, "fi").unwrap();
     LocalUserLanguage::update_user_languages(
-      &conn,
+      conn,
       Some(vec![finnish_id]),
       data.inserted_local_user.id,
     )
     .unwrap();
     let finnish_comment = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .local_user(Some(&data.inserted_local_user))
       .build()
       .list()
@@ -737,25 +741,25 @@ mod tests {
     assert_eq!(finnish_id, finnish_comment[0].comment.language_id);
 
     // now show all comments with undetermined language (which is the default value)
-    let undetermined_id = Language::read_id_from_code(&conn, "und").unwrap();
+    let undetermined_id = Language::read_id_from_code(conn, "und").unwrap();
     LocalUserLanguage::update_user_languages(
-      &conn,
+      conn,
       Some(vec![undetermined_id]),
       data.inserted_local_user.id,
     )
     .unwrap();
     let undetermined_comment = CommentQuery::builder()
-      .conn(&conn)
+      .conn(conn)
       .local_user(Some(&data.inserted_local_user))
       .build()
       .list()
       .unwrap();
     assert_eq!(3, undetermined_comment.len());
 
-    cleanup(data, &conn);
+    cleanup(data, conn);
   }
 
-  fn cleanup(data: Data, conn: &PgConnection) {
+  fn cleanup(data: Data, conn: &mut PgConnection) {
     CommentLike::remove(conn, data.inserted_person.id, data.inserted_comment_0.id).unwrap();
     Comment::delete(conn, data.inserted_comment_0.id).unwrap();
     Comment::delete(conn, data.inserted_comment_1.id).unwrap();
@@ -765,7 +769,7 @@ mod tests {
     Person::delete(conn, data.inserted_person_2.id).unwrap();
   }
 
-  fn expected_comment_view(data: &Data, conn: &PgConnection) -> CommentView {
+  fn expected_comment_view(data: &Data, conn: &mut PgConnection) -> CommentView {
     let agg = CommentAggregates::read(conn, data.inserted_comment_0.id).unwrap();
     CommentView {
       creator_banned_from_community: false,

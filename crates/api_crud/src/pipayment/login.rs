@@ -156,7 +156,7 @@ impl PerformCrud for PiLogin {
 
     // Find user exist ?
     let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(&conn, &_pi_alias)
+      Person::find_by_pi_name(conn, &_pi_alias)
     })
     .await?
     {
@@ -185,7 +185,7 @@ impl PerformCrud for PiLogin {
       let local_user_id;
       let username2 = username.clone();
       let _local_user = match blocking(context.pool(), move |conn| {
-        LocalUserView::read_from_name(&conn, &username2.clone())
+        LocalUserView::read_from_name(conn, &username2.clone())
       })
       .await?
       {
@@ -213,7 +213,7 @@ impl PerformCrud for PiLogin {
       //  let password_hash = hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
       if create_new {
         let updated_local_user = match blocking(context.pool(), move |conn| {
-          LocalUser::update_password(&conn, local_user_id.clone(), &_new_password)
+          LocalUser::update_password(conn, local_user_id.clone(), &_new_password)
         })
         .await
         {
@@ -282,7 +282,7 @@ impl PerformCrud for PiLogin {
 
     let _new_user2 = _new_user.clone();
     let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &_new_user2.clone())
+      Person::find_by_name(conn, &_new_user2.clone())
     })
     .await?
     {
@@ -394,7 +394,7 @@ impl PerformCrud for PiLogin {
 
         // If the local user creation errored, then delete that person
         blocking(context.pool(), move |conn| {
-          Person::delete(&conn, inserted_person.id)
+          Person::delete(conn, inserted_person.id)
         })
         .await??;
 

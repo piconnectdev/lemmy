@@ -7,10 +7,7 @@ use lemmy_api_common::{
   utils::{blocking, password_length_check},
   web3::*,
 };
-use lemmy_apub::{
-  generate_inbox_url, generate_local_apub_endpoint,
-  generate_shared_inbox_url, EndpointType,
-};
+use lemmy_apub::{ EndpointType,};
 use lemmy_db_schema::{
   newtypes::PersonId,
   source::{
@@ -24,11 +21,10 @@ use lemmy_db_views::structs::LocalUserView;
 use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
-  apub::generate_actor_keypair,
   claims::Claims,
   error::LemmyError,
   settings::SETTINGS,
-  utils::{check_slurs, eth_verify, is_valid_actor_name},
+  utils::{eth_verify, },
   ConnectionId,
 };
 use lemmy_websocket::{messages::CheckToken, LemmyContext};
@@ -42,7 +38,6 @@ impl PerformCrud for Web3Login {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
-    // Call from client after Pi.authenticate
 
     let data: &Web3Login = &self;
     let settings = SETTINGS.to_owned();
@@ -52,10 +47,10 @@ impl PerformCrud for Web3Login {
         return Err(LemmyError::from_message("registration_closed"));
       }
     }
-    if !settings.pinetwork.pi_free_login {
-      //return Err(LemmyError::from_message("registration_closed"));
+    if !settings.web3_enabled {
+      return Err(LemmyError::from_message("registration_closed"));
     }
-    // Hide Pi user name, not store pi_uid
+
     let mut _address = data.address.clone();
     let mut _signature = data.signature.clone();
     let _token = data.token.clone();
@@ -75,6 +70,14 @@ impl PerformCrud for Web3Login {
       data.signature.clone()
     );
     if !eth_verify(_address.clone(), text.clone(), _signature) {
+      println!(
+        "Web3Login is wrong signature for {} - {} {} {} ",
+        text.clone(),
+        _address.clone(),
+        _token.clone(),
+        data.signature.clone()
+      );
+
       return Err(LemmyError::from_message("registration_closed"));
     }
     // TODO: First, valid user address
@@ -104,11 +107,11 @@ impl PerformCrud for Web3Login {
     let person_id: PersonId;
     let mut _exist = false;
     let mut result = true;
-    let mut create_new = false;
+    let mut _change_password = false;
 
     match &data.info {
       Some(info) => {
-        create_new = true;
+        _change_password = true;
         _new_user = info.username_or_email.clone();
         _new_password = info.password.clone();
       }
@@ -138,41 +141,13 @@ impl PerformCrud for Web3Login {
       }
     }
 
-    // TODO: Verify signature
-
-    if create_new {
+    if _change_password {
       password_length_check(&_new_password)?;
-      // // Make sure passwords match
-      // if info.password != info.password_verify {
-      //   return Err(LemmyError::from_message("passwords_dont_match"));
-      // }
-
-      // // If its not the admin, check the captcha
-      // if !no_admins && Settings::get().captcha.enabled {
-      //   let check = context
-      //     .chat_server()
-      //     .send(CheckCaptcha {
-      //       uuid:
-      //         info
-      //         .captcha_uuid
-      //         .to_owned()
-      //         .unwrap_or_else(|| "".to_string()),
-      //       answer:
-      //         info
-      //         .captcha_answer
-      //         .to_owned()
-      //         .unwrap_or_else(|| "".to_string()),
-      //     })
-      //     .await?;
-      //   if !check {
-      //     return Err(LemmyError::from_message("captcha_incorrect"));
-      //   }
-      // }
     }
 
     // Find user exist ?
     let exist_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_web3_address(&conn, &_alias)
+      Person::find_by_web3_address(conn, &_alias)
     })
     .await?
     {
@@ -199,7 +174,7 @@ impl PerformCrud for Web3Login {
       let local_user_id;
       let username2 = username.clone();
       let _local_user = match blocking(context.pool(), move |conn| {
-        LocalUserView::read_from_name(&conn, &username2.clone())
+        LocalUserView::read_from_name(conn, &username2.clone())
       })
       .await?
       {
@@ -218,17 +193,16 @@ impl PerformCrud for Web3Login {
 
       local_user_id = _local_user.local_user.id.clone();
 
-      //  let password_hash = hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
-      if create_new {
+      if _change_password {
         let updated_local_user = match blocking(context.pool(), move |conn| {
-          LocalUser::update_password(&conn, local_user_id.clone(), &_new_password)
+          LocalUser::update_password(conn, local_user_id.clone(), &_new_password)
         })
         .await
         {
           Ok(lcu) => lcu,
           Err(_e) => {
             let err_type = format!(
-              "Web3: Update local user password error {} {}",
+              "Web3: Update user password error {} {}",
               &username.clone(),
               _e.to_string()
             );
@@ -240,174 +214,27 @@ impl PerformCrud for Web3Login {
       return Ok(LoginResponse {
         jwt: Some(
           Claims::jwt(
-            //updated_local_user.id.0,
             local_user_id.0,
             &context.secret().jwt_secret,
             &context.settings().hostname,
           )?
           .into(),
         ),
-        verify_email_sent: false,
-        registration_created: false,
+        verify_email_sent: _local_user.local_user.email_verified,
+        registration_created: _local_user.local_user.accepted_application,
       });
     } // User exist
 
     // We have to create both a person, and local_user
     //if !create_new {
       let err_type = format!(
-        "Auto create new account for web3 is disabled {} {}",
+        "Auto create new account for web3 is disabled {} {}, please register first",
         &_new_user.to_string().clone(),
         &_address.clone()
       );
       println!("{}", err_type);
       //return LemmyError::from_error_message(e, &err_type)?;
       return Err(LemmyError::from_message(&err_type).into());
-    //}
-    /*
-    check_slurs(&_new_user.clone(), &context.settings().slur_regex())?;
-    if !is_valid_actor_name(&_new_user.clone(), context.settings().actor_name_max_length) {
-      //println!("Invalid username {} {}", _pi_username.to_owned(), &_new_user.clone());
-      //return LemmyError::from_error_message(e, &err_type)?;
-      return Err(LemmyError::from_message("register:invalid_username").into());
-    }
 
-    let mut _change_password = false;
-
-    let _new_user2 = _new_user.clone();
-    let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(&conn, &_new_user2.clone())
-    })
-    .await?
-    {
-      Ok(c) => Some(c),
-      Err(_e) => None,
-    };
-
-    match person {
-      Some(other) => {
-        if extra_user_id != other.extra_user_id {
-          let err_type = format!(
-            "User {} is exist and belong to other Pi Account ",
-            &_new_user.to_string().clone()
-          );
-          println!("{} {} {}", username.clone(), err_type, &_alias2);
-          result = false;
-          //return LemmyError::from_error_message(e, &err_type)?;
-          //return Err(LemmyError::from_message(&err_type).into());
-          // return Ok(PiRegisterResponse {
-          //   success: false,
-          //   jwt: format!(""),
-          //   extra: Some(format!("{}",err_type)),
-          //   });
-        } else {
-          // Same name and account: change password ???
-          _change_password = true;
-        }
-      }
-      None => {
-        _change_password = true;
-        //change_username = true;
-        // Not allow change username
-        //let err_type = format!("Register: You already have user name {}", _new_user.clone());
-        //println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
-        //result = false;
-        //return Err(LemmyError::from_message(&err_type).into());
-        // return Ok(PiRegisterResponse {
-        //   success: false,
-        //   jwt: format!(""),
-        //   extra: Some(format!("{}",err_type)),
-        //   });
-      }
-    };
-
-    let actor_keypair = generate_actor_keypair()?;
-    let actor_id = generate_local_apub_endpoint(
-      EndpointType::Person,
-      &_new_user.clone(),
-      &settings.get_protocol_and_hostname(),
-    )?;
-
-    // Register the new person
-    let person_form = PersonForm {
-      name: _new_user.to_string(),
-      actor_id: Some(actor_id.clone()),
-      private_key: Some(Some(actor_keypair.private_key)),
-      public_key: Some(actor_keypair.public_key),
-      inbox_url: Some(generate_inbox_url(&actor_id)?),
-      shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
-      admin: None,
-      extra_user_id: Some(_alias2.clone()),
-      //web3_address: Some(_alias2.clone()),
-      ..PersonForm::default()
-    };
-
-    // insert the person
-    // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
-    let inserted_tmp = match blocking(context.pool(), move |conn| {
-      Person::create(conn, &person_form)
-    })
-    .await?
-    {
-      Ok(p) => Some(p),
-      Err(_e) => {
-        let err_type = format!(
-          "PiLogin: user_already_exists: {} {}, exists{},  err:{}",
-          &_new_user.to_string().clone(),
-          _alias3,
-          _exist,
-          _e.to_string()
-        );
-        return Err(LemmyError::from_message(&err_type));
-      }
-    };
-
-    let inserted_person = inserted_tmp.unwrap();
-    // Create the local user
-    let local_user_form = LocalUserForm {
-      person_id: Some(inserted_person.id),
-      email: None, //Some(info.email.to_owned()),
-      password_encrypted: Some(_new_password.to_string()),
-      show_nsfw: Some(false),
-      ..LocalUserForm::default()
-    };
-
-    let inserted_local_user = match blocking(context.pool(), move |conn| {
-      LocalUser::register(conn, &local_user_form)
-    })
-    .await?
-    {
-      Ok(lu) => lu,
-      Err(_e) => {
-        let err_type = if _e.to_string()
-          == "duplicate key value violates unique constraint \"local_user_email_key\""
-        {
-          "Register: email_already_exists"
-        } else {
-          "Register: user_already_exists"
-        };
-
-        // If the local user creation errored, then delete that person
-        blocking(context.pool(), move |conn| {
-          Person::delete(&conn, inserted_person.id)
-        })
-        .await??;
-
-        return Err(LemmyError::from_message(err_type));
-      }
-    };
-
-    // Return the jwt
-    Ok(LoginResponse {
-      jwt: Some(
-        Claims::jwt(
-          inserted_local_user.id.0,
-          &context.secret().jwt_secret,
-          &context.settings().hostname,
-        )?
-        .into(),
-      ),
-      verify_email_sent: false,
-      registration_created: false,
-    }) */
   }
 }

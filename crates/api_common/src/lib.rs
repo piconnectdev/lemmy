@@ -3,6 +3,7 @@ pub mod community;
 pub mod person;
 pub mod pipayment;
 pub mod post;
+pub mod private_message;
 #[cfg(feature = "full")]
 pub mod request;
 pub mod sensitive;

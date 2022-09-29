@@ -4,7 +4,7 @@ create table language (
   name text
 );
 create table local_user_language (
-  id serial primary key,
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
   local_user_id uuid references local_user on update cascade on delete cascade not null,
   language_id int references language on update cascade on delete cascade not null,
   unique (local_user_id, language_id)
