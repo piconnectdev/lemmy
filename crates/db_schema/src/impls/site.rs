@@ -1,6 +1,7 @@
 use crate::{newtypes::{DbUrl, SiteId}, source::site::*, traits::Crud};
 use diesel::{dsl::*, result::Error, *};
 use url::Url;
+use sha2::{Digest, Sha256};
 
 impl Crud for Site {
   type Form = SiteForm;
@@ -59,4 +60,39 @@ impl Site {
     use crate::schema::site::dsl::*;
     site.order_by(id).offset(1).get_results::<Self>(conn)
   }
+
+  pub fn update_srv_sign(
+    conn: &mut PgConnection,
+    site_id: SiteId,
+    sig: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::site::dsl::*;
+    diesel::update(site.find(site_id))
+      .set(srv_sign.eq(sig))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn sign_data(data: &Site) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    sha_meta.update(format!("{}",data.id.clone().0.simple()));
+    sha_meta.update(format!("{}",data.actor_id.clone().to_string()));
+    //sha_meta.update(format!("{}",data.published.clone().to_string()));
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(data.name.clone().clone());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
+    //let meta = lemmy_utils::utils::eth_sign_message(meta);
+    let content = lemmy_utils::utils::eth_sign_message(content);
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta), content);
+  }
+
 }

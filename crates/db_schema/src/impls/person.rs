@@ -14,6 +14,7 @@ use diesel::{
   RunQueryDsl,
   TextExpressionMethods,
 };
+use sha2::{Digest, Sha256};
 
 mod safe_type {
   use crate::{schema::person::columns::*, source::person::Person, traits::ToSafe};
@@ -225,6 +226,40 @@ impl Person {
       .first::<Person>(conn)
   }
 
+  pub fn update_srv_sign(
+    conn: &mut PgConnection,
+    person_id: PersonId,
+    sig: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::person::dsl::*;
+    diesel::update(person.find(person_id))
+      .set(srv_sign.eq(sig))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn sign_data(data: &Person) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    sha_meta.update(format!("{}",data.id.clone().0.simple()));
+    sha_meta.update(format!("{}",data.actor_id.clone().to_string()));
+    sha_meta.update(format!("{}",data.published.clone().to_string()));
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(data.name.clone().clone());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
+    //let meta = lemmy_utils::utils::eth_sign_message(meta);
+    let content = lemmy_utils::utils::eth_sign_message(content);
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta), content);
+  }
+
 }
 
 pub fn is_banned(banned_: bool, expires: Option<chrono::NaiveDateTime>) -> bool {
@@ -278,7 +313,10 @@ impl ApubActor for Person {
 
 #[cfg(test)]
 mod tests {
-  use crate::{source::person::*, traits::Crud, utils::establish_unpooled_connection};
+  use lemmy_utils::utils::eth_sign_message;
+  use sha2::{Digest, Sha256};
+  use uuid::Uuid;
+use crate::{source::person::*, traits::Crud, utils::establish_unpooled_connection};
 
   #[test]
   fn test_crud() {
@@ -291,6 +329,13 @@ mod tests {
     };
 
     let inserted_person = Person::create(conn, &new_person).unwrap();
+
+    let mut sha256 = Sha256::new();
+    sha256.update(format!("{}",inserted_person.id.0.simple()));
+    sha256.update(inserted_person.name.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+    let signature = eth_sign_message(message);
+    Person::update_srv_sign(conn, inserted_person.id, signature.clone().unwrap_or_default().as_str()).unwrap();
 
     let expected_person = Person {
       id: inserted_person.id,
@@ -323,10 +368,11 @@ mod tests {
       dap_address: None,
       cosmos_address: None,
       auth_sign: None, 
-      srv_sign: None,
+      srv_sign: signature,
       tx : None,
     };
 
+    
     let read_person = Person::read(conn, inserted_person.id).unwrap();
     let updated_person = Person::update(conn, inserted_person.id, &new_person).unwrap();
     let num_deleted = Person::delete(conn, inserted_person.id).unwrap();

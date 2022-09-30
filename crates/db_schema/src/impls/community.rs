@@ -25,6 +25,8 @@ use diesel::{
   TextExpressionMethods,
 };
 
+use sha2::{Digest, Sha256};
+
 mod safe_type {
   use crate::{schema::community::*, source::community::Community, traits::ToSafe};
 
@@ -160,6 +162,42 @@ impl Community {
       ))
       .get_result::<Self>(conn)
   }
+
+  pub fn update_srv_sign(
+    conn: &mut PgConnection,
+    community_id: CommunityId,
+    sig: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::community::dsl::*;
+    diesel::update(community.find(community_id))
+      .set(srv_sign.eq(sig))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn sign_data(data: &Community) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    sha_meta.update(format!("{}",data.id.clone().0.simple()));
+    sha_meta.update(format!("{}",data.actor_id.clone().to_string()));
+    sha_meta.update(format!("{}",data.published.clone().to_string()));
+    sha_meta.update(data.title.clone());
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(data.name.clone().clone());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
+    //let meta = lemmy_utils::utils::eth_sign_message(meta);
+    //let content = lemmy_utils::utils::eth_sign_message(content);
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta), Some(content));
+  }
+
 }
 
 impl Joinable for CommunityModerator {

@@ -15,6 +15,7 @@ use crate::{
 };
 use diesel::{dsl::*, result::Error, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl, *};
 use url::Url;
+use sha2::{Digest, Sha256};
 
 impl Crud for Post {
   type Form = PostForm;
@@ -67,17 +68,6 @@ impl Post {
 
     diesel::update(post.find(post_id))
       .set(ap_id.eq(apub_id))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn update_tx(conn: &mut PgConnection, post_id: PostId, txlink: &str) -> Result<Self, Error> {
-    use crate::schema::post::dsl::*;
-
-    diesel::update(post.find(post_id))
-      .set((
-        tx.eq(txlink),
-        updated.eq(naive_now()),
-      ))
       .get_result::<Self>(conn)
   }
 
@@ -254,6 +244,56 @@ impl Post {
     ))
     .get_results::<Self>(conn)
   }
+
+  pub fn update_tx(conn: &mut PgConnection, post_id: PostId, txlink: &str) -> Result<Self, Error> {
+    use crate::schema::post::dsl::*;
+
+    diesel::update(post.find(post_id))
+      .set((
+        tx.eq(txlink),
+        updated.eq(naive_now()),
+      ))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn update_srv_sign(
+    conn: &mut PgConnection,
+    post_id: PostId,
+    sig: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::post::dsl::*;
+    diesel::update(post.find(post_id))
+      .set(srv_sign.eq(sig))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn sign_data(data: &Post) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    sha_meta.update(format!("{}",data.id.clone().0.simple()));
+    sha_meta.update(format!("{}",data.creator_id.clone().0.simple()));
+    sha_meta.update(format!("{}",data.community_id.clone().0.simple()));
+    sha_meta.update(format!("{}",data.ap_id.clone().to_string()));
+    sha_meta.update(format!("{}",data.published.clone().to_string()));
+    //sha_meta.update(format!("{}",data.url.clone().unwrap_or_default().path()));
+    sha_meta.update(format!("{}",data.name.clone()));
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(data.body.clone().unwrap_or_default());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
+    //let meta = lemmy_utils::utils::eth_sign_message(meta);
+    //let content = lemmy_utils::utils::eth_sign_message(content);
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta), Some(content));
+  }
+
 }
 
 impl Likeable for PostLike {

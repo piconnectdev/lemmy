@@ -1,4 +1,4 @@
-use crate::{error::LemmyError, IpAddr};
+use crate::{error::LemmyError, IpAddr, settings::SECRETKEY};
 use actix_web::{dev::ConnectionInfo, web::Data};
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
 use ethsign::{KeyFile, Protected, PublicKey, SecretKey, Signature};
@@ -215,6 +215,29 @@ pub fn eth_verify(account: String, data: String, signature: String) -> bool {
   //println!("eth_verify: {} {} {:?} {}", account, hex::encode(message), pubkey, signature);
   //return Some(pubkey);
   true
+}
+
+pub fn eth_sign_message(message: String) -> Option<String> {
+
+  if !crate::settings::SETTINGS.web3.enabled {
+    return None;
+  }
+  
+  if !crate::settings::SETTINGS.secret_key.is_some() {
+    return None;
+  }
+
+  let key = SECRETKEY.clone();
+  let message_hash = eth_message(message.clone());
+  println!("\r\nSign to ETH-msg-hash {} of {} \r\n", hex::encode(message_hash), message.clone());
+  let signature = key.sign(&message_hash).unwrap();
+  let sig = format!(
+    "0x{}{}{:02X?}",
+    hex::encode(signature.r),
+    hex::encode(signature.s),
+    signature.v + 27
+  );
+  Some(sig)
 }
 
 #[cfg(test)]

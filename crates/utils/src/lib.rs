@@ -18,6 +18,8 @@ pub mod version;
 
 use std::{fmt, time::Duration};
 
+use utils::eth_sign_message;
+
 pub type ConnectionId = usize;
 
 pub const REQWEST_TIMEOUT: Duration = Duration::from_secs(10);

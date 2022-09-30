@@ -7,6 +7,7 @@ use crate::{
 use diesel::{dsl::*, result::Error, *};
 use lemmy_utils::error::LemmyError;
 use url::Url;
+use sha2::{Digest, Sha256};
 
 impl Crud for PrivateMessage {
   type Form = PrivateMessageForm;
@@ -129,6 +130,41 @@ impl PrivateMessage {
         .map(Into::into),
     )
   }
+
+  pub fn update_srv_sign(
+    conn: &mut PgConnection,
+    private_message_id: PrivateMessageId,
+    sig: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::private_message::dsl::*;
+    diesel::update(private_message.find(private_message_id))
+      .set(srv_sign.eq(sig))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn sign_data(updated_message: &PrivateMessage) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    sha_meta.update(format!("{}",updated_message.id.clone().0.simple()));
+    sha_meta.update(format!("{}",updated_message.creator_id.clone().0.simple()));
+    sha_meta.update(format!("{}",updated_message.recipient_id.clone().0.simple()));
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(updated_message.secured.clone().unwrap_or_default().clone());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
+    //let meta = lemmy_utils::utils::eth_sign_message(meta);
+    let content = lemmy_utils::utils::eth_sign_message(content);
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta), content);
+  }
+
 }
 
 impl DeleteableOrRemoveable for PrivateMessage {

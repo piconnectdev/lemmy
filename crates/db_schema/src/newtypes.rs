@@ -74,7 +74,7 @@ impl fmt::Display for LocalUserId {
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
-pub struct PrivateMessageId(Uuid);
+pub struct PrivateMessageId(pub Uuid);
 
 impl fmt::Display for PrivateMessageId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

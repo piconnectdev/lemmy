@@ -21,6 +21,8 @@ use lemmy_utils::{
   ConnectionId,
 };
 use lemmy_websocket::LemmyContext;
+use sha2::{Digest, Sha256};
+use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for SaveUserSettings {
@@ -95,7 +97,18 @@ impl Perform for SaveUserSettings {
     let default_sort_type = data.default_sort_type;
     let password_encrypted = local_user_view.local_user.password_encrypted;
     let public_key = Some(local_user_view.person.public_key);
-
+    
+    let mut sha256 = Sha256::new();
+    sha256.update(format!("{}",person_id.clone().0.simple()));
+    sha256.update(local_user_view.person.name.clone());
+    //sha256.update(auth_sign.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    // blocking(context.pool(), move |conn| {
+    //   Person::update_srv_sign(conn, person_id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
+    // })
+    // .await?;
+    
     let person_form = PersonForm {
       name: local_user_view.person.name,
       avatar,
@@ -126,11 +139,11 @@ impl Perform for SaveUserSettings {
       dap_address,
       cosmos_address,
       auth_sign, 
-      srv_sign: None, 
+      srv_sign: signature, 
       tx: None,
     };
 
-    blocking(context.pool(), move |conn| {
+    let person = blocking(context.pool(), move |conn| {
       Person::update(conn, person_id, &person_form)
     })
     .await?
@@ -187,7 +200,7 @@ impl Perform for SaveUserSettings {
         return Err(LemmyError::from_error_message(e, err_type));
       }
     };
-
+    
     // Return the jwt
     Ok(LoginResponse {
       jwt: Some(

@@ -37,6 +37,7 @@ use lemmy_websocket::{send::send_post_ws_message, LemmyContext, UserOperationCru
 use tracing::{warn, Instrument};
 use url::Url;
 use webmention::{Webmention, WebmentionError};
+use sha2::{Digest, Sha256};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for CreatePost {
@@ -140,6 +141,20 @@ impl PerformCrud for CreatePost {
     })
     .await?
     .map_err(|e| e.with_message("couldnt_create_post"))?;
+
+    // let mut sha256 = Sha256::new();
+    // sha256.update(format!("{}",inserted_post_id.clone().0.simple()));
+    // sha256.update(updated_post.name.clone());
+    // sha256.update(updated_post.body.unwrap_or_default().clone());
+    // sha256.update(format!("{}",updated_post.community_id.clone().0.simple()));
+    // sha256.update(format!("{}",updated_post.ap_id.clone().to_string()));
+    // let message: String = format!("{:x}", sha256.finalize());
+    // let signature = lemmy_utils::utils::eth_sign_message(message);
+    // blocking(context.pool(), move |conn| {
+    //   Post::update_srv_sign(conn, inserted_post_id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
+    // })
+    // .await?;
+
 
     // They like their own post by default
     let person_id = local_user_view.person.id;

@@ -14,19 +14,10 @@ use crate::{
 use diesel::{dsl::*, result::Error, *};
 use diesel_ltree::Ltree;
 use url::Url;
+use sha2::{Digest, Sha256};
 
 impl Comment {
-  pub fn update_ap_id(
-    conn: &mut PgConnection,
-    comment_id: CommentId,
-    apub_id: DbUrl,
-  ) -> Result<Self, Error> {
-    use crate::schema::comment::dsl::*;
-
-    diesel::update(comment.find(comment_id))
-      .set(ap_id.eq(apub_id))
-      .get_result::<Self>(conn)
-  }
+  
   pub fn update_tx(
     conn: &mut PgConnection,
     comment_id: CommentId,
@@ -36,6 +27,54 @@ impl Comment {
 
     diesel::update(comment.find(comment_id))
       .set(tx.eq(txlink))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn update_srv_sign(
+    conn: &mut PgConnection,
+    comment_id: CommentId,
+    sig: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::comment::dsl::*;
+    diesel::update(comment.find(comment_id))
+      .set(srv_sign.eq(sig))
+      .get_result::<Self>(conn)
+  }
+
+  pub fn sign_data(data: &Comment) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    sha_meta.update(format!("{}",data.id.clone().0.simple()));
+    sha_meta.update(format!("{}",data.ap_id.clone().to_string()));
+    sha_meta.update(format!("{}",data.creator_id.clone().to_string()));
+    sha_meta.update(format!("{}",data.post_id.clone().to_string()));
+    sha_meta.update(format!("{}",data.published.clone().to_string()));
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(data.content.clone());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
+    //let meta = lemmy_utils::utils::eth_sign_message(meta);
+    //let content = lemmy_utils::utils::eth_sign_message(content);
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta), Some(content));
+  }
+
+  pub fn update_ap_id(
+    conn: &mut PgConnection,
+    comment_id: CommentId,
+    apub_id: DbUrl,
+  ) -> Result<Self, Error> {
+    use crate::schema::comment::dsl::*;
+
+    diesel::update(comment.find(comment_id))
+      .set(ap_id.eq(apub_id))
       .get_result::<Self>(conn)
   }
 
