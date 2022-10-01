@@ -41,6 +41,28 @@
   </p>
 </p>
 
+## About This Fork
+
+This fork is a preparing for web3 social network.
+
+- Change all Id fields from i32 to Uuid.
+
+- Allow use web3 to register/login
+
+- Allow use [Pi Network](https://minepi.com/dinhngocbang) account to register / login
+
+- Add auth_sign: allow users sign on their post/comment
+
+- Add srv_sign: Servers sign on their data: sites, communities, persons, posts, comments
+
+- UI:
+   * Allow donate/tip to authors of posts/comments
+   * Mint posts / comments as NFT
+## Roadmap for Web3
+
+ - EVM smart contract
+
+
 ## About The Project
 
 Desktop|Mobile
