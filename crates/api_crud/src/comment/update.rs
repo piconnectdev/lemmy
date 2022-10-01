@@ -82,6 +82,10 @@ impl PerformCrud for EditComment {
       .content
       .as_ref()
       .map(|c| remove_slurs(c, &context.settings().slur_regex()));
+    
+    let content = content_slurs_removed.clone().unwrap_or(orig_comment.comment.content.clone());
+    let (signature, _meta, _content)  = Comment::sign_data_update(&orig_comment.comment.clone(), &content.clone());
+
     let comment_id = data.comment_id;
     let form = CommentForm {
       creator_id: orig_comment.comment.creator_id,
@@ -89,6 +93,8 @@ impl PerformCrud for EditComment {
       content: content_slurs_removed.unwrap_or(orig_comment.comment.content),
       distinguished: data.distinguished,
       language_id: data.language_id,
+      auth_sign: data.auth_sign.clone(),
+      srv_sign: signature,
       ..Default::default()
     };
     let updated_comment = blocking(context.pool(), move |conn| {

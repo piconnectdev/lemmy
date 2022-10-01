@@ -96,6 +96,7 @@ impl PerformCrud for CreateComment {
       post_id: data.post_id,
       creator_id: local_user_view.person.id,
       language_id,
+      auth_sign: data.auth_sign.clone(),
       ..CommentForm::default()
     };
 
@@ -107,6 +108,12 @@ impl PerformCrud for CreateComment {
     })
     .await?
     .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
+
+    let (signature, _meta, _content)  = Comment::sign_data(&inserted_comment.clone());
+    blocking(context.pool(), move |conn| {
+      Comment::update_srv_sign(conn, inserted_comment.id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
+    })
+    .await?;
 
     // Necessary to update the ap_id
     let inserted_comment_id = inserted_comment.id;

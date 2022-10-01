@@ -46,7 +46,6 @@ pub struct CommentForm {
   pub local: Option<bool>,
   pub distinguished: Option<bool>,
   pub language_id: Option<LanguageId>,
-  // pub cert: Option<String>,
   pub auth_sign: Option<String>,
   pub srv_sign: Option<String>,
   pub tx : Option<String>,

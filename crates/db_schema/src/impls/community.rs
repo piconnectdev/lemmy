@@ -179,13 +179,11 @@ impl Community {
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    sha_meta.update(format!("{}",data.id.clone().0.simple()));
-    sha_meta.update(format!("{}",data.actor_id.clone().to_string()));
-    sha_meta.update(format!("{}",data.published.clone().to_string()));
-    sha_meta.update(data.title.clone());
+    let meta_data = format!("{};{};{};{};", data.id.clone().0.simple(), data.actor_id.clone().to_string(),data.name.clone(), data.published.clone().to_string());
+    sha_meta.update(format!("{}",meta_data));
     let meta:  String = format!("{:x}", sha_meta.finalize());
 
-    sha_content.update(data.name.clone().clone());
+    sha_content.update(data.title.clone());
     let content:  String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
@@ -195,7 +193,7 @@ impl Community {
     //let meta = lemmy_utils::utils::eth_sign_message(meta);
     //let content = lemmy_utils::utils::eth_sign_message(content);
     let signature = lemmy_utils::utils::eth_sign_message(message);
-    return (signature, Some(meta), Some(content));
+    return (signature, Some(meta_data), Some(content));
   }
 
 }

@@ -21,8 +21,6 @@ use lemmy_utils::{
   ConnectionId,
 };
 use lemmy_websocket::LemmyContext;
-use sha2::{Digest, Sha256};
-use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for SaveUserSettings {
@@ -97,18 +95,7 @@ impl Perform for SaveUserSettings {
     let default_sort_type = data.default_sort_type;
     let password_encrypted = local_user_view.local_user.password_encrypted;
     let public_key = Some(local_user_view.person.public_key);
-    
-    let mut sha256 = Sha256::new();
-    sha256.update(format!("{}",person_id.clone().0.simple()));
-    sha256.update(local_user_view.person.name.clone());
-    //sha256.update(auth_sign.clone());
-    let message: String = format!("{:x}", sha256.finalize());
-    let signature = lemmy_utils::utils::eth_sign_message(message);
-    // blocking(context.pool(), move |conn| {
-    //   Person::update_srv_sign(conn, person_id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
-    // })
-    // .await?;
-    
+        
     let person_form = PersonForm {
       name: local_user_view.person.name,
       avatar,
@@ -139,7 +126,7 @@ impl Perform for SaveUserSettings {
       dap_address,
       cosmos_address,
       auth_sign, 
-      srv_sign: signature, 
+      srv_sign: None, 
       tx: None,
     };
 
@@ -148,6 +135,12 @@ impl Perform for SaveUserSettings {
     })
     .await?
     .map_err(|e| LemmyError::from_error_message(e, "user_already_exists"))?;
+
+    let (signature, _meta, _content) = Person::sign_data(&person.clone());
+    blocking(context.pool(), move |conn| {
+      Person::update_srv_sign(conn, person_id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
+    })
+    .await?;
 
     if let Some(discussion_languages) = data.discussion_languages.clone() {
       // An empty array is a "clear" / set all languages

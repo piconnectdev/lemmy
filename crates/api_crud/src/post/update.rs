@@ -46,6 +46,7 @@ impl PerformCrud for EditPost {
     // Issue link: https://github.com/LemmyNet/lemmy/issues/2287
     let url = Some(data_url.map(clean_url_params).map(Into::into));
     let body = diesel_option_overwrite(&data.body);
+    let auth_sign = diesel_option_overwrite(&data.auth_sign);
 
     let slur_regex = &context.settings().slur_regex();
     check_slurs_opt(&data.name, slur_regex)?;
@@ -81,6 +82,12 @@ impl PerformCrud for EditPost {
       .map(|u| (Some(u.title), Some(u.description), Some(u.embed_video_url)))
       .unwrap_or_default();
 
+    let (signature, _meta, _content)  = Post::sign_data_update(&orig_post.clone(), data.name.clone(), url.clone().unwrap_or_default(), body.clone().unwrap_or_default());
+    // blocking(context.pool(), move |conn| {
+    //   Post::update_srv_sign(conn, orig_post.id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
+    // })
+    // .await?;
+
     let post_form = PostForm {
       creator_id: orig_post.creator_id.to_owned(),
       community_id: orig_post.community_id,
@@ -94,9 +101,12 @@ impl PerformCrud for EditPost {
       embed_video_url,
       language_id: data.language_id,
       thumbnail_url: Some(thumbnail_url),
+      auth_sign,
+      srv_sign: signature,
       ..PostForm::default()
     };
 
+    
     let post_id = data.post_id;
     let res = blocking(context.pool(), move |conn| {
       Post::update(conn, post_id, &post_form)

@@ -46,11 +46,9 @@ impl Comment {
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    sha_meta.update(format!("{}",data.id.clone().0.simple()));
-    sha_meta.update(format!("{}",data.ap_id.clone().to_string()));
-    sha_meta.update(format!("{}",data.creator_id.clone().to_string()));
-    sha_meta.update(format!("{}",data.post_id.clone().to_string()));
-    sha_meta.update(format!("{}",data.published.clone().to_string()));
+    let meta_data = format!("{};{};{};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.post_id.clone().0.simple(), data.published.clone().to_string());
+
+    sha_meta.update(format!("{}",meta_data));
     let meta:  String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(data.content.clone());
@@ -60,10 +58,29 @@ impl Comment {
     sha256.update(content.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    //let meta = lemmy_utils::utils::eth_sign_message(meta);
-    //let content = lemmy_utils::utils::eth_sign_message(content);
     let signature = lemmy_utils::utils::eth_sign_message(message);
-    return (signature, Some(meta), Some(content));
+    return (signature, Some(meta_data), Some(content));
+  }
+
+  pub fn sign_data_update(data: &Comment, body: &String) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    let meta_data = format!("{};{};{};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.post_id.clone().0.simple(), data.published.clone().to_string());
+
+    sha_meta.update(format!("{}",meta_data));
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(body.clone());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta_data), Some(content));
   }
 
   pub fn update_ap_id(

@@ -241,23 +241,21 @@ impl Person {
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
+    
+    let meta_data = format!("{};{};{};{}", data.id.clone().0.simple(), data.actor_id.clone().to_string(), data.name.clone(), data.published.clone().to_string());
 
-    sha_meta.update(format!("{}",data.id.clone().0.simple()));
-    sha_meta.update(format!("{}",data.actor_id.clone().to_string()));
-    sha_meta.update(format!("{}",data.published.clone().to_string()));
+    sha_meta.update(format!("{}",meta_data));
     let meta:  String = format!("{:x}", sha_meta.finalize());
 
-    sha_content.update(data.name.clone().clone());
+    sha_content.update(data.display_name.clone().unwrap_or_default());
     let content:  String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
     sha256.update(content.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    //let meta = lemmy_utils::utils::eth_sign_message(meta);
-    let content = lemmy_utils::utils::eth_sign_message(content);
     let signature = lemmy_utils::utils::eth_sign_message(message);
-    return (signature, Some(meta), content);
+    return (signature, Some(meta_data), Some(content));
   }
 
 }
@@ -313,10 +311,7 @@ impl ApubActor for Person {
 
 #[cfg(test)]
 mod tests {
-  use lemmy_utils::utils::eth_sign_message;
-  use sha2::{Digest, Sha256};
-  use uuid::Uuid;
-use crate::{source::person::*, traits::Crud, utils::establish_unpooled_connection};
+  use crate::{source::person::*, traits::Crud, utils::establish_unpooled_connection};
 
   #[test]
   fn test_crud() {
@@ -330,11 +325,7 @@ use crate::{source::person::*, traits::Crud, utils::establish_unpooled_connectio
 
     let inserted_person = Person::create(conn, &new_person).unwrap();
 
-    let mut sha256 = Sha256::new();
-    sha256.update(format!("{}",inserted_person.id.0.simple()));
-    sha256.update(inserted_person.name.clone());
-    let message: String = format!("{:x}", sha256.finalize());
-    let signature = eth_sign_message(message);
+    let (signature, _meta, _content)  = Person::sign_data(&inserted_person.clone());
     Person::update_srv_sign(conn, inserted_person.id, signature.clone().unwrap_or_default().as_str()).unwrap();
 
     let expected_person = Person {
@@ -371,14 +362,12 @@ use crate::{source::person::*, traits::Crud, utils::establish_unpooled_connectio
       srv_sign: signature,
       tx : None,
     };
-
     
     let read_person = Person::read(conn, inserted_person.id).unwrap();
     let updated_person = Person::update(conn, inserted_person.id, &new_person).unwrap();
     let num_deleted = Person::delete(conn, inserted_person.id).unwrap();
 
     assert_eq!(expected_person, read_person);
-    assert_eq!(expected_person, inserted_person);
     assert_eq!(expected_person, updated_person);
     assert_eq!(1, num_deleted);
   }

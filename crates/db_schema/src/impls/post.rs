@@ -272,13 +272,18 @@ impl Post {
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    sha_meta.update(format!("{}",data.id.clone().0.simple()));
-    sha_meta.update(format!("{}",data.creator_id.clone().0.simple()));
-    sha_meta.update(format!("{}",data.community_id.clone().0.simple()));
-    sha_meta.update(format!("{}",data.ap_id.clone().to_string()));
-    sha_meta.update(format!("{}",data.published.clone().to_string()));
-    //sha_meta.update(format!("{}",data.url.clone().unwrap_or_default().path()));
-    sha_meta.update(format!("{}",data.name.clone()));
+    // sha_meta.update(format!("{}",data.id.clone().0.simple()));
+    // sha_meta.update(format!("{}",data.creator_id.clone().0.simple()));
+    // sha_meta.update(format!("{}",data.community_id.clone().0.simple()));
+    // sha_meta.update(format!("{}",data.ap_id.clone().to_string()));
+    // sha_meta.update(format!("{}",data.published.clone().to_string()));
+    // //sha_meta.update(format!("{}",data.url.clone().unwrap_or_default().path()));
+    // sha_meta.update(format!("{}",data.name.clone()));
+
+    let meta_data = format!("{};{};{};{};{:?};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.community_id.clone().0.simple(), 
+    data.url.clone(), data.name.clone(), data.published.clone().to_string());
+
+    sha_meta.update(format!("{}", meta_data));
     let meta:  String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(data.body.clone().unwrap_or_default());
@@ -288,8 +293,28 @@ impl Post {
     sha256.update(content.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    //let meta = lemmy_utils::utils::eth_sign_message(meta);
-    //let content = lemmy_utils::utils::eth_sign_message(content);
+    let signature = lemmy_utils::utils::eth_sign_message(message);
+    return (signature, Some(meta), Some(content));
+  }
+
+  pub fn sign_data_update(data: &Post, name: Option<String>, url: Option<DbUrl>, body: Option<String>) -> (Option<String>, Option<String>, Option<String>) {    
+    let mut sha_meta = Sha256::new();
+    let mut sha_content = Sha256::new();
+    let mut sha256 = Sha256::new();
+
+    let meta_data = format!("{};{};{};{};{:?};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.community_id.clone().0.simple(), 
+    url.clone(), name.to_owned().unwrap_or(data.name.clone()), data.published.clone().to_string());
+
+    sha_meta.update(format!("{}", meta_data));
+    let meta:  String = format!("{:x}", sha_meta.finalize());
+
+    sha_content.update(body.clone().unwrap_or_default());
+    let content:  String = format!("{:x}", sha_content.finalize());
+
+    sha256.update(meta.clone());
+    sha256.update(content.clone());
+    let message: String = format!("{:x}", sha256.finalize());
+
     let signature = lemmy_utils::utils::eth_sign_message(message);
     return (signature, Some(meta), Some(content));
   }

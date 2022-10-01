@@ -218,7 +218,7 @@ impl ApubObject for ApubPost {
         local: Some(false),
         language_id: language,
         auth_sign: None,
-        //srv_sign: None, 
+        srv_sign: None, 
         tx: None,
       }
     } else {

@@ -56,8 +56,8 @@ pub struct PostForm {
   pub ap_id: Option<DbUrl>,
   pub local: Option<bool>,
   pub language_id: Option<LanguageId>,
-  pub auth_sign: Option<String>,
-  //pub srv_sign: Option<String>,
+  pub auth_sign: Option<Option<String>>,
+  pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
 
