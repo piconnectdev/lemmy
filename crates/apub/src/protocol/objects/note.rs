@@ -14,7 +14,6 @@ use activitypub_federation::{
 };
 use activitystreams_kinds::object::NoteType;
 use chrono::{DateTime, FixedOffset};
-use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::{source::post::Post, traits::Crud};
 use lemmy_utils::error::LemmyError;
 use lemmy_websocket::LemmyContext;
@@ -59,18 +58,18 @@ impl Note {
     let parent = Box::pin(
       self
         .in_reply_to
-        .dereference(context, local_instance(context), request_counter)
+        .dereference(context, local_instance(context).await, request_counter)
         .await?,
     );
     match parent.deref() {
       PostOrComment::Post(p) => {
-        let post = p.deref().to_owned();
+        let post = p.deref().clone();
         Ok((post, None))
       }
       PostOrComment::Comment(c) => {
         let post_id = c.post_id;
-        let post = blocking(context.pool(), move |conn| Post::read(conn, post_id)).await??;
-        let comment = c.deref().to_owned();
+        let post = Post::read(context.pool(), post_id).await?;
+        let comment = c.deref().clone();
         Ok((post.into(), Some(comment)))
       }
     }

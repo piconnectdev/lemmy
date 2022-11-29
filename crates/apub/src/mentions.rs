@@ -5,7 +5,6 @@ use crate::{
 };
 use activitypub_federation::core::object_id::ObjectId;
 use activitystreams_kinds::link::MentionType;
-use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::{
   source::{comment::Comment, person::Person, post::Post},
   traits::Crud,
@@ -73,10 +72,9 @@ pub async fn collect_non_local_mentions(
     .collect::<Vec<MentionData>>();
 
   for mention in &mentions {
-    // TODO should it be fetching it every time?
     let identifier = format!("{}@{}", mention.name, mention.domain);
     let actor_id =
-      webfinger_resolve_actor::<ApubPerson>(&identifier, context, request_counter).await;
+      webfinger_resolve_actor::<ApubPerson>(&identifier, true, context, request_counter).await;
     if let Ok(actor_id) = actor_id {
       let actor_id: ObjectId<ApubPerson> = ObjectId::new(actor_id);
       addressed_ccs.push(actor_id.to_string().parse()?);
@@ -105,17 +103,12 @@ async fn get_comment_parent_creator(
   comment: &Comment,
 ) -> Result<ApubPerson, LemmyError> {
   let parent_creator_id = if let Some(parent_comment_id) = comment.parent_comment_id() {
-    let parent_comment =
-      blocking(pool, move |conn| Comment::read(conn, parent_comment_id)).await??;
+    let parent_comment = Comment::read(pool, parent_comment_id).await?;
     parent_comment.creator_id
   } else {
     let parent_post_id = comment.post_id;
-    let parent_post = blocking(pool, move |conn| Post::read(conn, parent_post_id)).await??;
+    let parent_post = Post::read(pool, parent_post_id).await?;
     parent_post.creator_id
   };
-  Ok(
-    blocking(pool, move |conn| Person::read(conn, parent_creator_id))
-      .await??
-      .into(),
-  )
+  Ok(Person::read(pool, parent_creator_id).await?.into())
 }

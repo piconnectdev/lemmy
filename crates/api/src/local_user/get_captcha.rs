@@ -3,7 +3,7 @@ use actix_web::web::Data;
 use captcha::{gen, Difficulty};
 use chrono::Duration;
 use lemmy_api_common::person::{CaptchaResponse, GetCaptcha, GetCaptchaResponse};
-use lemmy_db_schema::utils::naive_now;
+use lemmy_db_schema::{source::local_site::LocalSite, utils::naive_now};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::{messages::CaptchaItem, LemmyContext};
 
@@ -17,13 +17,13 @@ impl Perform for GetCaptcha {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<Self::Response, LemmyError> {
-    let captcha_settings = &context.settings().captcha;
+    let local_site = LocalSite::read(context.pool()).await?;
 
-    if !captcha_settings.enabled {
+    if !local_site.captcha_enabled {
       return Ok(GetCaptchaResponse { ok: None });
     }
 
-    let captcha = gen(match captcha_settings.difficulty.as_str() {
+    let captcha = gen(match local_site.captcha_difficulty.as_str() {
       "easy" => Difficulty::Easy,
       "hard" => Difficulty::Hard,
       _ => Difficulty::Medium,
@@ -39,7 +39,7 @@ impl Perform for GetCaptcha {
 
     let captcha_item = CaptchaItem {
       answer,
-      uuid: uuid.to_owned(),
+      uuid: uuid.clone(),
       expires: naive_now() + Duration::minutes(10), // expires in 10 minutes
     };
 

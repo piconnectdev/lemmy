@@ -1,5 +1,14 @@
 use crate::structs::{ModAddCommunityView, ModlogListParams};
-use diesel::{result::Error, *};
+use diesel::{
+  result::Error,
+  BoolExpressionMethods,
+  ExpressionMethods,
+  IntoSql,
+  JoinOnDsl,
+  NullableExpressionMethods,
+  QueryDsl,
+};
+use diesel_async::RunQueryDsl;
 use lemmy_db_schema::{
   newtypes::PersonId,
   schema::{community, mod_add_community, person},
@@ -9,7 +18,7 @@ use lemmy_db_schema::{
     person::{Person, PersonSafe},
   },
   traits::{ToSafe, ViewToVec},
-  utils::limit_and_offset,
+  utils::{get_conn, limit_and_offset, DbPool},
 };
 
 type ModAddCommunityViewTuple = (
@@ -20,7 +29,8 @@ type ModAddCommunityViewTuple = (
 );
 
 impl ModAddCommunityView {
-  pub fn list(conn: &mut PgConnection, params: ModlogListParams) -> Result<Vec<Self>, Error> {
+  pub async fn list(pool: &DbPool, params: ModlogListParams) -> Result<Vec<Self>, Error> {
+    let conn = &mut get_conn(pool).await?;
     let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let person_alias_1 = diesel::alias!(person as person1);
     let admin_person_id_join = params.mod_person_id.unwrap_or(PersonId(uuid.clone()));
@@ -62,7 +72,8 @@ impl ModAddCommunityView {
       .limit(limit)
       .offset(offset)
       .order_by(mod_add_community::when_.desc())
-      .load::<ModAddCommunityViewTuple>(conn)?;
+      .load::<ModAddCommunityViewTuple>(conn)
+      .await?;
 
     let results = Self::from_tuple_to_vec(res);
     Ok(results)

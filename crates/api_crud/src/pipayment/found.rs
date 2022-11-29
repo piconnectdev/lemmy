@@ -1,9 +1,10 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{pipayment::*, utils::blocking};
+use lemmy_api_common::{pipayment::*, };
 use lemmy_db_schema::{
-  impls::pipayment::PiPayment_, newtypes::PaymentId, source::pipayment::*, traits::Crud,
+  //impls::pipayment::PiPaymentModerator, 
+  newtypes::PiPaymentId, source::pipayment::*, traits::Crud,
   utils::naive_now,
 };
 
@@ -24,9 +25,6 @@ impl PerformCrud for PiPaymentFound {
     let settings = SETTINGS.to_owned();
     let data: &PiPaymentFound = self;
 
-    //check_slurs(&data.pi_username, &context.settings().slur_regex())?;
-    //check_slurs_opt(&data.paymentid.unwrap())?;
-    //check_slurs_opt(&data.username)?;
     let mut sha256 = Sha256::new();
     sha256.update(settings.pi_seed());
     sha256.update(data.pi_username.to_owned());
@@ -39,7 +37,7 @@ impl PerformCrud for PiPaymentFound {
     let _pi_uid = data.pi_uid.clone();
 
     let mut exist = false;
-    let mut payment_id: PaymentId;
+    let mut payment_id: PiPaymentId;
     let payment;
     let mut comment: String = "".to_string();
     let mut memo: String;
@@ -56,10 +54,7 @@ impl PerformCrud for PiPaymentFound {
     let txlink: String;
     let mut dto: Option<PiPaymentDto> = None;
 
-    let mut _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::find_by_pipayment_id(conn, &_payment_id)
-    })
-    .await?
+    let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {
       Ok(c) => {
         exist = true;
@@ -87,7 +82,6 @@ impl PerformCrud for PiPaymentFound {
       exist = false;
     }
 
-    //let dto_read = pi_payment(context.client(), &data.paymentid.clone()).await?;
     let dto_read = match pi_payment(context.client(), &data.paymentid.clone()).await {
       Ok(c) => {
         approved = c.status.developer_approved;
@@ -208,50 +202,48 @@ impl PerformCrud for PiPaymentFound {
       memo.clone(),
       comment
     );
-    let mut payment_form = PiPaymentForm {
-      person_id: None,
-      ref_id: ref_id.clone(),
-      testnet: settings.pinetwork.pi_testnet,
-      finished: finished,
-      updated: updated,
-      pi_uid: data.pi_uid,         //data.pi_uid
-      pi_username: "".to_string(), //data.pi_username.clone(), Hide user name
-      comment: Some(_comment),     //"".to_string(),
 
-      identifier: data.paymentid.clone(),
-      user_uid: _payment_dto.user_uid.clone(), //"".to_string(), //_payment_dto.user_uid,
-      amount: _payment_dto.amount,
-      memo: memo,
-      to_address: _payment_dto.to_address,
-      created_at: create_at,
-      approved: _payment_dto.status.developer_approved,
-      verified: _payment_dto.status.transaction_verified,
-      completed: _payment_dto.status.developer_completed,
-      cancelled: _payment_dto.status.cancelled,
-      user_cancelled: _payment_dto.status.user_cancelled,
-      tx_link: "".to_string(),
-      tx_id: "".to_string(),
-      tx_verified: false,
-      metadata: _payment_dto.metadata,
-      extras: None,
-      //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
-      //..PiPaymentForm::default()
-    };
-
-    match _payment_dto.transaction {
-      Some(tx) => {
-        payment_form.tx_link = tx._link;
-        payment_form.tx_verified = tx.verified;
-        payment_form.tx_id = tx.txid;
-      }
-      None => {}
-    }
 
     if !exist {
-      _payment = match blocking(context.pool(), move |conn| {
-        PiPayment::create(conn, &payment_form)
-      })
-      .await?
+      let mut payment_form = PiPaymentInsertForm::builder()
+      .person_id( None)
+      .ref_id( ref_id.clone())
+      .testnet( settings.pinetwork.pi_testnet)
+      .finished( finished)
+      .updated( updated)
+      .pi_uid( data.pi_uid)         //data.pi_uid
+      .pi_username( "".to_string()) //data.pi_username.clone(), Hide user name
+      .comment( Some(_comment))     //"".to_string(),
+
+      .identifier( data.paymentid.clone())
+      .user_uid( _payment_dto.user_uid.clone()) //"".to_string(), //_payment_dto.user_uid,
+      .amount( _payment_dto.amount)
+      .memo( memo)
+      .to_address( _payment_dto.to_address)
+      .created_at( create_at)
+      .approved( _payment_dto.status.developer_approved)
+      .verified( _payment_dto.status.transaction_verified)
+      .completed( _payment_dto.status.developer_completed)
+      .cancelled( _payment_dto.status.cancelled)
+      .user_cancelled( _payment_dto.status.user_cancelled)
+      .tx_link( "".to_string())
+      .tx_id( "".to_string())
+      .tx_verified( false)
+      .metadata( _payment_dto.metadata)
+      .extras( None)
+      //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
+      //..PiPaymentForm::default()
+      .build();
+
+      match _payment_dto.transaction {
+        Some(tx) => {
+          payment_form.tx_link = tx._link;
+          payment_form.tx_verified = tx.verified;
+          payment_form.tx_id = tx.txid;
+        }
+        None => {}
+      }
+      _payment = match PiPayment::create(context.pool(), &payment_form).await
       {
         Ok(payment) => {
           payment_id = payment.id;
@@ -276,10 +268,9 @@ impl PerformCrud for PiPaymentFound {
     } else {
       payment = _payment.unwrap();
       payment_id = payment.id;
-      _payment = match blocking(context.pool(), move |conn| {
-        PiPayment::update(conn, payment_id, &payment_form)
-      })
-      .await?
+      let mut payment_form = PiPaymentUpdateForm::builder()
+              .build();
+      _payment = match PiPayment::update(context.pool(), payment_id, &payment_form).await
       {
         Ok(payment) => Some(payment),
         Err(_e) => {

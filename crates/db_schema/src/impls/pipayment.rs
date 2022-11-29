@@ -1,62 +1,90 @@
-use diesel::{dsl::*, result::Error, *};
+use diesel::{result::Error,};
 use crate::{
   source::pipayment::*, 
-  newtypes::{PaymentId, PiUserId}, 
+  newtypes::{PiPaymentId, PiUserId, PersonId}, 
   traits::{Crud, },
+  utils::{get_conn, DbPool, }
 };
+use diesel::{dsl::insert_into, ExpressionMethods, QueryDsl, };
+use diesel_async::RunQueryDsl;
 
+#[async_trait]
 impl Crud for PiPayment {
-  type Form = PiPaymentForm;
-  type IdType = PaymentId;
-  fn read(conn: &mut PgConnection, pipayment_id: PaymentId) -> Result<Self, Error> {
+  type InsertForm = PiPaymentInsertForm;
+  type UpdateForm = PiPaymentUpdateForm;
+  type IdType = PiPaymentId;
+  async fn read(pool: &DbPool, pid: PiPaymentId) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
-    pipayment.find(pipayment_id).first::<Self>(conn)
+    let conn = &mut get_conn(pool).await?;
+    pipayment.find(pid).first::<Self>(conn)
+    .await
   }
 
-  fn create(conn: &mut PgConnection, new_payment: &PiPaymentForm) -> Result<Self, Error> {
+  async fn create(pool: &DbPool, new_payment: &Self::InsertForm) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     insert_into(pipayment)
       .values(new_payment)
       .get_result::<Self>(conn)
+      .await
   }
 
-  fn update(
-    conn: &mut PgConnection,
-    payment_id: PaymentId,
-    new_payment: &PiPaymentForm,
+  async fn update(
+    pool: &DbPool, 
+    payment_id: PiPaymentId,
+    new_payment: &Self::UpdateForm,
   ) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     diesel::update(pipayment.find(payment_id))
       .set(new_payment)
       .get_result::<Self>(conn)
+      .await
   }
 
-  fn delete(conn: &mut PgConnection, payment_id: PaymentId) -> Result<usize, Error> {
+  async fn delete(pool: &DbPool, payment_id: PiPaymentId) -> Result<usize, Error> {
     use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     diesel::delete(pipayment.find(payment_id)).execute(conn)
+    .await
   }
 }
 
-pub trait PiPayment_ {
-  fn find_by_pipayment_id(conn: &mut PgConnection, payment_id: &str) -> Result<PiPayment, Error>;
-  fn find_by_pi_uid(conn: &mut PgConnection, pi_uid: &PiUserId) -> Result<PiPayment, Error>;
-}
+// #[async_trait]
+// pub trait PiPaymentModerator {
+//   async fn find_by_pipayment_id(pool: &DbPool, payment_id: &str) -> Result<PiPayment, Error>;
+//   async fn find_by_pi_uid(pool: &DbPool, pi_uid: &PiUserId) -> Result<Vec<PiPayment>, Error>;
+//   async fn find_by_person(pool: &DbPool, person_id: &PersonId) -> Result<Vec<PiPayment>, Error>;
+// }
 
-impl PiPayment_ for PiPayment { 
-  fn find_by_pipayment_id(conn: &mut PgConnection, payment_id: &str) -> Result<Self, Error> {
+//#[async_trait]
+impl PiPayment { 
+  pub async fn find_by_pipayment_id(pool: &DbPool, payment_id: &str) -> Result<Self, Error> {
     use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     pipayment
       .filter(identifier.eq(payment_id))
       .first::<Self>(conn)
+      .await
   }
 
-  fn find_by_pi_uid(conn: &mut PgConnection, uid: &PiUserId) -> Result<Self, Error> {
+  pub async fn find_by_pi_uid(pool: &DbPool, uid: &PiUserId) -> Result<Vec<Self>, Error> {
     use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     pipayment
       .filter(pi_uid.eq(uid))
-      .first::<Self>(conn)
+      .get_results::<Self>(conn)
+      .await
   }
 
+  pub async fn find_by_person(pool: &DbPool, pid: &PersonId) -> Result<Vec<Self>, Error> {
+    use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    pipayment
+      .filter(person_id.eq(pid))
+      .get_results::<Self>(conn)
+      .await
+  }
 }
 
 
@@ -65,79 +93,89 @@ mod tests {
 use lemmy_utils::settings::SETTINGS;
 use uuid::Uuid;
 
-use crate::{utils::{establish_unpooled_connection, naive_now}, source::pipayment::*, newtypes::PiUserId, traits::Crud};
-
-  #[test]
-  fn test_crud() {
+use crate::{
+    utils::{naive_now}, 
+    utils::build_db_pool_for_tests,
+  source::pipayment::*, newtypes::PiUserId, traits::Crud
+};
+use serial_test::serial;
+#[tokio::test]
+#[serial]
+  async fn test_crud() {
     let settings = SETTINGS.to_owned();
-    let conn = &mut establish_unpooled_connection();
+    let pool = &build_db_pool_for_tests().await;
     let uid = Uuid::new_v4();
-    let new_payment = PiPaymentForm {
-      person_id: None,
-      ref_id: Some(uid),
-      testnet: settings.pinetwork.pi_testnet,
 
-      finished: false,
-      updated: None,
-      pi_uid: Some(PiUserId(uid.clone())),
-      pi_username: "wepi".into(),
-      comment: Some("wepi.social".into()),
+    let new_payment = PiPaymentInsertForm::builder()
+      .person_id(None)
+      .ref_id(Some(uid))
+      .testnet(settings.pinetwork.pi_testnet)
+      .finished(false)
+      .updated(None)
+      .pi_uid(Some(PiUserId(uid.clone())))
+      .pi_username("wepi".into())
+      .comment(Some("wepi.social".into()))
+      .identifier(uid.hyphenated().to_string())
+      .user_uid(uid.hyphenated().to_string())
+      .amount(0.001)
+      .memo("wepi.social".into())
+      .to_address( "".into())
+      .created_at(Some(naive_now()))
+      .approved(true)
+      .verified(true)
+      .completed(false)
+      .cancelled(false)
+      .user_cancelled(false)
+      .tx_link("".into())
+      .tx_id( "".into())
+      .tx_verified( false)
+      .metadata(None)
+      .extras(None)
+      //.instance_id(inserted_instance.id)
+      .build();
+    
 
-      identifier: uid.hyphenated().to_string(),
-      user_uid: uid.hyphenated().to_string(),
-      amount: 0.001,
-      memo: "wepi.social".into(),
-      to_address: "".into(),
-      created_at: Some(naive_now()),
-      approved: true,
-      verified: true,
-      completed: false,
-      cancelled: false,
-      user_cancelled: false,
-      tx_link: "".into(),
-      tx_id: "".into(),
-      tx_verified: false,
-      metadata: None,
-      extras: None,
-      //..PiPaymentForm::default()
-    };
+    let inserted_payment = PiPayment::create(pool, &new_payment).await.unwrap();
 
-    let inserted_payment = PiPayment::create(conn, &new_payment).unwrap();
+    let expected_payment = PiPayment::builder()
+      .id(inserted_payment.id)
+      .person_id(None)
+      .ref_id(Some(uid))
+      .testnet(settings.pinetwork.pi_testnet)
+      .published(inserted_payment.published.clone())
+      .created_at( inserted_payment.created_at.clone())
+      .finished(false)
+      .updated(None)
+      .pi_uid(Some(PiUserId(uid.clone())))
+      .pi_username("wepi".into())
+      .comment(Some("wepi.social".into()))
+      .identifier(uid.hyphenated().to_string())
+      .user_uid(uid.hyphenated().to_string())
+      .amount(0.001)
+      .memo("wepi.social".into())
+      .to_address( "".into())
+      .approved(true)
+      .verified(true)
+      .completed(false)
+      .cancelled(false)
+      .user_cancelled(false)
+      .tx_link("".into())
+      .tx_id("".into())
+      .tx_verified( false)
+      .metadata(None)
+      .extras(None)
+      .build();
 
-    let expected_payment = PiPayment {
-      id: inserted_payment.id,
-      person_id: None,
-      ref_id: Some(uid),
-      testnet: settings.pinetwork.pi_testnet,
-      published: inserted_payment.published.clone(),
-      finished: false,
-      updated: None,
-      pi_uid: Some(PiUserId(uid)),
-      pi_username: "wepi".into(),
-      comment: Some("wepi.social".into()),
-
-      identifier: uid.hyphenated().to_string(),
-      user_uid: uid.hyphenated().to_string(),
-      amount: 0.001,
-      memo: "wepi.social".into(),
-      to_address: "".into(),
-      created_at: inserted_payment.created_at.clone(),
-      approved: true,
-      verified: true,
-      completed: false,
-      cancelled: false,
-      user_cancelled: false,
-      tx_link: "".into(),
-      tx_id: "".into(),
-      tx_verified: false,
-      metadata: None,
-      extras: None,      
-    };
-
-
-    let read_payment = PiPayment::read(conn, inserted_payment.id).unwrap();
-    let updated_payment = PiPayment::update(conn, inserted_payment.id, &new_payment).unwrap();
-    let num_deleted = PiPayment::delete(conn, inserted_payment.id).unwrap();
+    let read_payment = PiPayment::read(pool, inserted_payment.id).await.unwrap();
+    let update_payment_form = PiPaymentUpdateForm::builder()
+        .amount(0.001)
+        .approved(true)
+        .verified(true)
+        .memo("wepi.social".into())
+        .tx_id("".into())
+        .build();
+    let updated_payment = PiPayment::update(pool, inserted_payment.id, &update_payment_form).await.unwrap();
+    let num_deleted = PiPayment::delete(pool, inserted_payment.id).await.unwrap();
 
     assert_eq!(expected_payment, read_payment);
     assert_eq!(expected_payment, inserted_payment);

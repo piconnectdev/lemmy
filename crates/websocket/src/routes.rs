@@ -6,7 +6,7 @@ use crate::{
 use actix::prelude::*;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use lemmy_utils::{rate_limit::RateLimit, utils::get_ip, ConnectionId, IpAddr};
+use lemmy_utils::{rate_limit::RateLimitCell, utils::get_ip, ConnectionId, IpAddr};
 use std::time::{Duration, Instant};
 use tracing::{debug, error, info};
 
@@ -20,15 +20,15 @@ pub async fn chat_route(
   req: HttpRequest,
   stream: web::Payload,
   context: web::Data<LemmyContext>,
-  rate_limiter: web::Data<RateLimit>,
+  rate_limiter: web::Data<RateLimitCell>,
 ) -> Result<HttpResponse, Error> {
   ws::start(
     WsSession {
-      cs_addr: context.chat_server().to_owned(),
+      cs_addr: context.chat_server().clone(),
       id: 0,
       hb: Instant::now(),
       ip: get_ip(&req.connection_info()),
-      rate_limiter: rate_limiter.as_ref().to_owned(),
+      rate_limiter: rate_limiter.as_ref().clone(),
     },
     &req,
     stream,
@@ -44,7 +44,7 @@ struct WsSession {
   /// otherwise we drop connection.
   hb: Instant,
   /// A rate limiter for websocket joins
-  rate_limiter: RateLimit,
+  rate_limiter: RateLimitCell,
 }
 
 impl Actor for WsSession {
@@ -54,7 +54,7 @@ impl Actor for WsSession {
   /// We register ws session with ChatServer
   fn started(&mut self, ctx: &mut Self::Context) {
     // we'll start heartbeat process on session start.
-    self.hb(ctx);
+    WsSession::hb(ctx);
 
     // register self in chat server. `AsyncContext::wait` register
     // future within context, but context waits until this future resolves
@@ -70,7 +70,7 @@ impl Actor for WsSession {
       .cs_addr
       .send(Connect {
         addr: addr.recipient(),
-        ip: self.ip.to_owned(),
+        ip: self.ip.clone(),
       })
       .into_actor(self)
       .then(|res, act, ctx| {
@@ -88,7 +88,7 @@ impl Actor for WsSession {
     // notify chat server
     self.cs_addr.do_send(Disconnect {
       id: self.id,
-      ip: self.ip.to_owned(),
+      ip: self.ip.clone(),
     });
     Running::Stop
   }
@@ -159,7 +159,7 @@ impl WsSession {
   /// helper method that sends ping to client every second.
   ///
   /// also this method checks heartbeats from client
-  fn hb(&self, ctx: &mut ws::WebsocketContext<Self>) {
+  fn hb(ctx: &mut ws::WebsocketContext<Self>) {
     ctx.run_interval(HEARTBEAT_INTERVAL, |act, ctx| {
       // check client heartbeats
       if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
@@ -169,7 +169,7 @@ impl WsSession {
         // notify chat server
         act.cs_addr.do_send(Disconnect {
           id: act.id,
-          ip: act.ip.to_owned(),
+          ip: act.ip.clone(),
         });
 
         // stop actor
@@ -185,7 +185,7 @@ impl WsSession {
 
   /// Check the rate limit, and stop the ctx if it fails
   fn rate_limit_check(&mut self, ctx: &mut ws::WebsocketContext<Self>) -> bool {
-    let check = self.rate_limiter.message().check(self.ip.to_owned());
+    let check = self.rate_limiter.message().check(self.ip.clone());
     if !check {
       debug!("Websocket join with IP: {} has been rate limited.", self.ip);
       ctx.stop()

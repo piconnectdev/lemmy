@@ -1,5 +1,6 @@
 use crate::{
   check_apub_id_valid_with_strictness,
+  fetch_local_site_data,
   generate_outbox_url,
   objects::{instance::fetch_instance_actor_for_object, read_from_string_or_source_opt},
   protocol::{
@@ -18,10 +19,13 @@ use activitypub_federation::{
   utils::verify_domains_match,
 };
 use chrono::NaiveDateTime;
-use lemmy_api_common::utils::blocking;
+use lemmy_api_common::utils::local_site_opt_to_slur_regex;
 use lemmy_db_schema::{
-  source::person::{Person as DbPerson, PersonForm},
-  traits::ApubActor,
+  source::{
+    instance::Instance,
+    person::{Person as DbPerson, PersonInsertForm, PersonUpdateForm},
+  },
+  traits::{ApubActor, Crud},
   utils::naive_now,
 };
 use lemmy_utils::{
@@ -65,20 +69,16 @@ impl ApubObject for ApubPerson {
     context: &LemmyContext,
   ) -> Result<Option<Self>, LemmyError> {
     Ok(
-      blocking(context.pool(), move |conn| {
-        DbPerson::read_from_apub_id(conn, &object_id.into())
-      })
-      .await??
-      .map(Into::into),
+      DbPerson::read_from_apub_id(context.pool(), &object_id.into())
+        .await?
+        .map(Into::into),
     )
   }
 
   #[tracing::instrument(skip_all)]
   async fn delete(self, context: &LemmyContext) -> Result<(), LemmyError> {
-    blocking(context.pool(), move |conn| {
-      DbPerson::update_deleted(conn, self.id, true)
-    })
-    .await??;
+    let form = PersonUpdateForm::builder().deleted(Some(true)).build();
+    DbPerson::update(context.pool(), self.id, &form).await?;
     Ok(())
   }
 
@@ -119,12 +119,20 @@ impl ApubObject for ApubPerson {
     context: &LemmyContext,
     _request_counter: &mut i32,
   ) -> Result<(), LemmyError> {
-    verify_domains_match(person.id.inner(), expected_domain)?;
-    check_apub_id_valid_with_strictness(person.id.inner(), false, context.settings())?;
+    let local_site_data = fetch_local_site_data(context.pool()).await?;
+    let slur_regex = &local_site_opt_to_slur_regex(&local_site_data.local_site);
 
-    let slur_regex = &context.settings().slur_regex();
     check_slurs(&person.preferred_username, slur_regex)?;
     check_slurs_opt(&person.name, slur_regex)?;
+
+    verify_domains_match(person.id.inner(), expected_domain)?;
+    check_apub_id_valid_with_strictness(
+      person.id.inner(),
+      false,
+      &local_site_data,
+      context.settings(),
+    )?;
+
     let bio = read_from_string_or_source_opt(&person.summary, &None, &person.source);
     check_slurs_opt(&bio, slur_regex)?;
     Ok(())
@@ -136,50 +144,43 @@ impl ApubObject for ApubPerson {
     context: &LemmyContext,
     request_counter: &mut i32,
   ) -> Result<ApubPerson, LemmyError> {
-    let person_form = PersonForm {
+    let apub_id = person.id.inner().clone();
+    let instance = Instance::create_from_actor_id(context.pool(), &apub_id).await?;
+
+    let person_form = PersonInsertForm {
       name: person.preferred_username,
-      display_name: Some(person.name),
+      display_name: person.name,
       banned: None,
       ban_expires: None,
-      deleted: None,
-      avatar: Some(person.icon.map(|i| i.url.into())),
-      banner: Some(person.image.map(|i| i.url.into())),
+      deleted: Some(false),
+      avatar: person.icon.map(|i| i.url.into()),
+      banner: person.image.map(|i| i.url.into()),
       published: person.published.map(|u| u.naive_local()),
       updated: person.updated.map(|u| u.naive_local()),
       actor_id: Some(person.id.into()),
-      bio: Some(read_from_string_or_source_opt(
-        &person.summary,
-        &None,
-        &person.source,
-      )),
+      bio: read_from_string_or_source_opt(&person.summary, &None, &person.source),
       local: Some(false),
       admin: Some(false),
       bot_account: Some(person.kind == UserTypes::Service),
       private_key: None,
-      public_key: Some(person.public_key.public_key_pem),
+      public_key: person.public_key.public_key_pem,
       last_refreshed_at: Some(naive_now()),
       inbox_url: Some(person.inbox.into()),
-      shared_inbox_url: Some(person.endpoints.map(|e| e.shared_inbox.into())),
-      matrix_user_id: Some(person.matrix_user_id),
-      // inbox_url: Some(person.inbox.to_owned().into()),
-      // shared_inbox_url: Some(shared_inbox),
-      // matrix_user_id: Some(person.matrix_user_id.clone()),
-      extra_user_id: None,
-      verified: false,
-      private_seeds: None,
+      shared_inbox_url: person.endpoints.map(|e| e.shared_inbox.into()),
+      matrix_user_id: person.matrix_user_id,
+      instance_id: instance.id,
+      external_id: None,
       pi_address: None,
       web3_address: None,
-      sol_address: None,
+      pol_address: None,
       dap_address: None,
       cosmos_address: None,
+      sui_address: None,
       auth_sign: None, 
       srv_sign: None,
       tx : None,
     };
-    let person = blocking(context.pool(), move |conn| {
-      DbPerson::upsert(conn, &person_form)
-    })
-    .await??;
+    let person = DbPerson::create(context.pool(), &person_form).await?;
 
     let actor_id = person.actor_id.clone().into();
     fetch_instance_actor_for_object(actor_id, context, request_counter).await;
@@ -190,11 +191,11 @@ impl ApubObject for ApubPerson {
 
 impl ActorType for ApubPerson {
   fn actor_id(&self) -> Url {
-    self.actor_id.to_owned().into()
+    self.actor_id.clone().into()
   }
 
   fn private_key(&self) -> Option<String> {
-    self.private_key.to_owned()
+    self.private_key.clone()
   }
 }
 
@@ -208,7 +209,7 @@ impl Actor for ApubPerson {
   }
 
   fn shared_inbox(&self) -> Option<Url> {
-    self.shared_inbox_url.clone().map(|s| s.into())
+    self.shared_inbox_url.clone().map(Into::into)
   }
 }
 
@@ -243,23 +244,20 @@ pub(crate) mod tests {
   #[actix_rt::test]
   #[serial]
   async fn test_parse_lemmy_person() {
-    let context = init_context();
-    let conn = &mut context.pool().get().unwrap();
+    let context = init_context().await;
     let (person, site) = parse_lemmy_person(&context).await;
 
     assert_eq!(person.display_name, Some("Jean-Luc Picard".to_string()));
     assert!(!person.local);
     assert_eq!(person.bio.as_ref().unwrap().len(), 39);
 
-    DbPerson::delete(conn, person.id).unwrap();
-    Site::delete(conn, site.id).unwrap();
+    cleanup((person, site), &context).await;
   }
 
   #[actix_rt::test]
   #[serial]
   async fn test_parse_pleroma_person() {
-    let context = init_context();
-    let conn = &mut context.pool().get().unwrap();
+    let context = init_context().await;
 
     // create and parse a fake pleroma instance actor, to avoid network request during test
     let mut json: Instance = file_to_json_object("assets/lemmy/objects/instance.json").unwrap();
@@ -286,7 +284,11 @@ pub(crate) mod tests {
     assert_eq!(request_counter, 0);
     assert_eq!(person.bio.as_ref().unwrap().len(), 873);
 
-    DbPerson::delete(conn, person.id).unwrap();
-    Site::delete(conn, site.id).unwrap();
+    cleanup((person, site), &context).await;
+  }
+
+  async fn cleanup(data: (ApubPerson, ApubSite), context: &LemmyContext) {
+    DbPerson::delete(context.pool(), data.0.id).await.unwrap();
+    Site::delete(context.pool(), data.1.id).await.unwrap();
   }
 }

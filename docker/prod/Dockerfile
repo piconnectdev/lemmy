@@ -1,5 +1,5 @@
 # Build the project
-FROM clux/muslrust:1.59.0 as builder
+FROM clux/muslrust:1.64.0 as builder
 
 ARG CARGO_BUILD_TARGET=x86_64-unknown-linux-musl
 ARG RUSTRELEASEDIR="release"
@@ -10,9 +10,6 @@ COPY ./ ./
 
 RUN echo "pub const VERSION: &str = \"$(git describe --tag)\";" > "crates/utils/src/version.rs"
 RUN cargo build --release
-
-# reduce binary size
-RUN strip ./target/$CARGO_BUILD_TARGET/$RUSTRELEASEDIR/lemmy_server
 
 RUN cp ./target/$CARGO_BUILD_TARGET/$RUSTRELEASEDIR/lemmy_server /app/lemmy_server
 

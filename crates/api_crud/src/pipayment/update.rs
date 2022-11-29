@@ -29,7 +29,7 @@ impl PerformCrud for PiTip {
       auth: data.auth.clone(),
     };
 
-    let _payment = match pi_update_payment(context, &approve, _tx).await {
+    let _payment = match pi_payment_update(context, &approve, _tx).await {
       Ok(c) => c,
       Err(e) => {
         let err_type = e.to_string();

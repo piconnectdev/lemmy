@@ -2,17 +2,17 @@ use crate::Perform;
 use actix_web::web::Data;
 use lemmy_api_common::{
   person::{LoginResponse, SaveUserSettings},
-  utils::{blocking, get_local_user_view_from_jwt, send_verification_email},
+  utils::{get_local_user_view_from_jwt, send_verification_email},
 };
 use lemmy_db_schema::{
   source::{
-    local_user::{LocalUser, LocalUserForm},
-    local_user_language::LocalUserLanguage,
-    person::{Person, PersonForm},
-    site::Site,
+    actor_language::LocalUserLanguage,
+    local_site::LocalSite,
+    local_user::{LocalUser, LocalUserUpdateForm},
+    person::{Person, PersonUpdateForm},
   },
-  traits::Crud,
-  utils::{diesel_option_overwrite, diesel_option_overwrite_to_url, naive_now},
+  traits::{Crud, Signable},
+  utils::{diesel_option_overwrite, diesel_option_overwrite_to_url},
 };
 use lemmy_utils::{
   claims::Claims,
@@ -35,6 +35,7 @@ impl Perform for SaveUserSettings {
     let data: &SaveUserSettings = self;
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_site = LocalSite::read(context.pool()).await?;
 
     let avatar = diesel_option_overwrite_to_url(&data.avatar)?;
     let banner = diesel_option_overwrite_to_url(&data.banner)?;
@@ -42,13 +43,14 @@ impl Perform for SaveUserSettings {
     let display_name = diesel_option_overwrite(&data.display_name);
     let matrix_user_id = diesel_option_overwrite(&data.matrix_user_id);
     let bot_account = data.bot_account;
-    let email_deref = data.email.as_deref().map(|e| e.to_lowercase());
+    let email_deref = data.email.as_deref().map(str::to_lowercase);
     let email = diesel_option_overwrite(&email_deref);
     let pi_address = diesel_option_overwrite(&data.pi_address);
     let web3_address = diesel_option_overwrite(&data.web3_address);
-    let sol_address = diesel_option_overwrite(&data.sol_address);
+    let pol_address = diesel_option_overwrite(&data.pol_address);
     let dap_address = diesel_option_overwrite(&data.dap_address);
     let cosmos_address = diesel_option_overwrite(&data.cosmos_address);
+    let sui_address = diesel_option_overwrite(&data.sui_address);
     let auth_sign = diesel_option_overwrite(&data.auth_sign);
 
     if let Some(Some(email)) = &email {
@@ -62,8 +64,7 @@ impl Perform for SaveUserSettings {
 
     // When the site requires email, make sure email is not Some(None). IE, an overwrite to a None value
     if let Some(email) = &email {
-      let site_fut = blocking(context.pool(), Site::read_local_site);
-      if email.is_none() && site_fut.await??.require_email_verification {
+      if email.is_none() && local_site.require_email_verification {
         return Err(LemmyError::from_message("email_required"));
       }
     }
@@ -77,7 +78,7 @@ impl Perform for SaveUserSettings {
     if let Some(Some(display_name)) = &display_name {
       if !is_valid_display_name(
         display_name.trim(),
-        context.settings().actor_name_max_length,
+        local_site.actor_name_max_length as usize,
       ) {
         return Err(LemmyError::from_message("invalid_username"));
       }
@@ -93,92 +94,53 @@ impl Perform for SaveUserSettings {
     let person_id = local_user_view.person.id;
     let default_listing_type = data.default_listing_type;
     let default_sort_type = data.default_sort_type;
-    let password_encrypted = local_user_view.local_user.password_encrypted;
-    let public_key = Some(local_user_view.person.public_key);
-        
-    let person_form = PersonForm {
-      name: local_user_view.person.name,
-      avatar,
-      banner,
-      inbox_url: None,
-      display_name,
-      published: None,
-      updated: Some(naive_now()),
-      banned: None,
-      deleted: None,
-      actor_id: None,
-      bio,
-      local: None,
-      admin: None,
-      private_key: None,
-      public_key,
-      last_refreshed_at: None,
-      shared_inbox_url: None,
-      matrix_user_id,
-      bot_account,
-      ban_expires: None,
-      extra_user_id: None,
-      verified: false,
-      private_seeds: None,
-      pi_address,
-      web3_address,
-      sol_address,
-      dap_address,
-      cosmos_address,
-      auth_sign, 
-      srv_sign: None, 
-      tx: None,
-    };
 
-    let person = blocking(context.pool(), move |conn| {
-      Person::update(conn, person_id, &person_form)
-    })
-    .await?
-    .map_err(|e| LemmyError::from_error_message(e, "user_already_exists"))?;
+    let person_form = PersonUpdateForm::builder()
+      .display_name(display_name)
+      .bio(bio)
+      .matrix_user_id(matrix_user_id)
+      .bot_account(bot_account)
+      .avatar(avatar)
+      .banner(banner)
+      .pi_address(pi_address)
+      .web3_address(web3_address)
+      .dap_address(dap_address)
+      .cosmos_address(cosmos_address)
+      .sui_address(sui_address)
+      .pol_address(pol_address)      
+      .auth_sign(auth_sign)
+      .build();
 
-    let (signature, _meta, _content) = Person::sign_data(&person.clone());
-    blocking(context.pool(), move |conn| {
-      Person::update_srv_sign(conn, person_id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
-    })
-    .await?;
+    let person = Person::update(context.pool(), person_id, &person_form)
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "user_already_exists"))?;
+
+    let (signature, _meta, _content) = Person::sign_data(&person.clone()).await;
+    let person = Person::update_srv_sign(context.pool(), person_id.clone(), signature.clone().unwrap_or_default().as_str())
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_srv_sign"))?;
 
     if let Some(discussion_languages) = data.discussion_languages.clone() {
-      // An empty array is a "clear" / set all languages
-      let languages = if discussion_languages.is_empty() {
-        None
-      } else {
-        Some(discussion_languages)
-      };
-
-      blocking(context.pool(), move |conn| {
-        LocalUserLanguage::update_user_languages(conn, languages, local_user_id)
-      })
-      .await??;
+      LocalUserLanguage::update(context.pool(), discussion_languages, local_user_id).await?;
     }
 
-    let local_user_form = LocalUserForm {
-      person_id: Some(person_id),
-      email,
-      password_encrypted: Some(password_encrypted),
-      show_nsfw: data.show_nsfw,
-      show_bot_accounts: data.show_bot_accounts,
-      show_scores: data.show_scores,
-      theme: data.theme.to_owned(),
-      default_sort_type,
-      default_listing_type,
-      interface_language: data.interface_language.to_owned(),
-      show_avatars: data.show_avatars,
-      show_read_posts: data.show_read_posts,
-      show_new_post_notifs: data.show_new_post_notifs,
-      send_notifications_to_email: data.send_notifications_to_email,
-      email_verified: None,
-      accepted_application: None,
-    };
+    let local_user_form = LocalUserUpdateForm::builder()
+      .email(email)
+      .show_avatars(data.show_avatars)
+      .show_read_posts(data.show_read_posts)
+      .show_new_post_notifs(data.show_new_post_notifs)
+      .send_notifications_to_email(data.send_notifications_to_email)
+      .show_nsfw(data.show_nsfw)
+      .show_bot_accounts(data.show_bot_accounts)
+      .show_scores(data.show_scores)
+      .default_sort_type(default_sort_type)
+      .default_listing_type(default_listing_type)
+      .theme(data.theme.clone())
+      .interface_language(data.interface_language.clone())
+      //.sign_data(data.sign_data)
+      .build();
 
-    let local_user_res = blocking(context.pool(), move |conn| {
-      LocalUser::update(conn, local_user_id, &local_user_form)
-    })
-    .await?;
+    let local_user_res = LocalUser::update(context.pool(), local_user_id, &local_user_form).await;
     let updated_local_user = match local_user_res {
       Ok(u) => u,
       Err(e) => {
@@ -193,7 +155,7 @@ impl Perform for SaveUserSettings {
         return Err(LemmyError::from_error_message(e, err_type));
       }
     };
-    
+
     // Return the jwt
     Ok(LoginResponse {
       jwt: Some(

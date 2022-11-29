@@ -1,8 +1,7 @@
 use crate::newtypes::{LocalUserId, PersonId, RegistrationApplicationId};
-use serde::{Deserialize, Serialize};
-
 #[cfg(feature = "full")]
 use crate::schema::registration_application;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
@@ -18,11 +17,16 @@ pub struct RegistrationApplication {
 
 #[derive(Default)]
 //#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
+#[cfg_attr(feature = "full", derive(Insertable))]
 #[cfg_attr(feature = "full", diesel(table_name = registration_application))]
-pub struct RegistrationApplicationForm {
-  pub local_user_id: Option<LocalUserId>,
-  pub answer: Option<String>,
-  pub admin_id: Option<PersonId>,
+pub struct RegistrationApplicationInsertForm {
+  pub local_user_id: LocalUserId,
+  pub answer: String,
+}
+
+#[cfg_attr(feature = "full", derive(AsChangeset))]
+#[cfg_attr(feature = "full", diesel(table_name = registration_application))]
+pub struct RegistrationApplicationUpdateForm {
+  pub admin_id: Option<Option<PersonId>>,
   pub deny_reason: Option<Option<String>>,
 }

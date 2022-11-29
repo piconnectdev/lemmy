@@ -1,47 +1,24 @@
-use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use bcrypt::{hash, DEFAULT_COST};
 use lemmy_api_common::{
   pipayment::*,
-  utils::{blocking, honeypot_check, password_length_check},
-};
-use lemmy_apub::{
-  generate_followers_url, generate_inbox_url, generate_local_apub_endpoint,
-  generate_shared_inbox_url, EndpointType,
 };
 use lemmy_db_schema::{
-  impls::pipayment::PiPayment_,
-  newtypes::{CommunityId, PaymentId, PersonId},
-  source::{
-    community::*,
-    local_user::{LocalUser, LocalUserForm},
-    person::*,
-    pipayment::*,
-    site::*,
+  source::{*
   },
-  traits::{ApubActor, Crud, Followable, Joinable},
-  utils::naive_now,
 };
-use lemmy_db_views::structs::LocalUserView;
-use lemmy_db_views_actor::{person_view::*, structs::PersonViewSafe};
-
+use lemmy_db_views::structs::SiteView;
 use lemmy_utils::{
-  apub::generate_actor_keypair,
-  claims::Claims,
   error::LemmyError,
   settings::SETTINGS,
-  utils::{check_slurs, is_valid_actor_name},
   ConnectionId,
 };
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use sha2::{Digest, Sha256};
-use uuid::Uuid;
+use crate::web3::ext::*;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegisterWithFee {
   type Response = PiRegisterResponse;
-
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
@@ -49,19 +26,39 @@ impl PerformCrud for PiRegisterWithFee {
   ) -> Result<PiRegisterResponse, LemmyError> {
     let settings = SETTINGS.to_owned();
     let data: &PiRegisterWithFee = &self;
+    let ext_account = data.ea.clone();
 
     // no email verification, or applications if the site is not setup yet
     let (mut email_verification, mut require_application) = (false, false);
 
     let mut result = true;
-    // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
-      if !site.open_registration {
-        return Err(LemmyError::from_message("registration_closed"));
-      }
-      email_verification = site.require_email_verification;
-      require_application = site.require_application;
+
+    let site_view = SiteView::read_local(context.pool()).await?;
+    let local_site = site_view.local_site;
+
+    if !local_site.open_registration {
+      return Err(LemmyError::from_message("registration_closed"));
     }
+    if local_site.site_setup {
+      if !settings.pi_enabled {
+        return Err(LemmyError::from_message("registration_disabled"));
+      }
+      if !settings.pinetwork.pi_allow_all {
+        return Err(LemmyError::from_message("registration_disabled"));
+      }
+    }
+
+    let login_response = match create_external_account(context, &ext_account.account.clone(), &ext_account.clone(), &data.info.clone()).await
+    {
+      Ok(c) => c,
+      Err(_e) => {
+        return Err(LemmyError::from_message("registration_disabled"));
+        //None
+      },
+    };
+    /*
+    email_verification = local_site.require_email_verification;
+    require_application = local_site.require_application;
 
     password_length_check(&data.info.password)?;
     honeypot_check(&data.info.honeypot)?;
@@ -82,11 +79,11 @@ impl PerformCrud for PiRegisterWithFee {
     }
 
     // Check if there are admins. False if admins exist
-    let no_admins = blocking(context.pool(), move |conn| {
-      PersonViewSafe::admins(conn).map(|a| a.is_empty())
-    })
-    .await??;
-
+    // let no_admins = blocking(context.pool(), move |conn| {
+    //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
+    // })
+    // .await??;
+    let no_admins = PersonViewSafe::admins(context.pool()).await.map(|a| a.is_empty());
     // If its not the admin, check the captcha
     // if !no_admins && settings.captcha.enabled {
     //   let check = context
@@ -112,13 +109,10 @@ impl PerformCrud for PiRegisterWithFee {
     check_slurs(&data.info.username, &context.settings().slur_regex())?;
 
     let actor_keypair = generate_actor_keypair()?;
-    if !is_valid_actor_name(
-      &data.info.username,
-      context.settings().actor_name_max_length,
-    ) {
+    if !is_valid_actor_name(&data.info.username, local_site.actor_name_max_length as usize)  {
       println!(
         "Invalid username {} {}",
-        data.pi_username.to_owned(),
+        ext_account.account.to_owned(),
         &data.info.username
       );
       //return Err(LemmyError::from_message("register:invalid_username"));
@@ -153,7 +147,7 @@ impl PerformCrud for PiRegisterWithFee {
     let mut approved = false;
     let mut completed = false;
     let mut finished = false;
-    let payment_id: PaymentId;
+    let payment_id: PiPaymentId;
     let person_id: PersonId;
     let mut pi_exist = false;
     let mut dto: Option<PiPaymentDto> = None;
@@ -226,7 +220,7 @@ impl PerformCrud for PiRegisterWithFee {
         pi_exist = true;
         match person {
           Some(other) => {
-            if pi.extra_user_id != other.extra_user_id {
+            if pi.external_id != other.external_id {
               let err_type = format!(
                 "Register: User {} is exist and belong to other Pi Account ",
                 &data.info.username
@@ -473,24 +467,21 @@ impl PerformCrud for PiRegisterWithFee {
     // We have to create both a person, and local_user
 
     // Register the new person
-    let person_form = PersonForm {
-      name: data.info.username.to_owned(),
-      actor_id: Some(actor_id.clone()),
-      private_key: Some(Some(actor_keypair.private_key)),
-      public_key: Some(actor_keypair.public_key),
-      inbox_url: Some(generate_inbox_url(&actor_id)?),
-      shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
-      admin: Some(no_admins),
-      extra_user_id: Some(_pi_alias2),
-      ..PersonForm::default()
-    };
+    let person_form = PersonInsertForm.builder()
+      .name (data.info.username.to_owned())
+      .actor_id( Some(actor_id.clone()))
+      .private_key( Some(Some(actor_keypair.private_key)))
+      .public_key( Some(actor_keypair.public_key))
+      .inbox_url( Some(generate_inbox_url(&actor_id)?))
+      .shared_inbox_url( Some(Some(generate_shared_inbox_url(&actor_id)?)))
+      .admin( Some(no_admins))
+      .external_id( Some(_pi_alias2))
+      .build();
 
     // insert the person
     // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
-    let inserted_person = match blocking(context.pool(), move |conn| {
-      Person::create(conn, &person_form)
-    })
-    .await?
+    let inserted_person = match Person::create(conn, &person_form)
+    .await
     {
       Ok(p) => p,
       Err(_e) => {
@@ -546,16 +537,14 @@ impl PerformCrud for PiRegisterWithFee {
     };
 
     let main_community_keypair = generate_actor_keypair()?;
-
+    */
     // Return the jwt / LoginResponse?
     Ok(PiRegisterResponse {
       success: true,
-      jwt: Claims::jwt(
-        inserted_local_user.id.0,
-        &context.secret().jwt_secret,
-        &context.settings().hostname,
-      )?,
+      login: login_response,
       extra: None,
     })
+    
+    //Ok(login_response)
   }
 }

@@ -1,6 +1,7 @@
 use crate::{
   activities::{verify_is_public, verify_person_in_community},
   check_apub_id_valid_with_strictness,
+  fetch_local_site_data,
   local_instance,
   objects::{read_from_string_or_source_opt, verify_is_remote_object},
   protocol::{
@@ -20,15 +21,15 @@ use activitypub_federation::{
 };
 use activitystreams_kinds::public;
 use chrono::NaiveDateTime;
-use lemmy_api_common::{request::fetch_site_data, utils::blocking};
+use lemmy_api_common::{request::fetch_site_data, utils::local_site_opt_to_slur_regex};
 use lemmy_db_schema::{
   self,
   source::{
     community::Community,
-    language::Language,
+    local_site::LocalSite,
     moderator::{ModLockPost, ModLockPostForm, ModStickyPost, ModStickyPostForm},
     person::Person,
-    post::{Post, PostForm},
+    post::{Post, PostInsertForm, PostUpdateForm},
   },
   traits::Crud,
 };
@@ -73,21 +74,17 @@ impl ApubObject for ApubPost {
     context: &LemmyContext,
   ) -> Result<Option<Self>, LemmyError> {
     Ok(
-      blocking(context.pool(), move |conn| {
-        Post::read_from_apub_id(conn, object_id)
-      })
-      .await??
-      .map(Into::into),
+      Post::read_from_apub_id(context.pool(), object_id)
+        .await?
+        .map(Into::into),
     )
   }
 
   #[tracing::instrument(skip_all)]
   async fn delete(self, context: &LemmyContext) -> Result<(), LemmyError> {
     if !self.deleted {
-      blocking(context.pool(), move |conn| {
-        Post::update_deleted(conn, self.id, true)
-      })
-      .await??;
+      let form = PostUpdateForm::builder().deleted(Some(true)).build();
+      Post::update(context.pool(), self.id, &form).await?;
     }
     Ok(())
   }
@@ -96,17 +93,10 @@ impl ApubObject for ApubPost {
   #[tracing::instrument(skip_all)]
   async fn into_apub(self, context: &LemmyContext) -> Result<Page, LemmyError> {
     let creator_id = self.creator_id;
-    let creator = blocking(context.pool(), move |conn| Person::read(conn, creator_id)).await??;
+    let creator = Person::read(context.pool(), creator_id).await?;
     let community_id = self.community_id;
-    let community = blocking(context.pool(), move |conn| {
-      Community::read(conn, community_id)
-    })
-    .await??;
-    let language = self.language_id;
-    let language = blocking(context.pool(), move |conn| {
-      Language::read_from_id(conn, language)
-    })
-    .await??;
+    let community = Community::read(context.pool(), community_id).await?;
+    let language = LanguageTag::new_single(self.language_id, context.pool()).await?;
 
     let page = Page {
       kind: PageType::Page,
@@ -118,13 +108,13 @@ impl ApubObject for ApubPost {
       content: self.body.as_ref().map(|b| markdown_to_html(b)),
       media_type: Some(MediaTypeMarkdownOrHtml::Html),
       source: self.body.clone().map(Source::new),
-      url: self.url.clone().map(|u| u.into()),
+      url: self.url.clone().map(Into::into),
       attachment: self.url.clone().map(Attachment::new).into_iter().collect(),
       image: self.thumbnail_url.clone().map(ImageObject::new),
       comments_enabled: Some(!self.locked),
       sensitive: Some(self.nsfw),
       stickied: Some(self.stickied),
-      language: LanguageTag::new(language),
+      language,
       published: Some(convert_datetime(self.published)),
       updated: self.updated.map(convert_datetime),
     };
@@ -145,10 +135,20 @@ impl ApubObject for ApubPost {
       verify_is_remote_object(page.id.inner(), context.settings())?;
     };
 
+    let local_site_data = fetch_local_site_data(context.pool()).await?;
+
     let community = page.extract_community(context, request_counter).await?;
-    check_apub_id_valid_with_strictness(page.id.inner(), community.local, context.settings())?;
+    check_apub_id_valid_with_strictness(
+      page.id.inner(),
+      community.local,
+      &local_site_data,
+      context.settings(),
+    )?;
     verify_person_in_community(&page.creator()?, &community, context, request_counter).await?;
-    check_slurs(&page.name, &context.settings().slur_regex())?;
+
+    let slur_regex = &local_site_opt_to_slur_regex(&local_site_data.local_site);
+    check_slurs(&page.name, slur_regex)?;
+
     verify_domains_match(page.creator()?.inner(), page.id.inner())?;
     verify_is_public(&page.to, &page.cc)?;
     Ok(())
@@ -162,17 +162,14 @@ impl ApubObject for ApubPost {
   ) -> Result<ApubPost, LemmyError> {
     let creator = page
       .creator()?
-      .dereference(context, local_instance(context), request_counter)
+      .dereference(context, local_instance(context).await, request_counter)
       .await?;
     let community = page.extract_community(context, request_counter).await?;
 
     let form = if !page.is_mod_action(context).await? {
-      let url = if let Some(attachment) = page.attachment.first() {
-        Some(match attachment {
-          // url as sent by Lemmy (new)
-          Attachment::Link(link) => link.href.clone(),
-          Attachment::Image(image) => image.url.clone(),
-        })
+      let first_attachment = page.attachment.into_iter().map(Attachment::url).next();
+      let url = if first_attachment.is_some() {
+        first_attachment
       } else if page.kind == PageType::Video {
         // we cant display videos directly, so insert a link to external video page
         Some(page.id.inner().clone())
@@ -186,20 +183,19 @@ impl ApubObject for ApubPost {
         (None, page.image.map(|i| i.url.into()))
       };
       let (embed_title, embed_description, embed_video_url) = metadata_res
-        .map(|u| (Some(u.title), Some(u.description), Some(u.embed_video_url)))
+        .map(|u| (u.title, u.description, u.embed_video_url))
         .unwrap_or_default();
+      let local_site = LocalSite::read(context.pool()).await.ok();
+      let slur_regex = &local_site_opt_to_slur_regex(&local_site);
+
       let body_slurs_removed =
         read_from_string_or_source_opt(&page.content, &page.media_type, &page.source)
-          .map(|s| Some(remove_slurs(&s, &context.settings().slur_regex())));
-      let language = page.language.map(|l| l.identifier);
-      let language = blocking(context.pool(), move |conn| {
-        Language::read_id_from_code_opt(conn, language.as_deref())
-      })
-      .await??;
+          .map(|s| remove_slurs(&s, slur_regex));
+      let language_id = LanguageTag::to_language_id_single(page.language, context.pool()).await?;
 
-      PostForm {
+      PostInsertForm {
         name: page.name.clone(),
-        url: Some(url.map(Into::into)),
+        url: url.map(Into::into),
         body: body_slurs_removed,
         creator_id: creator.id,
         community_id: community.id,
@@ -207,32 +203,31 @@ impl ApubObject for ApubPost {
         locked: page.comments_enabled.map(|e| !e),
         published: page.published.map(|u| u.naive_local()),
         updated: page.updated.map(|u| u.naive_local()),
-        deleted: None,
+        deleted: Some(false),
         nsfw: page.sensitive,
         stickied: page.stickied,
         embed_title,
         embed_description,
         embed_video_url,
-        thumbnail_url: Some(thumbnail_url),
+        thumbnail_url,
         ap_id: Some(page.id.clone().into()),
         local: Some(false),
-        language_id: language,
+        language_id,
         auth_sign: None,
         srv_sign: None, 
         tx: None,
       }
     } else {
       // if is mod action, only update locked/stickied fields, nothing else
-      PostForm {
-        name: page.name.clone(),
-        creator_id: creator.id,
-        community_id: community.id,
-        locked: page.comments_enabled.map(|e| !e),
-        stickied: page.stickied,
-        updated: page.updated.map(|u| u.naive_local()),
-        ap_id: Some(page.id.clone().into()),
-        ..Default::default()
-      }
+      PostInsertForm::builder()
+        .name(page.name.clone())
+        .creator_id(creator.id)
+        .community_id(community.id)
+        .ap_id(Some(page.id.clone().into()))
+        .locked(page.comments_enabled.map(|e| !e))
+        .stickied(page.stickied)
+        .updated(page.updated.map(|u| u.naive_local()))
+        .build()
     };
 
     // read existing, local post if any (for generating mod log)
@@ -240,7 +235,7 @@ impl ApubObject for ApubPost {
       .dereference_local(context)
       .await;
 
-    let post = blocking(context.pool(), move |conn| Post::upsert(conn, &form)).await??;
+    let post = Post::create(context.pool(), &form).await?;
 
     // write mod log entries for sticky/lock
     if Page::is_stickied_changed(&old_post, &page.stickied) {
@@ -249,10 +244,7 @@ impl ApubObject for ApubPost {
         post_id: post.id,
         stickied: Some(post.stickied),
       };
-      blocking(context.pool(), move |conn| {
-        ModStickyPost::create(conn, &form)
-      })
-      .await??;
+      ModStickyPost::create(context.pool(), &form).await?;
     }
     if Page::is_locked_changed(&old_post, &page.comments_enabled) {
       let form = ModLockPostForm {
@@ -260,7 +252,7 @@ impl ApubObject for ApubPost {
         post_id: post.id,
         locked: Some(post.locked),
       };
-      blocking(context.pool(), move |conn| ModLockPost::create(conn, &form)).await??;
+      ModLockPost::create(context.pool(), &form).await?;
     }
 
     Ok(post.into())
@@ -285,8 +277,7 @@ mod tests {
   #[actix_rt::test]
   #[serial]
   async fn test_parse_lemmy_post() {
-    let context = init_context();
-    let conn = &mut context.pool().get().unwrap();
+    let context = init_context().await;
     let (person, site) = parse_lemmy_person(&context).await;
     let community = parse_lemmy_community(&context).await;
 
@@ -308,9 +299,11 @@ mod tests {
     assert!(post.stickied);
     assert_eq!(request_counter, 0);
 
-    Post::delete(conn, post.id).unwrap();
-    Person::delete(conn, person.id).unwrap();
-    Community::delete(conn, community.id).unwrap();
-    Site::delete(conn, site.id).unwrap();
+    Post::delete(context.pool(), post.id).await.unwrap();
+    Person::delete(context.pool(), person.id).await.unwrap();
+    Community::delete(context.pool(), community.id)
+      .await
+      .unwrap();
+    Site::delete(context.pool(), site.id).await.unwrap();
   }
 }

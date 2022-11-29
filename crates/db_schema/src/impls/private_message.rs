@@ -1,99 +1,65 @@
 use crate::{
   newtypes::{DbUrl, PersonId, PrivateMessageId},
-  source::private_message::*,
-  traits::{Crud, DeleteableOrRemoveable},
-  utils::naive_now,
+  schema::private_message::dsl::{ap_id, private_message, read, recipient_id},
+  source::private_message::{PrivateMessage, PrivateMessageInsertForm, PrivateMessageUpdateForm},
+  traits::{Crud, DeleteableOrRemoveable, Signable},
+  utils::{get_conn, DbPool},
 };
-use diesel::{dsl::*, result::Error, *};
+use diesel::{dsl::insert_into, result::Error, ExpressionMethods, QueryDsl};
+use diesel_async::RunQueryDsl;
 use lemmy_utils::error::LemmyError;
 use url::Url;
 use sha2::{Digest, Sha256};
 
+#[async_trait]
 impl Crud for PrivateMessage {
-  type Form = PrivateMessageForm;
+  type InsertForm = PrivateMessageInsertForm;
+  type UpdateForm = PrivateMessageUpdateForm;
   type IdType = PrivateMessageId;
-  fn read(conn: &mut PgConnection, private_message_id: PrivateMessageId) -> Result<Self, Error> {
-    use crate::schema::private_message::dsl::*;
-    private_message.find(private_message_id).first::<Self>(conn)
+  async fn read(pool: &DbPool, private_message_id: PrivateMessageId) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+    private_message
+      .find(private_message_id)
+      .first::<Self>(conn)
+      .await
   }
 
-  fn create(
-    conn: &mut PgConnection,
-    private_message_form: &PrivateMessageForm,
-  ) -> Result<Self, Error> {
-    use crate::schema::private_message::dsl::*;
+  async fn create(pool: &DbPool, form: &Self::InsertForm) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
     insert_into(private_message)
-      .values(private_message_form)
+      .values(form)
+      .on_conflict(ap_id)
+      .do_update()
+      .set(form)
       .get_result::<Self>(conn)
+      .await
   }
 
-  fn update(
-    conn: &mut PgConnection,
+  async fn update(
+    pool: &DbPool,
     private_message_id: PrivateMessageId,
-    private_message_form: &PrivateMessageForm,
+    form: &Self::UpdateForm,
   ) -> Result<Self, Error> {
-    use crate::schema::private_message::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     diesel::update(private_message.find(private_message_id))
-      .set(private_message_form)
+      .set(form)
       .get_result::<Self>(conn)
+      .await
   }
-  fn delete(conn: &mut PgConnection, pm_id: Self::IdType) -> Result<usize, Error> {
-    use crate::schema::private_message::dsl::*;
-    diesel::delete(private_message.find(pm_id)).execute(conn)
+  async fn delete(pool: &DbPool, pm_id: Self::IdType) -> Result<usize, Error> {
+    let conn = &mut get_conn(pool).await?;
+    diesel::delete(private_message.find(pm_id))
+      .execute(conn)
+      .await
   }
 }
 
 impl PrivateMessage {
-  pub fn update_ap_id(
-    conn: &mut PgConnection,
-    private_message_id: PrivateMessageId,
-    apub_id: DbUrl,
-  ) -> Result<PrivateMessage, Error> {
-    use crate::schema::private_message::dsl::*;
-
-    diesel::update(private_message.find(private_message_id))
-      .set(ap_id.eq(apub_id))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn update_content(
-    conn: &mut PgConnection,
-    private_message_id: PrivateMessageId,
-    new_content: &str,
-  ) -> Result<PrivateMessage, Error> {
-    use crate::schema::private_message::dsl::*;
-    diesel::update(private_message.find(private_message_id))
-      .set((content.eq(new_content), updated.eq(naive_now())))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn update_deleted(
-    conn: &mut PgConnection,
-    private_message_id: PrivateMessageId,
-    new_deleted: bool,
-  ) -> Result<PrivateMessage, Error> {
-    use crate::schema::private_message::dsl::*;
-    diesel::update(private_message.find(private_message_id))
-      .set(deleted.eq(new_deleted))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn update_read(
-    conn: &mut PgConnection,
-    private_message_id: PrivateMessageId,
-    new_read: bool,
-  ) -> Result<PrivateMessage, Error> {
-    use crate::schema::private_message::dsl::*;
-    diesel::update(private_message.find(private_message_id))
-      .set(read.eq(new_read))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn mark_all_as_read(
-    conn: &mut PgConnection,
+  pub async fn mark_all_as_read(
+    pool: &DbPool,
     for_recipient_id: PersonId,
   ) -> Result<Vec<PrivateMessage>, Error> {
-    use crate::schema::private_message::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     diesel::update(
       private_message
         .filter(recipient_id.eq(for_recipient_id))
@@ -101,48 +67,57 @@ impl PrivateMessage {
     )
     .set(read.eq(true))
     .get_results::<Self>(conn)
+    .await
   }
 
-  pub fn upsert(
-    conn: &mut PgConnection,
-    private_message_form: &PrivateMessageForm,
-  ) -> Result<PrivateMessage, Error> {
-    use crate::schema::private_message::dsl::*;
-    insert_into(private_message)
-      .values(private_message_form)
-      .on_conflict(ap_id)
-      .do_update()
-      .set(private_message_form)
-      .get_result::<Self>(conn)
-  }
-
-  pub fn read_from_apub_id(
-    conn: &mut PgConnection,
+  pub async fn read_from_apub_id(
+    pool: &DbPool,
     object_id: Url,
   ) -> Result<Option<Self>, LemmyError> {
-    use crate::schema::private_message::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     let object_id: DbUrl = object_id.into();
     Ok(
       private_message
         .filter(ap_id.eq(object_id))
         .first::<PrivateMessage>(conn)
+        .await
         .ok()
         .map(Into::into),
     )
   }
+}
 
-  pub fn update_srv_sign(
-    conn: &mut PgConnection,
+#[async_trait]
+impl Signable for PrivateMessage { 
+  type Form = PrivateMessage;
+  type IdType = PrivateMessageId;
+  async fn update_srv_sign(
+    pool: &DbPool,
     private_message_id: PrivateMessageId,
     sig: &str,
   ) -> Result<Self, Error> {
     use crate::schema::private_message::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     diesel::update(private_message.find(private_message_id))
       .set(srv_sign.eq(sig))
       .get_result::<Self>(conn)
+      .await
   }
 
-  pub fn sign_data(updated_message: &PrivateMessage) -> (Option<String>, Option<String>, Option<String>) {    
+  async fn update_tx(
+    pool: &DbPool,
+    private_message_id: PrivateMessageId,
+    txlink: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::private_message::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(private_message.find(private_message_id))
+      .set(tx.eq(txlink))
+      .get_result::<Self>(conn)
+      .await
+  }
+
+  async fn sign_data(updated_message: &PrivateMessage) -> (Option<String>, Option<String>, Option<String>) {    
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
@@ -164,12 +139,11 @@ impl PrivateMessage {
     let signature = lemmy_utils::utils::eth_sign_message(message);
     return (signature, Some(meta), content);
   }
-
 }
 
 impl DeleteableOrRemoveable for PrivateMessage {
   fn blank_out_deleted_or_removed_info(mut self) -> Self {
-    self.content = "".into();
+    self.content = String::new();
     self
   }
 }
@@ -177,41 +151,48 @@ impl DeleteableOrRemoveable for PrivateMessage {
 #[cfg(test)]
 mod tests {
   use crate::{
-    source::{person::*, private_message::*},
+    source::{
+      instance::Instance,
+      person::{Person, PersonInsertForm},
+      private_message::{PrivateMessage, PrivateMessageInsertForm, PrivateMessageUpdateForm},
+    },
     traits::Crud,
-    utils::establish_unpooled_connection,
+    utils::build_db_pool_for_tests,
   };
   use serial_test::serial;
 
-  #[test]
+  #[tokio::test]
   #[serial]
-  fn test_crud() {
-    let conn = &mut establish_unpooled_connection();
+  async fn test_crud() {
+    let pool = &build_db_pool_for_tests().await;
 
-    let creator_form = PersonForm {
-      name: "creator_pm".into(),
-      public_key: Some("pubkey".to_string()),
-      ..PersonForm::default()
-    };
+    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
 
-    let inserted_creator = Person::create(conn, &creator_form).unwrap();
+    let creator_form = PersonInsertForm::builder()
+      .name("creator_pm".into())
+      .public_key("pubkey".to_string())
+      .instance_id(inserted_instance.id)
+      .build();
 
-    let recipient_form = PersonForm {
-      name: "recipient_pm".into(),
-      public_key: Some("pubkey".to_string()),
-      ..PersonForm::default()
-    };
+    let inserted_creator = Person::create(pool, &creator_form).await.unwrap();
 
-    let inserted_recipient = Person::create(conn, &recipient_form).unwrap();
+    let recipient_form = PersonInsertForm::builder()
+      .name("recipient_pm".into())
+      .public_key("pubkey".to_string())
+      .instance_id(inserted_instance.id)
+      .build();
 
-    let private_message_form = PrivateMessageForm {
-      content: "A test private message".into(),
-      creator_id: inserted_creator.id,
-      recipient_id: inserted_recipient.id,
-      ..PrivateMessageForm::default()
-    };
+    let inserted_recipient = Person::create(pool, &recipient_form).await.unwrap();
 
-    let inserted_private_message = PrivateMessage::create(conn, &private_message_form).unwrap();
+    let private_message_form = PrivateMessageInsertForm::builder()
+      .content("A test private message".into())
+      .creator_id(inserted_creator.id)
+      .recipient_id(inserted_recipient.id)
+      .build();
+
+    let inserted_private_message = PrivateMessage::create(pool, &private_message_form)
+      .await
+      .unwrap();
 
     let expected_private_message = PrivateMessage {
       id: inserted_private_message.id,
@@ -222,7 +203,7 @@ mod tests {
       read: false,
       updated: None,
       published: inserted_private_message.published,
-      ap_id: inserted_private_message.ap_id.to_owned(),
+      ap_id: inserted_private_message.ap_id.clone(),
       local: true,
       secured: None,
       auth_sign: None, 
@@ -230,15 +211,40 @@ mod tests {
       tx: None,
     };
 
-    let read_private_message = PrivateMessage::read(conn, inserted_private_message.id).unwrap();
-    let updated_private_message =
-      PrivateMessage::update(conn, inserted_private_message.id, &private_message_form).unwrap();
-    let deleted_private_message =
-      PrivateMessage::update_deleted(conn, inserted_private_message.id, true).unwrap();
-    let marked_read_private_message =
-      PrivateMessage::update_read(conn, inserted_private_message.id, true).unwrap();
-    Person::delete(conn, inserted_creator.id).unwrap();
-    Person::delete(conn, inserted_recipient.id).unwrap();
+    let read_private_message = PrivateMessage::read(pool, inserted_private_message.id)
+      .await
+      .unwrap();
+
+    let private_message_update_form = PrivateMessageUpdateForm::builder()
+      .content(Some("A test private message".into()))
+      .build();
+    let updated_private_message = PrivateMessage::update(
+      pool,
+      inserted_private_message.id,
+      &private_message_update_form,
+    )
+    .await
+    .unwrap();
+
+    let deleted_private_message = PrivateMessage::update(
+      pool,
+      inserted_private_message.id,
+      &PrivateMessageUpdateForm::builder()
+        .deleted(Some(true))
+        .build(),
+    )
+    .await
+    .unwrap();
+    let marked_read_private_message = PrivateMessage::update(
+      pool,
+      inserted_private_message.id,
+      &PrivateMessageUpdateForm::builder().read(Some(true)).build(),
+    )
+    .await
+    .unwrap();
+    Person::delete(pool, inserted_creator.id).await.unwrap();
+    Person::delete(pool, inserted_recipient.id).await.unwrap();
+    Instance::delete(pool, inserted_instance.id).await.unwrap();
 
     assert_eq!(expected_private_message, read_private_message);
     assert_eq!(expected_private_message, updated_private_message);

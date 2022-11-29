@@ -2,9 +2,9 @@ use crate::Perform;
 use actix_web::web::Data;
 use lemmy_api_common::{
   site::{ListRegistrationApplications, ListRegistrationApplicationsResponse},
-  utils::{blocking, get_local_user_view_from_jwt, is_admin},
+  utils::{get_local_user_view_from_jwt, is_admin},
 };
-use lemmy_db_schema::source::site::Site;
+use lemmy_db_schema::source::local_site::LocalSite;
 use lemmy_db_views::registration_application_view::RegistrationApplicationQuery;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::LemmyContext;
@@ -22,28 +22,25 @@ impl Perform for ListRegistrationApplications {
     let data = self;
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_site = LocalSite::read(context.pool()).await?;
 
     // Make sure user is an admin
     is_admin(&local_user_view)?;
 
     let unread_only = data.unread_only;
-    let verified_email_only = blocking(context.pool(), Site::read_local_site)
-      .await??
-      .require_email_verification;
+    let verified_email_only = local_site.require_email_verification;
 
     let page = data.page;
     let limit = data.limit;
-    let registration_applications = blocking(context.pool(), move |conn| {
-      RegistrationApplicationQuery::builder()
-        .conn(conn)
-        .unread_only(unread_only)
-        .verified_email_only(Some(verified_email_only))
-        .page(page)
-        .limit(limit)
-        .build()
-        .list()
-    })
-    .await??;
+    let registration_applications = RegistrationApplicationQuery::builder()
+      .pool(context.pool())
+      .unread_only(unread_only)
+      .verified_email_only(Some(verified_email_only))
+      .page(page)
+      .limit(limit)
+      .build()
+      .list()
+      .await?;
 
     let res = Self::Response {
       registration_applications,

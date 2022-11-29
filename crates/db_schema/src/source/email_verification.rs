@@ -1,5 +1,4 @@
 use crate::newtypes::{LocalUserId, EmailVerificationId};
-
 #[cfg(feature = "full")]
 use crate::schema::email_verification;
 

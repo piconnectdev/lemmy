@@ -3,7 +3,6 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   comment::{GetComments, GetCommentsResponse},
   utils::{
-    blocking,
     check_private_instance,
     get_local_user_view_from_jwt_opt,
     listing_type_with_site_default,
@@ -11,7 +10,7 @@ use lemmy_api_common::{
 };
 use lemmy_apub::{fetcher::resolve_actor_identifier, objects::community::ApubCommunity};
 use lemmy_db_schema::{
-  source::{comment::Comment, community::Community},
+  source::{comment::Comment, community::Community, local_site::LocalSite},
   traits::{Crud, DeleteableOrRemoveable},
 };
 use lemmy_db_views::comment_view::CommentQuery;
@@ -32,10 +31,11 @@ impl PerformCrud for GetComments {
     let local_user_view =
       get_local_user_view_from_jwt_opt(data.auth.as_ref(), context.pool(), context.secret())
         .await?;
-    check_private_instance(&local_user_view, context.pool()).await?;
+    let local_site = LocalSite::read(context.pool()).await?;
+    check_private_instance(&local_user_view, &local_site)?;
 
     let community_id = data.community_id;
-    let listing_type = listing_type_with_site_default(data.type_, context.pool()).await?;
+    let listing_type = listing_type_with_site_default(data.type_, &local_site)?;
 
     let community_actor_id = if let Some(name) = &data.community_name {
       resolve_actor_identifier::<ApubCommunity, Community>(name, context, true)
@@ -54,44 +54,38 @@ impl PerformCrud for GetComments {
 
     // If a parent_id is given, fetch the comment to get the path
     let parent_path = if let Some(parent_id) = parent_id {
-      Some(
-        blocking(context.pool(), move |conn| Comment::read(conn, parent_id))
-          .await??
-          .path,
-      )
+      Some(Comment::read(context.pool(), parent_id).await?.path)
     } else {
       None
     };
 
-    let parent_path_cloned = parent_path.to_owned();
+    let parent_path_cloned = parent_path.clone();
     let post_id = data.post_id;
     let local_user = local_user_view.map(|l| l.local_user);
-    let mut comments = blocking(context.pool(), move |conn| {
-      CommentQuery::builder()
-        .conn(conn)
-        .listing_type(Some(listing_type))
-        .sort(sort)
-        .max_depth(max_depth)
-        .saved_only(saved_only)
-        .community_id(community_id)
-        .community_actor_id(community_actor_id)
-        .parent_path(parent_path_cloned)
-        .post_id(post_id)
-        .local_user(local_user.as_ref())
-        .page(page)
-        .limit(limit)
-        .build()
-        .list()
-    })
-    .await?
-    .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_comments"))?;
+    let mut comments = CommentQuery::builder()
+      .pool(context.pool())
+      .listing_type(Some(listing_type))
+      .sort(sort)
+      .max_depth(max_depth)
+      .saved_only(saved_only)
+      .community_id(community_id)
+      .community_actor_id(community_actor_id)
+      .parent_path(parent_path_cloned)
+      .post_id(post_id)
+      .local_user(local_user.as_ref())
+      .page(page)
+      .limit(limit)
+      .build()
+      .list()
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_comments"))?;
 
     // Blank out deleted or removed info
     for cv in comments
       .iter_mut()
       .filter(|cv| cv.comment.deleted || cv.comment.removed)
     {
-      cv.comment = cv.to_owned().comment.blank_out_deleted_or_removed_info();
+      cv.comment = cv.clone().comment.blank_out_deleted_or_removed_info();
     }
 
     Ok(GetCommentsResponse { comments })

@@ -4,10 +4,10 @@ use lemmy_api_common::{
   post::{EditPost, PostResponse},
   request::fetch_site_data,
   utils::{
-    blocking,
     check_community_ban,
     check_community_deleted_or_removed,
     get_local_user_view_from_jwt,
+    local_site_to_slur_regex,
   },
 };
 use lemmy_apub::protocol::activities::{
@@ -15,9 +15,13 @@ use lemmy_apub::protocol::activities::{
   CreateOrUpdateType,
 };
 use lemmy_db_schema::{
-  source::post::{Post, PostForm},
-  traits::Crud,
-  utils::{diesel_option_overwrite, naive_now},
+  source::{
+    actor_language::CommunityLanguage,
+    local_site::LocalSite,
+    post::{Post, PostUpdateForm},
+  },
+  traits::{Crud, Signable}, 
+  utils::diesel_option_overwrite,
 };
 use lemmy_utils::{
   error::LemmyError,
@@ -39,6 +43,7 @@ impl PerformCrud for EditPost {
     let data: &EditPost = self;
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_site = LocalSite::read(context.pool()).await?;
 
     let data_url = data.url.as_ref();
 
@@ -47,10 +52,10 @@ impl PerformCrud for EditPost {
     let url = Some(data_url.map(clean_url_params).map(Into::into));
     let body = diesel_option_overwrite(&data.body);
     let auth_sign = diesel_option_overwrite(&data.auth_sign);
-
-    let slur_regex = &context.settings().slur_regex();
-    check_slurs_opt(&data.name, slur_regex)?;
-    check_slurs_opt(&data.body, slur_regex)?;
+    //let signature = diesel_option_overwrite(&data.);
+    let slur_regex = local_site_to_slur_regex(&local_site);
+    check_slurs_opt(&data.name, &slur_regex)?;
+    check_slurs_opt(&data.body, &slur_regex)?;
 
     if let Some(name) = &data.name {
       if !is_valid_post_title(name) {
@@ -59,7 +64,7 @@ impl PerformCrud for EditPost {
     }
 
     let post_id = data.post_id;
-    let orig_post = blocking(context.pool(), move |conn| Post::read(conn, post_id)).await??;
+    let orig_post = Post::read(context.pool(), post_id).await?;
 
     check_community_ban(
       local_user_view.person.id,
@@ -82,36 +87,33 @@ impl PerformCrud for EditPost {
       .map(|u| (Some(u.title), Some(u.description), Some(u.embed_video_url)))
       .unwrap_or_default();
 
-    let (signature, _meta, _content)  = Post::sign_data_update(&orig_post.clone(), data.name.clone(), url.clone().unwrap_or_default(), body.clone().unwrap_or_default());
-    // blocking(context.pool(), move |conn| {
-    //   Post::update_srv_sign(conn, orig_post.id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
-    // })
-    // .await?;
+    let language_id = self.language_id;
+    CommunityLanguage::is_allowed_community_language(
+      context.pool(),
+      language_id,
+      orig_post.community_id,
+    )
+    .await?;
 
-    let post_form = PostForm {
-      creator_id: orig_post.creator_id.to_owned(),
-      community_id: orig_post.community_id,
-      name: data.name.to_owned().unwrap_or(orig_post.name),
-      url,
-      body,
-      nsfw: data.nsfw,
-      updated: Some(naive_now()),
-      embed_title,
-      embed_description,
-      embed_video_url,
-      language_id: data.language_id,
-      thumbnail_url: Some(thumbnail_url),
-      auth_sign,
-      srv_sign: signature,
-      ..PostForm::default()
-    };
+    //let (signature, _meta, _content)  = Post::sign_data_update(&orig_post.clone(), data.name.clone(), url.clone().unwrap_or_default(), data.body.clone());
+
+    let post_form = PostUpdateForm::builder()
+      .name(data.name.clone())
+      .url(url)
+      .body(body)
+      .nsfw(data.nsfw)
+      .embed_title(embed_title)
+      .embed_description(embed_description)
+      .embed_video_url(embed_video_url)
+      .language_id(data.language_id)
+      .thumbnail_url(Some(thumbnail_url))
+      .auth_sign(auth_sign)
+      //.srv_sign(Some(signature))
+      .build();
 
     
     let post_id = data.post_id;
-    let res = blocking(context.pool(), move |conn| {
-      Post::update(conn, post_id, &post_form)
-    })
-    .await?;
+    let res = Post::update(context.pool(), post_id, &post_form).await;
     let updated_post: Post = match res {
       Ok(post) => post,
       Err(e) => {
@@ -125,6 +127,9 @@ impl PerformCrud for EditPost {
       }
     };
 
+    let (signature, _meta, _content)  = Post::sign_data(&updated_post.clone()).await;
+    let updated_post = Post::update_srv_sign(context.pool(), updated_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
+        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
     // Send apub update
     CreateOrUpdatePost::send(
       updated_post.into(),

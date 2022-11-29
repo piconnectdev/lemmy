@@ -7,18 +7,18 @@ use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::LemmyContext;
 
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for GetPayment {
-  type Response = GetPaymentResponse;
+impl PerformCrud for GetPiPayment {
+  type Response = GetPiPaymentResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<GetPaymentResponse, LemmyError> {
-    let data: &GetPayment = self;
+  ) -> Result<GetPiPaymentResponse, LemmyError> {
+    let data: &GetPiPayment = self;
 
     let pmid = data.id.to_owned();
-    let res = GetPaymentResponse {
+    let res = GetPiPaymentResponse {
       pid: "".to_string(),
     };
     Ok(res)

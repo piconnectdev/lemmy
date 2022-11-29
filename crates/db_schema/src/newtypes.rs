@@ -1,3 +1,4 @@
+#[cfg(feature = "full")]
 use diesel_ltree::Ltree;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -8,10 +9,6 @@ use std::{
 
 use url::Url;
 use uuid::Uuid;
-
-// #[derive(
-//   Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize, DieselNewType,
-// )]
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
@@ -486,24 +483,24 @@ impl fmt::Display for CommentReplyId {
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
-pub struct PaymentId(pub Uuid);
+pub struct PiPaymentId(pub Uuid);
 
-impl fmt::Display for PaymentId {
+impl fmt::Display for PiPaymentId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
   }
 }
 
 /*
-  PiPaymentId from Pi Network SDK
+  PiPaymentIdentifier from Pi Network SDK
 */
 
 //#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
-pub struct PiPaymentId(pub String);
+pub struct PiPaymentIdentifier(pub String);
 
-impl fmt::Display for PiPaymentId {
+impl fmt::Display for PiPaymentIdentifier {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
   }
@@ -522,7 +519,6 @@ impl fmt::Display for PiUserId {
   }
 }
 
-
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PrivateMessageReportId(pub Uuid);
@@ -540,12 +536,92 @@ pub struct LanguageId(pub i32);
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct LocalUserLanguageId(pub Uuid);
-
 impl fmt::Display for LocalUserLanguageId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
   }
 }
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct SiteLanguageId(pub Uuid);
+impl fmt::Display for SiteLanguageId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct CommunityLanguageId(pub Uuid);
+impl fmt::Display for CommunityLanguageId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct InstanceId(pub Uuid);
+impl fmt::Display for InstanceId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct LocalSiteId(pub Uuid);
+impl fmt::Display for LocalSiteId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct LocalSiteRateLimitId(pub Uuid);
+impl fmt::Display for LocalSiteRateLimitId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct FederationAllowListId(pub Uuid);
+impl fmt::Display for FederationAllowListId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct FederationBlockListId(pub Uuid);
+impl fmt::Display for FederationBlockListId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct TaglineId(pub Uuid);
+impl fmt::Display for TaglineId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct PersonFollowerId(pub Uuid);
+impl fmt::Display for PersonFollowerId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
 
 #[repr(transparent)]
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
@@ -553,6 +629,7 @@ impl fmt::Display for LocalUserLanguageId {
 #[cfg_attr(feature = "full", diesel(sql_type = diesel::sql_types::Text))]
 pub struct DbUrl(pub(crate) Url);
 
+#[cfg(feature = "full")]
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Ltree")]
 /// Do remote derivation for the Ltree struct
@@ -560,7 +637,7 @@ pub struct LtreeDef(pub String);
 
 impl Display for DbUrl {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    self.to_owned().0.fmt(f)
+    self.clone().0.fmt(f)
   }
 }
 

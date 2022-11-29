@@ -1,43 +1,37 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
-use bcrypt::{hash, DEFAULT_COST};
 use lemmy_api_common::{
   person::LoginResponse,
-  utils::{blocking, honeypot_check, password_length_check},
   web3::*,
 };
-use lemmy_apub::{
-  generate_inbox_url, generate_local_apub_endpoint, generate_shared_inbox_url, EndpointType,
+use lemmy_db_schema::{ *
+  //newtypes::PersonId,
+  //source::{
+    //local_user::{LocalUser, LocalUserInsertForm},
+    //person::*, registration_application::RegistrationApplicationInsertForm,
+  //},
+  //traits::{Crud}, aggregates::structs::PersonAggregates,
 };
-use lemmy_db_schema::{
-  newtypes::PersonId,
-  source::{
-    local_user::{LocalUser, LocalUserForm},
-    person::*,
-    site::*,
-  },
-  traits::{Crud},
-};
-use lemmy_db_views::structs::LocalUserView;
+use lemmy_db_views::structs::{SiteView};
 use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
-  apub::generate_actor_keypair,
   claims::Claims,
   error::LemmyError,
   settings::SETTINGS,
-  utils::{check_slurs, eth_verify, is_valid_actor_name},
+  utils::{eth_verify, },
   ConnectionId,
 };
 use lemmy_websocket::{
-  messages::{CheckCaptcha, CheckToken},
+  messages::{CheckToken},
   LemmyContext,
 };
+
+use crate::web3::ext::*;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for Web3Register {
   type Response = LoginResponse;
-
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
@@ -45,28 +39,73 @@ impl PerformCrud for Web3Register {
   ) -> Result<LoginResponse, LemmyError> {
     let settings = SETTINGS.to_owned();
     let data: &Web3Register = &self;
+    let ext_account = data.external_account.clone();
 
     // no email verification, or applications if the site is not setup yet
     let (mut email_verification, mut require_application) = (false, false);
 
     let mut _result = true;
-    // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
-      if !site.open_registration {
-        return Err(LemmyError::from_message("registration_closed"));
-      }
-      email_verification = site.require_email_verification;
-      require_application = site.require_application;
-    }
 
-    if !settings.web3_enabled {
+    let site_view = SiteView::read_local(context.pool()).await?;
+    let local_site = site_view.local_site;
+
+    if !local_site.open_registration {
       return Err(LemmyError::from_message("registration_closed"));
     }
+    
+    if local_site.site_setup {
+      if !settings.web3_enabled {
+        return Err(LemmyError::from_message("registration_disabled"));
+      }
+    }
 
-    let mut _address = data.address.clone();
-    let mut _signature = data.signature.clone();
-    let _token = data.token.clone();
-    let _cli_time = data.cli_time;
+    // If its not the admin, check the token / sign
+    if local_site.site_setup {
+      let mut _address = ext_account.account.clone();
+      let mut _signature = ext_account.signature.clone();
+      let _token = ext_account.token.clone();
+      let _cli_time = ext_account.cli_time;
+  
+      let check = context
+        .chat_server()
+        .send(CheckToken {
+          uuid: _token.clone(),
+          answer: "".to_string(),
+        })
+        .await?;
+      if !check {
+        return Err(LemmyError::from_message("token_incorrect"));
+      }
+
+      let text = format!(
+        "LOGIN:{};TOKEN:{};TIME:{}",
+        _address.clone(),
+        _token.clone(),
+        _cli_time.clone()
+      );
+      println!(
+        "Web3Registration is processing for {} - {} {} {} ",
+        text.clone(),
+        _address.clone(),
+        _token.clone(),
+        ext_account.signature.clone()
+      );
+      if !eth_verify(_address.clone(), text.clone(), _signature) {
+        return Err(LemmyError::from_message("registration_closed"));
+      }  
+    }
+
+    let login_response = match create_external_account(context, &ext_account.account.clone(), &ext_account, &data.info.clone()).await
+    {
+      Ok(c) => c,
+      Err(_e) => {
+        return Err(_e);
+      },
+    };
+
+    /*
+    email_verification = local_site.require_email_verification;
+    require_application = local_site.require_application;
 
     password_length_check(&data.info.password)?;
     honeypot_check(&data.info.honeypot)?;
@@ -87,13 +126,17 @@ impl PerformCrud for Web3Register {
     }
 
     // Check if there are admins. False if admins exist
-    let no_admins = blocking(context.pool(), move |conn| {
-      PersonViewSafe::admins(conn).map(|a| a.is_empty())
-    })
-    .await??;
-
+    // let no_admins = blocking(context.pool(), move |conn| {
+    //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
+    // })
+    // .await??;
+    //let no_admins = PersonViewSafe::admins(conn).map(|a| a.is_empty()).await;
+    // let no_admins = PersonViewSafe::admins(context.pool()).await.map(|a| a.is_empty()).unwrap();
     // If its not the admin, check the captcha
-    if !no_admins && settings.captcha.enabled {
+    // If the site is set up, check the captcha
+    //if !no_admins && settings.captcha.enabled {
+
+    if local_site.site_setup && local_site.captcha_enabled {
       let check = context
         .chat_server()
         .send(CheckCaptcha {
@@ -114,49 +157,18 @@ impl PerformCrud for Web3Register {
       }
     }
 
-    // If its not the admin, check the token
-    if !no_admins {
-      let check = context
-        .chat_server()
-        .send(CheckToken {
-          uuid: data.token.clone(),
-          answer: "".to_string(),
-        })
-        .await?;
-      if !check {
-        return Err(LemmyError::from_message("token_incorrect"));
-      }
-
-      let text = format!(
-        "LOGIN:{};TOKEN:{};TIME:{}",
-        _address.clone(),
-        _token.clone(),
-        _cli_time.clone()
-      );
-      println!(
-        "Web3Registration is processing for {} - {} {} {} ",
-        text.clone(),
-        _address.clone(),
-        _token.clone(),
-        data.signature.clone()
-      );
-      if !eth_verify(_address.clone(), text.clone(), _signature) {
-        return Err(LemmyError::from_message("registration_closed"));
-      }  
-    }
-
-    check_slurs(&data.info.username, &context.settings().slur_regex())?;
+    let slur_regex = local_site_to_slur_regex(&local_site);
+    check_slurs(&data.info.username, &slur_regex)?;
+    //check_slurs_opt(&data.info.answer, &slur_regex)?;
 
     let actor_keypair = generate_actor_keypair()?;
-    if !is_valid_actor_name(
-      &data.info.username,
-      context.settings().actor_name_max_length,
-    ) {
+    if !is_valid_actor_name(&data.info.username, local_site.actor_name_max_length as usize) {
       println!(
         "Invalid username {} {}",
-        _address.to_owned(),
+        data.account.to_owned(),
         &data.info.username
       );
+
       return Err(LemmyError::from_message("register:invalid_username"));
     }
 
@@ -166,30 +178,20 @@ impl PerformCrud for Web3Register {
       &settings.get_protocol_and_hostname(),
     )?;
 
-    let _alias = _address.clone();
-    let _alias2 = _alias.clone();
-    let _alias3 = _alias.clone();
-
+    let _alias = ext_account.account.clone();
     let _new_user = data.info.username.to_owned();
-    let _new_user2 = data.info.username.to_owned();
     let _new_password = data.info.password.to_owned();
 
     let person_id: PersonId;
     let mut _exist = false;
 
-    let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(conn, &_new_user)
-    })
-    .await?
+    let person = match Person::find_by_name(context.pool(), &_new_user.clone()).await
     {
       Ok(c) => Some(c),
       Err(_e) => None,
     };
 
-    let other_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_web3_address(conn, &_alias)
-    })
-    .await?
+    let other_person = match Person::find_by_extra_name(context.pool(), &_alias.clone()).await
     {
       Ok(c) => Some(c),
       Err(_e) => None,
@@ -200,14 +202,15 @@ impl PerformCrud for Web3Register {
       Some(op) => {
         person_id = op.id;
         _exist = true;
+        change_password = true;
         match person {
           Some(other) => {
-            if op.extra_user_id != other.extra_user_id {
+            if op.external_id != other.external_id {
               let err_type = format!(
                 "Web3Register: User {} is exist and belong to other Web3 Account ",
                 &data.info.username
               );
-              println!("{} {} {}", data.address.clone(), err_type, &_alias2);
+              println!("{} {} {}", data.account.clone(), err_type, &_alias.clone());
               _result = false;
               return Err(LemmyError::from_message(&err_type).into());
             } else {
@@ -219,7 +222,7 @@ impl PerformCrud for Web3Register {
             change_password = true;
             // Not allow change username
             let err_type = format!("Web3Register: You already have user name {}, change password", op.name);
-            println!("{} {} {}", data.address.clone(), err_type, &_alias2);
+            println!("{} {} {}", data.account.clone(), err_type, &_alias.clone());
             _result = false;
           }
         };
@@ -228,10 +231,10 @@ impl PerformCrud for Web3Register {
         match person {
           Some(_other) => {
             let err_type = format!(
-              "Web3Register: User {} is exist and belong to other user",
-              &data.info.username
+              "User {} is exist and belong to other user",
+              &data.info.username.clone()
             );
-            println!("{} {} {}", data.address.clone(), err_type, &_alias2);
+            println!("{} {} {}", _alias.clone(), err_type, &data.info.username.clone());
             return Err(LemmyError::from_message(&err_type).into());
           }
           None => {
@@ -246,36 +249,32 @@ impl PerformCrud for Web3Register {
       let _password_hash =
         hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
 
-      let local_user_id;
-      let _local_user = match blocking(context.pool(), move |conn| {
-        LocalUserView::read_from_name(conn, &_new_user2)
-      })
-      .await?
+      //let _new_user = other_person.clone().unwrap().name.clone();
+      //let _local_user = match LocalUserView::read_from_name(context.pool(), &_new_user.clone()).await
+      let _local_user = match LocalUserView::read_person(context.pool(), person_id.clone()).await
       {
         Ok(lcu) => lcu,
         Err(_e) => {
           let err_type = format!(
             "Web3Register: Update local user not found {} {} {}",
             &data.info.username,
-            &data.address.clone(),
+            &data.account.clone(),
             _e.to_string()
           );
           return Err(LemmyError::from_message(&err_type).into());
         }
       };
-      local_user_id = _local_user.local_user.id.clone();
 
-      let updated_local_user = match blocking(context.pool(), move |conn| {
-        LocalUser::update_password(conn, local_user_id, &_new_password)
-      })
-      .await
+      let local_user_id = _local_user.local_user.id.clone();
+
+      let updated_local_user = match LocalUser::update_password(context.pool(), local_user_id, &_new_password).await
       {
         Ok(chp) => chp,
         Err(_e) => {
           let err_type = format!(
             "Web3Register: Update local user password error {} {} {}",
             &data.info.username,
-            &data.address.clone(),
+            &data.account.clone(),
             _e.to_string()
           );
           return Err(LemmyError::from_message(&err_type).into());
@@ -297,86 +296,120 @@ impl PerformCrud for Web3Register {
 
     // We have to create both a person, and local_user
     // Register the new person
-    let person_form = PersonForm {
-      name: data.info.username.to_owned(),
-      actor_id: Some(actor_id.clone()),
-      private_key: Some(Some(actor_keypair.private_key)),
-      public_key: Some(actor_keypair.public_key),
-      inbox_url: Some(generate_inbox_url(&actor_id)?),
-      shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
-      admin: Some(no_admins),
-      extra_user_id: Some(_alias2),
-      ..PersonForm::default()
-    };
+    let person_form = PersonInsertForm::builder()
+      .name(data.info.username.clone())
+      .actor_id(Some(actor_id.clone()))
+      .private_key(Some(actor_keypair.private_key))
+      .public_key(actor_keypair.public_key)
+      .inbox_url(Some(generate_inbox_url(&actor_id)?))
+      .shared_inbox_url(Some(generate_shared_inbox_url(&actor_id)?))
+      // If its the initial site setup, they are an admin
+      .admin(Some(!local_site.site_setup))
+      .instance_id(site_view.site.instance_id)
+      .external_id(Some(_alias.clone()))
+      .build();
 
-    // insert the person
-    let inserted_person = match blocking(context.pool(), move |conn| {
-      Person::create(conn, &person_form)
-    })
-    .await?
+
+    let inserted_person = match Person::create(context.pool(), &person_form).await
     {
       Ok(p) => p,
       Err(_e) => {
         let err_type = format!(
           "Web3Register: user_already_exists: {} {}, exists{},  err:{}",
           &data.info.username,
-          _alias3,
+          _alias.clone(),
           _exist,
           _e.to_string()
         );
         return Err(LemmyError::from_message(&err_type).into());
       }
     };
-
-    //let inserted_person = inserted_person1.unwrap();
-    let new_id = inserted_person.id.clone();
     // Create the local user
-    let local_user_form = LocalUserForm {
-      person_id: Some(new_id.clone()),
-      email: Some(data.info.email.as_deref().map(|s| s.to_owned())),
-      password_encrypted: Some(data.info.password.to_string()),
-      show_nsfw: Some(data.info.show_nsfw),
-      email_verified: Some(false),
-      ..LocalUserForm::default()
-    };
+    let local_user_form = LocalUserInsertForm::builder()
+      .person_id(inserted_person.id)
+      .email(data.info.email.as_deref().map(str::to_lowercase))
+      .password_encrypted(data.info.password.to_string())
+      .show_nsfw(Some(data.info.show_nsfw))
+      .build();
 
-    let inserted_local_user = match blocking(context.pool(), move |conn| {
-      LocalUser::register(conn, &local_user_form)
-    })
-    .await?
-    {
+     let inserted_local_user = match LocalUser::create(context.pool(), &local_user_form).await {
       Ok(lu) => lu,
-      Err(_e) => {
-        let err_type = if _e.to_string()
+      Err(e) => {
+        let err_type = if e.to_string()
           == "duplicate key value violates unique constraint \"local_user_email_key\""
         {
-          "Web3Register: email_already_exists"
+          "email_already_exists"
         } else {
-          "Web3Register: user_already_exists"
+          "user_already_exists"
         };
 
         // If the local user creation errored, then delete that person
-        blocking(context.pool(), move |conn| {
-          Person::delete(conn, inserted_person.id.clone())
-        })
-        .await??;
+        Person::delete(context.pool(), inserted_person.id).await?;
 
-        return Err(LemmyError::from_message(err_type).into());
+        return Err(LemmyError::from_error_message(e, err_type));
       }
     };
 
-    // Return the jwt / LoginResponse
-    Ok(LoginResponse {
-      jwt: Some(
+    if local_site.site_setup && local_site.require_application {
+      // Create the registration application
+      let form = RegistrationApplicationInsertForm {
+        local_user_id: inserted_local_user.id,
+        // We already made sure answer was not null above
+        answer: data.info.answer.clone().expect("must have an answer"),
+      };
+
+      RegistrationApplication::create(context.pool(), &form).await?;
+    }
+
+    // Email the admins
+    if local_site.application_email_admins {
+      send_new_applicant_email_to_admins(&data.username, context.pool(), context.settings())
+        .await?;
+    }
+
+    let mut login_response = LoginResponse {
+      jwt: None,
+      registration_created: false,
+      verify_email_sent: false,
+    };
+
+    // Log the user in directly if the site is not setup, or email verification and application aren't required
+    if !local_site.site_setup
+      || (!local_site.require_application && !local_site.require_email_verification)
+    {
+      login_response.jwt = Some(
         Claims::jwt(
           inserted_local_user.id.0,
           &context.secret().jwt_secret,
           &context.settings().hostname,
         )?
         .into(),
-      ),
-      verify_email_sent: false,
-      registration_created: false,
-    })
+      );
+    } else {
+      if local_site.require_email_verification {
+        let local_user_view = LocalUserView {
+          local_user: inserted_local_user,
+          person: inserted_person,
+          counts: PersonAggregates::default(),
+        };
+        // we check at the beginning of this method that email is set
+        let email = local_user_view
+          .local_user
+          .email
+          .clone()
+          .expect("email was provided");
+
+        send_verification_email(&local_user_view, &email, context.pool(), context.settings())
+          .await?;
+        login_response.verify_email_sent = true;
+      }
+
+      if local_site.require_application {
+        login_response.registration_created = true;
+      }
+    }
+    */
+    Ok(login_response)
   }
 }
+

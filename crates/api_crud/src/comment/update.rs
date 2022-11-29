@@ -1,13 +1,14 @@
+use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   comment::{CommentResponse, EditComment},
   utils::{
-    blocking,
     check_community_ban,
     check_community_deleted_or_removed,
     check_post_deleted_or_removed,
     get_local_user_view_from_jwt,
     is_mod_or_admin,
+    local_site_to_slur_regex,
   },
 };
 use lemmy_apub::protocol::activities::{
@@ -15,8 +16,12 @@ use lemmy_apub::protocol::activities::{
   CreateOrUpdateType,
 };
 use lemmy_db_schema::{
-  source::comment::{Comment, CommentForm},
-  traits::Crud,
+  source::{
+    actor_language::CommunityLanguage,
+    comment::{Comment, CommentUpdateForm},
+    local_site::LocalSite,
+  },
+  traits::{Crud, Signable },
 };
 use lemmy_db_views::structs::CommentView;
 use lemmy_utils::{
@@ -29,8 +34,6 @@ use lemmy_websocket::{
   LemmyContext,
   UserOperationCrud,
 };
-
-use crate::PerformCrud;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditComment {
@@ -45,12 +48,10 @@ impl PerformCrud for EditComment {
     let data: &EditComment = self;
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_site = LocalSite::read(context.pool()).await?;
 
     let comment_id = data.comment_id;
-    let orig_comment = blocking(context.pool(), move |conn| {
-      CommentView::read(conn, comment_id, None)
-    })
-    .await??;
+    let orig_comment = CommentView::read(context.pool(), comment_id, None).await?;
 
     // TODO is this necessary? It should really only need to check on create
     check_community_ban(
@@ -77,34 +78,42 @@ impl PerformCrud for EditComment {
       .await?;
     }
 
+    let language_id = self.language_id;
+    CommunityLanguage::is_allowed_community_language(
+      context.pool(),
+      language_id,
+      orig_comment.community.id,
+    )
+    .await?;
+
     // Update the Content
     let content_slurs_removed = data
       .content
       .as_ref()
-      .map(|c| remove_slurs(c, &context.settings().slur_regex()));
-    
+      .map(|c| remove_slurs(c, &local_site_to_slur_regex(&local_site)));
+
     let content = content_slurs_removed.clone().unwrap_or(orig_comment.comment.content.clone());
     let (signature, _meta, _content)  = Comment::sign_data_update(&orig_comment.comment.clone(), &content.clone());
 
     let comment_id = data.comment_id;
-    let form = CommentForm {
-      creator_id: orig_comment.comment.creator_id,
-      post_id: orig_comment.comment.post_id,
-      content: content_slurs_removed.unwrap_or(orig_comment.comment.content),
-      distinguished: data.distinguished,
-      language_id: data.language_id,
-      auth_sign: data.auth_sign.clone(),
-      srv_sign: signature,
-      ..Default::default()
-    };
-    let updated_comment = blocking(context.pool(), move |conn| {
-      Comment::update(conn, comment_id, &form)
-    })
-    .await?
-    .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
+    let form = CommentUpdateForm::builder()
+      .content(content_slurs_removed)
+      .distinguished(data.distinguished)
+      .language_id(data.language_id)      
+      .auth_sign(data.auth_sign.clone())
+      .srv_sign(signature)
+      .build();
+    let updated_comment = Comment::update(context.pool(), comment_id, &form)
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
+
+    let (signature, _meta, _content)  = Comment::sign_data(&updated_comment.clone()).await;
+    let updated_comment = Comment::update_srv_sign(context.pool(), updated_comment.id.clone(), signature.clone().unwrap_or_default().as_str())
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
 
     // Do the mentions / recipients
-    let updated_comment_content = updated_comment.content.to_owned();
+    let updated_comment_content = updated_comment.content.clone();
     let mentions = scrape_text_for_mentions(&updated_comment_content);
     let recipient_ids = send_local_notifs(
       mentions,
@@ -130,7 +139,7 @@ impl PerformCrud for EditComment {
       data.comment_id,
       UserOperationCrud::EditComment,
       websocket_id,
-      data.form_id.to_owned(),
+      data.form_id.clone(),
       None,
       recipient_ids,
       context,

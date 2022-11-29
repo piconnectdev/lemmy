@@ -86,11 +86,15 @@ pub struct SaveUserSettings {
   pub show_new_post_notifs: Option<bool>,
   pub discussion_languages: Option<Vec<LanguageId>>,
   pub auth: Sensitive<String>,
+
   pub pi_address: Option<String>,
   pub web3_address: Option<String>,
-  pub sol_address: Option<String>,
+  pub pol_address: Option<String>,
   pub dap_address: Option<String>,
   pub cosmos_address: Option<String>,
+  pub ton_address: Option<String>,
+  pub sui_address: Option<String>,
+  pub sign_data: Option<bool>,
   pub auth_sign: Option<String>,
 }
 

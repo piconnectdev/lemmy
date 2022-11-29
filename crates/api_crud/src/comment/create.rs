@@ -3,12 +3,12 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   comment::{CommentResponse, CreateComment},
   utils::{
-    blocking,
     check_community_ban,
     check_community_deleted_or_removed,
     check_post_deleted_or_removed,
     get_local_user_view_from_jwt,
     get_post,
+    local_site_to_slur_regex,
   },
 };
 use lemmy_apub::{
@@ -19,11 +19,13 @@ use lemmy_apub::{
 };
 use lemmy_db_schema::{
   source::{
-    comment::{Comment, CommentForm, CommentLike, CommentLikeForm},
-    comment_reply::CommentReply,
-    person_mention::PersonMention,
+    actor_language::CommunityLanguage,
+    comment::{Comment, CommentInsertForm, CommentLike, CommentLikeForm, CommentUpdateForm},
+    comment_reply::{CommentReply, CommentReplyUpdateForm},
+    local_site::LocalSite,
+    person_mention::{PersonMention, PersonMentionUpdateForm},
   },
-  traits::{Crud, Likeable},
+  traits::{Crud, Likeable, Signable},
 };
 use lemmy_utils::{
   error::LemmyError,
@@ -49,9 +51,12 @@ impl PerformCrud for CreateComment {
     let data: &CreateComment = self;
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_site = LocalSite::read(context.pool()).await?;
 
-    let content_slurs_removed =
-      remove_slurs(&data.content.to_owned(), &context.settings().slur_regex());
+    let content_slurs_removed = remove_slurs(
+      &data.content.clone(),
+      &local_site_to_slur_regex(&local_site),
+    );
 
     // Check for a community ban
     let post_id = data.post_id;
@@ -69,9 +74,7 @@ impl PerformCrud for CreateComment {
 
     // Fetch the parent, if it exists
     let parent_opt = if let Some(parent_id) = data.parent_id {
-      blocking(context.pool(), move |conn| Comment::read(conn, parent_id))
-        .await?
-        .ok()
+      Comment::read(context.pool(), parent_id).await.ok()
     } else {
       None
     };
@@ -89,51 +92,54 @@ impl PerformCrud for CreateComment {
       .as_ref()
       .map(|p| p.language_id)
       .unwrap_or(post.language_id);
-    let language_id = Some(data.language_id.unwrap_or(parent_language));
+    let language_id = data.language_id.unwrap_or(parent_language);
 
-    let comment_form = CommentForm {
-      content: content_slurs_removed,
-      post_id: data.post_id,
-      creator_id: local_user_view.person.id,
-      language_id,
-      auth_sign: data.auth_sign.clone(),
-      ..CommentForm::default()
-    };
+    CommunityLanguage::is_allowed_community_language(
+      context.pool(),
+      Some(language_id),
+      community_id,
+    )
+    .await?;
+
+    let comment_form = CommentInsertForm::builder()
+      .content(content_slurs_removed.clone())
+      .post_id(data.post_id)
+      .creator_id(local_user_view.person.id)
+      .language_id(Some(language_id))
+      .auth_sign(data.auth_sign.clone())
+      .build();
 
     // Create the comment
     let comment_form2 = comment_form.clone();
-    let parent_path = parent_opt.to_owned().map(|t| t.path);
-    let inserted_comment = blocking(context.pool(), move |conn| {
-      Comment::create(conn, &comment_form2, parent_path.as_ref())
-    })
-    .await?
-    .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
+    let parent_path = parent_opt.clone().map(|t| t.path);
+    let inserted_comment = Comment::create(context.pool(), &comment_form2, parent_path.as_ref())
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
 
-    let (signature, _meta, _content)  = Comment::sign_data(&inserted_comment.clone());
-    blocking(context.pool(), move |conn| {
-      Comment::update_srv_sign(conn, inserted_comment.id.clone(), signature.clone().unwrap_or_default().as_str()).unwrap();
-    })
-    .await?;
-
+    let (signature, _meta, _content)  = Comment::sign_data(&inserted_comment.clone()).await;
+    let inserted_comment = Comment::update_srv_sign(context.pool(), inserted_comment.id.clone(), signature.clone().unwrap_or_default().as_str())
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
     // Necessary to update the ap_id
     let inserted_comment_id = inserted_comment.id;
     let protocol_and_hostname = context.settings().get_protocol_and_hostname();
 
-    let updated_comment: Comment =
-      blocking(context.pool(), move |conn| -> Result<Comment, LemmyError> {
-        let apub_id = generate_local_apub_endpoint(
-          EndpointType::Comment,
-          &inserted_comment_id.to_string(),
-          &protocol_and_hostname,
-        )?;
-        Ok(Comment::update_ap_id(conn, inserted_comment_id, apub_id)?)
-      })
-      .await?
-      .map_err(|e| e.with_message("couldnt_create_comment"))?;
+    let apub_id = generate_local_apub_endpoint(
+      EndpointType::Comment,
+      &inserted_comment_id.to_string(),
+      &protocol_and_hostname,
+    )?;
+    let updated_comment = Comment::update(
+      context.pool(),
+      inserted_comment_id,
+      &CommentUpdateForm::builder().ap_id(Some(apub_id)).build(),
+    )
+    .await
+    .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
 
     // Scan the comment for user mentions, add those rows
     let post_id = post.id;
-    let mentions = scrape_text_for_mentions(&comment_form.content);
+    let mentions = scrape_text_for_mentions(&content_slurs_removed);
     let recipient_ids = send_local_notifs(
       mentions,
       &updated_comment,
@@ -152,9 +158,8 @@ impl PerformCrud for CreateComment {
       score: 1,
     };
 
-    let like = move |conn: &mut _| CommentLike::like(conn, &like_form);
-    blocking(context.pool(), like)
-      .await?
+    CommentLike::like(context.pool(), &like_form)
+      .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_like_comment"))?;
 
     let apub_comment: ApubComment = updated_comment.into();
@@ -170,29 +175,28 @@ impl PerformCrud for CreateComment {
     // If its a reply, mark the parent as read
     if let Some(parent) = parent_opt {
       let parent_id = parent.id;
-      let comment_reply = blocking(context.pool(), move |conn| {
-        CommentReply::read_by_comment(conn, parent_id)
-      })
-      .await?;
+      let comment_reply = CommentReply::read_by_comment(context.pool(), parent_id).await;
       if let Ok(reply) = comment_reply {
-        blocking(context.pool(), move |conn| {
-          CommentReply::update_read(conn, reply.id, true)
-        })
-        .await?
+        CommentReply::update(
+          context.pool(),
+          reply.id,
+          &CommentReplyUpdateForm { read: Some(true) },
+        )
+        .await
         .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_replies"))?;
       }
 
       // If the parent has PersonMentions mark them as read too
       let person_id = local_user_view.person.id;
-      let person_mention = blocking(context.pool(), move |conn| {
-        PersonMention::read_by_comment_and_person(conn, parent_id, person_id)
-      })
-      .await?;
+      let person_mention =
+        PersonMention::read_by_comment_and_person(context.pool(), parent_id, person_id).await;
       if let Ok(mention) = person_mention {
-        blocking(context.pool(), move |conn| {
-          PersonMention::update_read(conn, mention.id, true)
-        })
-        .await?
+        PersonMention::update(
+          context.pool(),
+          mention.id,
+          &PersonMentionUpdateForm { read: Some(true) },
+        )
+        .await
         .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_person_mentions"))?;
       }
     }
@@ -201,7 +205,7 @@ impl PerformCrud for CreateComment {
       inserted_comment.id,
       UserOperationCrud::CreateComment,
       websocket_id,
-      data.form_id.to_owned(),
+      data.form_id.clone(),
       Some(local_user_view.person.id),
       recipient_ids,
       context,

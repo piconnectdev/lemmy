@@ -1,9 +1,13 @@
 use crate::{
   check_apub_id_valid_with_strictness,
+  fetch_local_site_data,
   local_instance,
   objects::read_from_string_or_source_opt,
   protocol::{
-    objects::instance::{Instance, InstanceType},
+    objects::{
+      instance::{Instance, InstanceType},
+      LanguageTag,
+    },
     ImageObject,
     Source,
   },
@@ -16,9 +20,14 @@ use activitypub_federation::{
   utils::verify_domains_match,
 };
 use chrono::NaiveDateTime;
-use lemmy_api_common::utils::blocking;
+use lemmy_api_common::utils::local_site_opt_to_slur_regex;
 use lemmy_db_schema::{
-  source::site::{Site, SiteForm},
+  source::{
+    actor_language::SiteLanguage,
+    instance::Instance as DbInstance,
+    site::{Site, SiteInsertForm},
+  },
+  traits::Crud,
   utils::{naive_now, DbPool},
 };
 use lemmy_utils::{
@@ -63,11 +72,9 @@ impl ApubObject for ApubSite {
     data: &Self::DataType,
   ) -> Result<Option<Self>, LemmyError> {
     Ok(
-      blocking(data.pool(), move |conn| {
-        Site::read_from_apub_id(conn, object_id)
-      })
-      .await??
-      .map(Into::into),
+      Site::read_from_apub_id(data.pool(), object_id)
+        .await?
+        .map(Into::into),
     )
   }
 
@@ -76,7 +83,11 @@ impl ApubObject for ApubSite {
   }
 
   #[tracing::instrument(skip_all)]
-  async fn into_apub(self, _data: &Self::DataType) -> Result<Self::ApubType, LemmyError> {
+  async fn into_apub(self, data: &Self::DataType) -> Result<Self::ApubType, LemmyError> {
+    let site_id = self.id;
+    let langs = SiteLanguage::read(data.pool(), site_id).await?;
+    let language = LanguageTag::new_multiple(langs, data.pool()).await?;
+
     let instance = Instance {
       kind: InstanceType::Service,
       id: ObjectId::new(self.actor_id()),
@@ -90,6 +101,7 @@ impl ApubObject for ApubSite {
       inbox: self.inbox_url.clone().into(),
       outbox: Url::parse(&format!("{}/site_outbox", self.actor_id))?,
       public_key: self.get_public_key(),
+      language,
       published: convert_datetime(self.published),
       updated: self.updated.map(convert_datetime),
     };
@@ -103,10 +115,13 @@ impl ApubObject for ApubSite {
     data: &Self::DataType,
     _request_counter: &mut i32,
   ) -> Result<(), LemmyError> {
-    check_apub_id_valid_with_strictness(apub.id.inner(), true, data.settings())?;
+    let local_site_data = fetch_local_site_data(data.pool()).await?;
+
+    check_apub_id_valid_with_strictness(apub.id.inner(), true, &local_site_data, data.settings())?;
     verify_domains_match(expected_domain, apub.id.inner())?;
 
-    let slur_regex = &data.settings().slur_regex();
+    let slur_regex = &local_site_opt_to_slur_regex(&local_site_data.local_site);
+
     check_slurs(&apub.name, slur_regex)?;
     check_slurs_opt(&apub.summary, slur_regex)?;
     Ok(())
@@ -118,34 +133,39 @@ impl ApubObject for ApubSite {
     data: &Self::DataType,
     _request_counter: &mut i32,
   ) -> Result<Self, LemmyError> {
-    let site_form = SiteForm {
+    let apub_id = apub.id.inner().clone();
+    let instance = DbInstance::create_from_actor_id(data.pool(), &apub_id).await?;
+
+    let site_form = SiteInsertForm {
       name: apub.name.clone(),
-      sidebar: Some(read_from_string_or_source_opt(
-        &apub.content,
-        &None,
-        &apub.source,
-      )),
+      sidebar: read_from_string_or_source_opt(&apub.content, &None, &apub.source),
       updated: apub.updated.map(|u| u.clone().naive_local()),
-      icon: Some(apub.icon.clone().map(|i| i.url.into())),
-      banner: Some(apub.image.clone().map(|i| i.url.into())),
-      description: Some(apub.summary.clone()),
+      icon: apub.icon.clone().map(|i| i.url.into()),
+      banner: apub.image.clone().map(|i| i.url.into()),
+      description: apub.summary.clone(),
       actor_id: Some(apub.id.clone().into()),
       last_refreshed_at: Some(naive_now()),
       inbox_url: Some(apub.inbox.clone().into()),
       public_key: Some(apub.public_key.public_key_pem.clone()),
-      ..SiteForm::default()
+      private_key: None,
+      instance_id: instance.id,
+      srv_sign: None,
+      tx: None,
     };
-    let site = blocking(data.pool(), move |conn| Site::upsert(conn, &site_form)).await??;
+    let languages = LanguageTag::to_language_id_multiple(apub.language, data.pool()).await?;
+
+    let site = Site::create(data.pool(), &site_form).await?;
+    SiteLanguage::update(data.pool(), languages, &site).await?;
     Ok(site.into())
   }
 }
 
 impl ActorType for ApubSite {
   fn actor_id(&self) -> Url {
-    self.actor_id.to_owned().into()
+    self.actor_id.clone().into()
   }
   fn private_key(&self) -> Option<String> {
-    self.private_key.to_owned()
+    self.private_key.clone()
   }
 }
 
@@ -177,7 +197,7 @@ pub(in crate::objects) async fn fetch_instance_actor_for_object(
   // try to fetch the instance actor (to make things like instance rules available)
   let instance_id = instance_actor_id_from_url(object_id);
   let site = ObjectId::<ApubSite>::new(instance_id.clone())
-    .dereference(context, local_instance(context), request_counter)
+    .dereference(context, local_instance(context).await, request_counter)
     .await;
   if let Err(e) = site {
     debug!("Failed to dereference site for {}: {}", instance_id, e);
@@ -186,8 +206,8 @@ pub(in crate::objects) async fn fetch_instance_actor_for_object(
 
 pub(crate) async fn remote_instance_inboxes(pool: &DbPool) -> Result<Vec<Url>, LemmyError> {
   Ok(
-    blocking(pool, Site::read_remote_sites)
-      .await??
+    Site::read_remote_sites(pool)
+      .await?
       .into_iter()
       .map(|s| ApubSite::from(s).shared_inbox_or_inbox())
       .collect(),
@@ -218,13 +238,12 @@ pub(crate) mod tests {
   #[actix_rt::test]
   #[serial]
   async fn test_parse_lemmy_instance() {
-    let context = init_context();
-    let conn = &mut context.pool().get().unwrap();
+    let context = init_context().await;
     let site = parse_lemmy_instance(&context).await;
 
     assert_eq!(site.name, "Enterprise");
     assert_eq!(site.description.as_ref().unwrap().len(), 15);
 
-    Site::delete(conn, site.id).unwrap();
+    Site::delete(context.pool(), site.id).await.unwrap();
   }
 }

@@ -3,10 +3,10 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   pipayment::*,
-  utils::{blocking, password_length_check},
+  utils::{password_length_check},
 };
 use lemmy_db_schema::{
-  impls::pipayment::PiPayment_,
+  //impls::pipayment::PiPaymentModerator,
   newtypes::*,
   source::{person::*, pipayment::*, site::*},
   traits::Crud,
@@ -18,6 +18,7 @@ use lemmy_utils::{
   utils::{check_slurs, is_valid_actor_name},
   ConnectionId,
 };
+use lemmy_db_views::structs::SiteView;
 use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -34,70 +35,80 @@ impl PerformCrud for PiAgreeRegister {
     let settings = SETTINGS.to_owned();
     let data: &PiAgreeRegister = self;
 
+    let site_view = SiteView::read_local(context.pool()).await?;
+    let local_site = site_view.local_site;
+
+    if !local_site.open_registration {
+      return Err(LemmyError::from_message("registration_closed"));
+    }
+
+    if local_site.site_setup {
+      if !settings.pi_enabled {
+        return Err(LemmyError::from_message("registration_disabled"));
+      }
+      if !settings.pinetwork.pi_allow_all {
+        return Err(LemmyError::from_message("registration_disabled"));
+      }
+    }
+
     let mut result_string = "".to_string();
     let mut result = true;
     let mut completed = false;
-    // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
-      if !site.open_registration {
-        return Err(LemmyError::from_message("registration_closed").into());
-      }
-    }
 
     password_length_check(&data.info.password)?;
 
     // Check if there are admins. False if admins exist
-    let no_admins = blocking(context.pool(), move |conn| {
-      PersonViewSafe::admins(conn).map(|a| a.is_empty())
-    })
-    .await??;
+    // let no_admins = blocking(context.pool(), move |conn| {
+    //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
+    // })
+    // .await??;
+    //let no_admins = PersonViewSafe::admins(context.pool()).await.map(|a| a.is_empty()).unwrap();
 
     // If its not the admin, check the captcha
-    if !no_admins && settings.captcha.enabled {
-      let check = context
-        .chat_server()
-        .send(CheckCaptcha {
-          uuid: data
-            .info
-            .captcha_uuid
-            .to_owned()
-            .unwrap_or_else(|| "".to_string()),
-          answer: data
-            .info
-            .captcha_answer
-            .to_owned()
-            .unwrap_or_else(|| "".to_string()),
-        })
-        .await?;
-      if !check {
-        return Err(LemmyError::from_message("captcha_incorrect").into());
-      }
-    }
+    // if local_site.site_setup && local_site.captcha_enabled {
+    //   let check = context
+    //     .chat_server()
+    //     .send(CheckCaptcha {
+    //       uuid: data
+    //         .info
+    //         .captcha_uuid
+    //         .to_owned()
+    //         .unwrap_or_else(|| "".to_string()),
+    //       answer: data
+    //         .info
+    //         .captcha_answer
+    //         .to_owned()
+    //         .unwrap_or_else(|| "".to_string()),
+    //     })
+    //     .await?;
+    //   if !check {
+    //     return Err(LemmyError::from_message("captcha_incorrect").into());
+    //   }
+    // }
 
-    check_slurs(&data.info.username, &context.settings().slur_regex())?;
+    // check_slurs(&data.info.username, &context.settings().slur_regex())?;
 
-    if !is_valid_actor_name(
-      &data.info.username,
-      context.settings().actor_name_max_length,
-    ) {
-      println!("Invalid username {}", &data.info.username);
-      return Err(LemmyError::from_message("agree:invalid_username"));
-    }
+    // if !is_valid_actor_name(
+    //   &data.info.username,
+    //   context.settings().actor_name_max_length,
+    // ) {
+    //   println!("Invalid username {}", &data.info.username);
+    //   return Err(LemmyError::from_message("agree:invalid_username"));
+    // }
     //check_slurs_opt(&data.paymentid.unwrap(), &context.settings().slur_regex())?;
     //check_slurs_opt(&data.info.username, &context.settings().slur_regex())?;
 
     // Hide Pi user name, not store pi_uid
-    let mut sha256 = Sha256::new();
-    sha256.update(settings.pi_seed());
-    sha256.update(data.pi_username.to_owned());
-    let _pi_alias: String = format!("{:X}", sha256.finalize());
-    let _pi_alias2 = _pi_alias.clone();
-    //let _pi_alias = data.pi_username.to_owned();
+    // let mut sha256 = Sha256::new();
+    // sha256.update(settings.pi_seed());
+    // sha256.update(data.pi_username.to_owned());
+    // let _pi_alias: String = format!("{:X}", sha256.finalize());
+    // let _pi_alias2 = _pi_alias.clone();
+    let _pi_alias = data.ea.account.to_owned();
 
     let _payment_id = data.paymentid.to_owned();
-    let _pi_uid = data.pi_uid.clone();
+    let _pi_uid = data.ea.extra.clone();
     let _new_user = data.info.username.to_owned();
-    let _new_user2 = _new_user.clone();
 
     let mut approved = false;
     let mut completed = false;
@@ -106,10 +117,7 @@ impl PerformCrud for PiAgreeRegister {
     let mut pid;
     let mut dto: Option<PiPaymentDto> = None;
 
-    let mut _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::find_by_pipayment_id(conn, &_payment_id)
-    })
-    .await?
+    let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {
       Ok(c) => {
         exist = true;
@@ -132,29 +140,23 @@ impl PerformCrud for PiAgreeRegister {
       });
     }
 
-    let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(conn, &_pi_alias)
-    })
-    .await?
+    let other_person = match Person::find_by_extra_name(context.pool(), &_pi_alias).await
     {
       Ok(c) => Some(c),
       Err(_e) => None,
     };
 
-    let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(conn, &_new_user)
-    })
-    .await?
+    let person = match Person::find_by_name(context.pool(), &_new_user).await
     {
       Ok(c) => Some(c),
       Err(_e) => None,
     };
 
-    match pi_person {
+    match other_person {
       Some(pi) => {
         match person {
           Some(per) => {
-            if pi.extra_user_id != per.extra_user_id {
+            if pi.external_id != per.external_id {
               let err_type = format!(
                 "User {} is exist and belong to other Pi Network account",
                 &data.info.username
@@ -170,7 +172,7 @@ impl PerformCrud for PiAgreeRegister {
           None => {
             // Not allow change username ???
             let err_type = format!("Your account already exist: {}", pi.name);
-            println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_alias.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -183,7 +185,7 @@ impl PerformCrud for PiAgreeRegister {
               "User {} is exist, create same user name is not allow!",
               &data.info.username
             );
-            println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
+            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_alias.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -243,35 +245,34 @@ impl PerformCrud for PiAgreeRegister {
       }
     };
 
-    let mut payment_form = PiPaymentForm {
-      person_id: None,
-      ref_id: refid,
-      testnet: settings.pinetwork.pi_testnet,
-      finished: false,
-      updated: None,
-      pi_uid: data.pi_uid,
-      pi_username: "".to_string(), //data.pi_username.clone(), => Hide user info
-      comment: data.comment.clone(), // Peer address
+    let mut payment_form = PiPaymentInsertForm::builder()
+      .person_id( None)
+      .ref_id( refid)
+      .testnet( settings.pinetwork.pi_testnet)
+      .finished( false)
+      .updated( None)
+      //.pi_uid( data.pi_uid)
+      .pi_uid( None)
+      .pi_username( "".to_string()) //data.pi_username.clone(), => Hide user info
+      .comment( data.ea.comment.clone()) // Peer address
 
-      identifier: data.paymentid.clone(),
-      user_uid: _payment_dto.user_uid,
-      amount: _payment_dto.amount,
-      memo: _payment_dto.memo,
-      to_address: _payment_dto.to_address, // Site's own address
-      created_at: create_at,
-      approved: _payment_dto.status.developer_approved,
-      verified: _payment_dto.status.transaction_verified,
-      completed: _payment_dto.status.developer_completed,
-      cancelled: _payment_dto.status.cancelled,
-      user_cancelled: _payment_dto.status.user_cancelled,
-      tx_link: "".to_string(),
-      tx_id: "".to_string(),
-      tx_verified: false,
-      metadata: _payment_dto.metadata,
-      extras: None,
-      //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
-      //..PiPaymentForm::default()
-    };
+      .identifier( data.paymentid.clone())
+      .user_uid( _payment_dto.user_uid)
+      .amount( _payment_dto.amount)
+      .memo( _payment_dto.memo)
+      .to_address( _payment_dto.to_address) // Site's own address
+      .created_at( create_at)
+      .approved( _payment_dto.status.developer_approved)
+      .verified( _payment_dto.status.transaction_verified)
+      .completed( _payment_dto.status.developer_completed)
+      .cancelled( _payment_dto.status.cancelled)
+      .user_cancelled( _payment_dto.status.user_cancelled)
+      .tx_link( "".to_string())
+      .tx_id( "".to_string())
+      .tx_verified( false)
+      .metadata( _payment_dto.metadata)
+      .extras( None)
+      .build();
 
     match _payment_dto.transaction {
       Some(tx) => {
@@ -283,10 +284,7 @@ impl PerformCrud for PiAgreeRegister {
     }
 
     //if !exist {
-    _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::create(conn, &payment_form)
-    })
-    .await?
+    _payment = match PiPayment::create(context.pool(), &payment_form).await
     {
       Ok(payment) => {
         pid = payment.id;

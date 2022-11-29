@@ -1,24 +1,20 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
-use bcrypt::{hash, DEFAULT_COST};
 use lemmy_api_common::{
   person::*,
   sensitive::Sensitive,
-  utils::{blocking, password_length_check},
+  utils::{password_length_check},
   web3::*,
 };
-use lemmy_apub::{ EndpointType,};
 use lemmy_db_schema::{
   newtypes::PersonId,
   source::{
-    local_user::{LocalUser, LocalUserForm},
+    local_user::{LocalUser, },
     person::*,
-    site::*,
   },
-  traits::{Crud},
 };
-use lemmy_db_views::structs::LocalUserView;
-use lemmy_db_views_actor::structs::PersonViewSafe;
+use lemmy_db_views::structs::{LocalUserView, SiteView};
+//use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
   claims::Claims,
@@ -41,12 +37,16 @@ impl PerformCrud for Web3Login {
 
     let data: &Web3Login = &self;
     let settings = SETTINGS.to_owned();
-    // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
-      if !site.open_registration {
-        return Err(LemmyError::from_message("registration_closed"));
-      }
-    }
+
+    let site_view = SiteView::read_local(context.pool()).await?;
+    let local_site = site_view.local_site;
+
+    // if !local_site.open_registration {
+    //   return Err(LemmyError::from_message("registration_closed"));
+    // }
+
+    //email_verification = local_site.require_email_verification;
+    //require_application = local_site.require_application;
 
     let mut _address = data.address.clone();
     let mut _signature = data.signature.clone();
@@ -76,31 +76,14 @@ impl PerformCrud for Web3Login {
       );
       return Err(LemmyError::from_message("registration_closed"));
     }
-    // TODO: First, valid user address
-    // Check user if exists on blockchain
-    /*
-     let user_dto = match web3_exist(context.client(), &data.pi_token.clone()).await {
-       Ok(dto) => {
-         _pi_username = dto.username.clone();
-         _pi_uid = dto.uid.clone();
-         Some(dto)
-       }
-       Err(_e) => {
-         // Pi Server error
-         let err_type = format!("Pi Server Error: User not found: {}, error: {}", &data.pi_username,  _e.to_string());
-         return Err(LemmyError::from_message(&err_type));
-       }
-     };
-    */
+
     let _alias: String = _address.clone();
-    let _alias2 = _alias.clone();
-    let _alias3 = _alias.clone();
 
     let mut username = _address.clone();
     let mut _new_user: Sensitive<String> = Sensitive::from(username.clone());
     let mut _new_password = Sensitive::from("".to_string()); //info.password.to_owned();
 
-    let person_id: PersonId;
+    //let person_id: PersonId;
     let mut _exist = false;
     let mut result = true;
     let mut _change_password = false;
@@ -118,13 +101,13 @@ impl PerformCrud for Web3Login {
     }
 
     // Check if there are admins. False if admins exist
-    let no_admins = blocking(context.pool(), move |conn| {
-      PersonViewSafe::admins(conn).map(|a| a.is_empty())
-    })
-    .await??;
-
+    // let no_admins = blocking(context.pool(), move |conn| {
+    //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
+    // })
+    // .await??;
+    // let no_admins = PersonViewSafe::admins(context.pool()).await.map(|a| a.is_empty()).unwrap();
     // If its not the admin, check the token
-    if !no_admins {
+    if local_site.site_setup {
       let check = context
         .chat_server()
         .send(CheckToken {
@@ -137,44 +120,39 @@ impl PerformCrud for Web3Login {
       }
     }
 
-    if _change_password {
-      password_length_check(&_new_password)?;
-    }
-
     // Find user exist ?
-    let exist_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_web3_address(conn, &_alias)
-    })
-    .await?
+    let exist_person = match Person::find_by_extra_name(context.pool(), &_alias).await
     {
-      Ok(c) => Some(c),
-      Err(_e) => None,
+      Ok(c) => {
+        _exist = true;
+        //person_id = c.id.clone();
+        Some(c)
+      },
+      Err(_e) => {
+        None
+      },
     };
 
-    let mut extra_user_id = None;
-    match exist_person {
-      Some(person) => {
-        _exist = true;
-        // person_id = person.id;
-        username = person.name.clone();
-        extra_user_id = person.extra_user_id;
-      }
-      None => {
-          let err_type = format!("Hi {}, you must register before login.", &username);
-          println!("{} {}", _address.clone(), err_type);
-          return Err(LemmyError::from_message(&err_type));
-      }
-    }
+    // let mut external_id = None;
+    // match exist_person {
+    //   Some(person) => {
+    //     _exist = true;
+    //     person_id = person.id;
+    //     username = person.name.clone();
+    //     external_id = person.external_id;
+    //   }
+    //   None => {
+    //       let err_type = format!("Hi {}, you must register before login.", &username);
+    //       println!("{} {}", _address.clone(), err_type);
+    //       return Err(LemmyError::from_message(&err_type));
+    //   }
+    // }
 
-    if _exist {
-      let local_user_id;
-      let username2 = username.clone();
-      let _local_user = match blocking(context.pool(), move |conn| {
-        LocalUserView::read_from_name(conn, &username2.clone())
-      })
-      .await?
+    if _exist && exist_person.is_some(){
+      let person_id = exist_person.unwrap().id;
+      let _local_user = match LocalUserView::read_person(context.pool(), person_id.clone()).await
       {
-        Ok(lcu) => lcu,
+        Ok(lcu) => lcu.local_user,
         Err(_e) => {
           let err_type = format!(
             "Web3 local user not found {} {} {}",
@@ -187,18 +165,16 @@ impl PerformCrud for Web3Login {
         }
       };
 
-      local_user_id = _local_user.local_user.id.clone();
+      let local_user_id = _local_user.id.clone();
 
       if _change_password {
-        let updated_local_user = match blocking(context.pool(), move |conn| {
-          LocalUser::update_password(conn, local_user_id.clone(), &_new_password)
-        })
-        .await
+        password_length_check(&_new_password)?;
+        let updated_local_user = match LocalUser::update_password(context.pool(), local_user_id.clone(), &_new_password).await
         {
           Ok(lcu) => lcu,
           Err(_e) => {
             let err_type = format!(
-              "Web3: Update user password error {} {}",
+              "Update user password error {} {}",
               &username.clone(),
               _e.to_string()
             );
@@ -216,8 +192,8 @@ impl PerformCrud for Web3Login {
           )?
           .into(),
         ),
-        verify_email_sent: _local_user.local_user.email_verified,
-        registration_created: _local_user.local_user.accepted_application,
+        verify_email_sent: _local_user.email_verified,
+        registration_created: _local_user.accepted_application,
       });
     } // User exist
 

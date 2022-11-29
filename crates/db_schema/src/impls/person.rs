@@ -1,23 +1,73 @@
 use crate::{
   newtypes::{DbUrl, PersonId},
-  schema::person::dsl::*,
-  source::person::{Person, PersonForm},
-  traits::{ApubActor, Crud},
-  utils::{functions::lower, naive_now},
+  schema::person::dsl::{
+    actor_id,
+    avatar,
+    banner,
+    bio,
+    deleted,
+    display_name,
+    local,
+    matrix_user_id,
+    name,
+    person,
+    updated,
+    external_id,
+    //private_seeds,
+    // verified,
+    // pi_address,
+    // web3_address,
+    // pol_address,
+    // dap_address,
+    // cosmos_address,
+    // auth_sign,
+    // srv_sign,
+    // tx,
+  },
+  source::person::{Person, PersonInsertForm, PersonUpdateForm,},
+  traits::{ApubActor, Crud, Signable},
+  utils::{functions::lower, get_conn, naive_now, DbPool},
 };
-use diesel::{
-  dsl::*,
-  result::Error,
-  ExpressionMethods,
-  PgConnection,
-  QueryDsl,
-  RunQueryDsl,
-  TextExpressionMethods,
-};
+use diesel::{dsl::insert_into, result::Error, ExpressionMethods, QueryDsl, TextExpressionMethods};
+use diesel_async::RunQueryDsl;
 use sha2::{Digest, Sha256};
 
 mod safe_type {
-  use crate::{schema::person::columns::*, source::person::Person, traits::ToSafe};
+  use crate::{
+    schema::person::columns::{
+      actor_id,
+      admin,
+      avatar,
+      ban_expires,
+      banned,
+      banner,
+      bio,
+      bot_account,
+      deleted,
+      display_name,
+      id,
+      inbox_url,
+      instance_id,
+      local,
+      matrix_user_id,
+      name,
+      published,
+      shared_inbox_url,
+      updated,
+      external_id,
+      pi_address,
+      web3_address,
+      pol_address,
+      dap_address,
+      cosmos_address,
+      sui_address,
+      auth_sign,
+      srv_sign,
+      tx,      
+    },
+    source::person::Person,
+    traits::ToSafe,
+  };
 
   type Columns = (
     id,
@@ -38,12 +88,14 @@ mod safe_type {
     admin,
     bot_account,
     ban_expires,
-    verified,
+    instance_id,
+    external_id,
     pi_address,
     web3_address,
-    sol_address,
+    pol_address,
     dap_address,
     cosmos_address,
+    sui_address,
     auth_sign,
     srv_sign,
     tx,
@@ -71,12 +123,14 @@ mod safe_type {
         admin,
         bot_account,
         ban_expires,
-        verified,
+        instance_id,
+        external_id,
         pi_address,
         web3_address,
-        sol_address,
+        pol_address,
         dap_address,
         cosmos_address,
+        sui_address,
         auth_sign,
         srv_sign,
         tx,
@@ -85,62 +139,50 @@ mod safe_type {
   }
 }
 
+#[async_trait]
 impl Crud for Person {
-  type Form = PersonForm;
+  type InsertForm = PersonInsertForm;
+  type UpdateForm = PersonUpdateForm;
   type IdType = PersonId;
-  fn read(conn: &mut PgConnection, person_id: PersonId) -> Result<Self, Error> {
+  async fn read(pool: &DbPool, person_id: PersonId) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
     person
       .filter(deleted.eq(false))
       .find(person_id)
       .first::<Self>(conn)
+      .await
   }
-  fn delete(conn: &mut PgConnection, person_id: PersonId) -> Result<usize, Error> {
-    diesel::delete(person.find(person_id)).execute(conn)
+  async fn delete(pool: &DbPool, person_id: PersonId) -> Result<usize, Error> {
+    let conn = &mut get_conn(pool).await?;
+    diesel::delete(person.find(person_id)).execute(conn).await
   }
-  fn create(conn: &mut PgConnection, form: &PersonForm) -> Result<Self, Error> {
-    insert_into(person).values(form).get_result::<Self>(conn)
+  async fn create(pool: &DbPool, form: &PersonInsertForm) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+    insert_into(person)
+      .values(form)
+      .on_conflict(actor_id)
+      .do_update()
+      .set(form)
+      .get_result::<Self>(conn)
+      .await
   }
-  fn update(
-    conn: &mut PgConnection,
+  async fn update(
+    pool: &DbPool,
     person_id: PersonId,
-    form: &PersonForm,
+    form: &PersonUpdateForm,
   ) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
     diesel::update(person.find(person_id))
       .set(form)
       .get_result::<Self>(conn)
+      .await
   }
 }
 
 impl Person {
-  pub fn ban_person(
-    conn: &mut PgConnection,
-    person_id: PersonId,
-    ban: bool,
-    expires: Option<chrono::NaiveDateTime>,
-  ) -> Result<Self, Error> {
-    diesel::update(person.find(person_id))
-      .set((banned.eq(ban), ban_expires.eq(expires)))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn add_admin(
-    conn: &mut PgConnection,
-    person_id: PersonId,
-    added: bool,
-  ) -> Result<Self, Error> {
-    diesel::update(person.find(person_id))
-      .set(admin.eq(added))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn mark_as_updated(conn: &mut PgConnection, person_id: PersonId) -> Result<Person, Error> {
-    diesel::update(person.find(person_id))
-      .set((last_refreshed_at.eq(naive_now()),))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn delete_account(conn: &mut PgConnection, person_id: PersonId) -> Result<Person, Error> {
+  pub async fn delete_account(pool: &DbPool, person_id: PersonId) -> Result<Person, Error> {
     use crate::schema::local_user;
+    let conn = &mut get_conn(pool).await?;
 
     // Set the local user info to none
     diesel::update(local_user::table.filter(local_user::person_id.eq(person_id)))
@@ -148,7 +190,8 @@ impl Person {
         local_user::email.eq::<Option<String>>(None),
         local_user::validator_time.eq(naive_now()),
       ))
-      .execute(conn)?;
+      .execute(conn)
+      .await?;
 
     diesel::update(person.find(person_id))
       .set((
@@ -161,83 +204,64 @@ impl Person {
         updated.eq(naive_now()),
       ))
       .get_result::<Self>(conn)
+      .await
   }
 
-  pub fn upsert(conn: &mut PgConnection, person_form: &PersonForm) -> Result<Person, Error> {
-    insert_into(person)
-      .values(person_form)
-      .on_conflict(actor_id)
-      .do_update()
-      .set(person_form)
-      .get_result::<Self>(conn)
-  }
-
-  pub fn update_deleted(
-    conn: &mut PgConnection,
-    person_id: PersonId,
-    new_deleted: bool,
-  ) -> Result<Person, Error> {
-    use crate::schema::person::dsl::*;
-    diesel::update(person.find(person_id))
-      .set(deleted.eq(new_deleted))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn leave_admin(conn: &mut PgConnection, person_id: PersonId) -> Result<Self, Error> {
-    diesel::update(person.find(person_id))
-      .set(admin.eq(false))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn remove_avatar_and_banner(
-    conn: &mut PgConnection,
-    person_id: PersonId,
-  ) -> Result<Self, Error> {
-    diesel::update(person.find(person_id))
-      .set((
-        avatar.eq::<Option<String>>(None),
-        banner.eq::<Option<String>>(None),
-      ))
-      .get_result::<Self>(conn)
-  }
-
-  pub fn find_by_name(conn: &mut PgConnection, from_name: &str) -> Result<Person, Error> {
+  pub async fn find_by_name(pool: &DbPool, from_name: &str) -> Result<Person, Error> {
+    let conn = &mut get_conn(pool).await?;
     person
-
       .filter(deleted.eq(false))
       .filter(local.eq(true))
       .filter(name.eq(from_name))
       .first::<Person>(conn)
+      .await
   }
 
-  pub fn find_by_pi_name(conn: &mut PgConnection, from_name: &str) -> Result<Person, Error> {
+  pub async fn find_by_extra_name(pool: &DbPool, from_name: &str) -> Result<Person, Error> {
+    let conn = &mut get_conn(pool).await?;
     person
       .filter(deleted.eq(false))
       .filter(local.eq(true))
-      .filter(extra_user_id.eq(from_name))
+      .filter(external_id.eq(from_name))
       .first::<Person>(conn)
-  }
-  
-  pub fn find_by_web3_address(conn: &mut PgConnection, from_name: &str) -> Result<Person, Error> {
-    person
-      .filter(deleted.eq(false))
-      .filter(local.eq(true))
-      .filter(web3_address.eq(from_name))
-      .first::<Person>(conn)
+      .await
   }
 
-  pub fn update_srv_sign(
-    conn: &mut PgConnection,
+
+
+}
+
+#[async_trait]
+impl Signable for Person {
+  type Form = Person;
+  type IdType = PersonId;
+  async fn update_srv_sign(
+    pool: &DbPool,
     person_id: PersonId,
     sig: &str,
   ) -> Result<Self, Error> {
     use crate::schema::person::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     diesel::update(person.find(person_id))
       .set(srv_sign.eq(sig))
       .get_result::<Self>(conn)
+      .await
   }
 
-  pub fn sign_data(data: &Person) -> (Option<String>, Option<String>, Option<String>) {    
+  async fn update_tx(
+    pool: &DbPool,
+    person_id: PersonId,
+    txlink: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::person::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person.find(person_id))
+      .set(tx.eq(txlink))
+      .get_result::<Self>(conn)
+      .await
+  }
+
+  async fn sign_data(data: &Person) -> (Option<String>, Option<String>, Option<String>) {    
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
@@ -248,16 +272,15 @@ impl Person {
     let meta:  String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(data.display_name.clone().unwrap_or_default());
-    let content:  String = format!("{:x}", sha_content.finalize());
+    let content_data:  String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
-    sha256.update(content.clone());
+    sha256.update(content_data.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
     let signature = lemmy_utils::utils::eth_sign_message(message);
-    return (signature, Some(meta_data), Some(content));
+    return (signature, Some(meta_data), Some(content_data));
   }
-
 }
 
 pub fn is_banned(banned_: bool, expires: Option<chrono::NaiveDateTime>) -> bool {
@@ -268,24 +291,27 @@ pub fn is_banned(banned_: bool, expires: Option<chrono::NaiveDateTime>) -> bool 
   }
 }
 
+#[async_trait]
 impl ApubActor for Person {
-  fn read_from_apub_id(conn: &mut PgConnection, object_id: &DbUrl) -> Result<Option<Self>, Error> {
-    use crate::schema::person::dsl::*;
+  async fn read_from_apub_id(pool: &DbPool, object_id: &DbUrl) -> Result<Option<Self>, Error> {
+    let conn = &mut get_conn(pool).await?;
     Ok(
       person
         .filter(deleted.eq(false))
         .filter(actor_id.eq(object_id))
         .first::<Person>(conn)
+        .await
         .ok()
         .map(Into::into),
     )
   }
 
-  fn read_from_name(
-    conn: &mut PgConnection,
+  async fn read_from_name(
+    pool: &DbPool,
     from_name: &str,
     include_deleted: bool,
   ) -> Result<Person, Error> {
+    let conn = &mut get_conn(pool).await?;
     let mut q = person
       .into_boxed()
       .filter(local.eq(true))
@@ -293,40 +319,56 @@ impl ApubActor for Person {
     if !include_deleted {
       q = q.filter(deleted.eq(false))
     }
-    q.first::<Self>(conn)
+    q.first::<Self>(conn).await
   }
 
-  fn read_from_name_and_domain(
-    conn: &mut PgConnection,
+  async fn read_from_name_and_domain(
+    pool: &DbPool,
     person_name: &str,
     protocol_domain: &str,
   ) -> Result<Person, Error> {
-    use crate::schema::person::dsl::*;
+    let conn = &mut get_conn(pool).await?;
     person
       .filter(lower(name).eq(lower(person_name)))
       .filter(actor_id.like(format!("{}%", protocol_domain)))
       .first::<Self>(conn)
+      .await
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use crate::{source::person::*, traits::Crud, utils::establish_unpooled_connection};
+  use crate::{
+    source::{
+      instance::Instance,
+      person::{Person, PersonInsertForm, PersonUpdateForm},
+    },
+    traits::{Crud, Signable},
+    utils::build_db_pool_for_tests,
+  };
+  use lemmy_utils::{
+    error::LemmyError,
+  };
+  use serial_test::serial;
 
-  #[test]
-  fn test_crud() {
-    let conn = &mut establish_unpooled_connection();
+  #[tokio::test]
+  #[serial]
+  async fn test_crud() {
+    let pool = &build_db_pool_for_tests().await;
 
-    let new_person = PersonForm {
-      name: "holly".into(),
-      public_key: Some("nada".to_owned()),
-      ..PersonForm::default()
-    };
+    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
 
-    let inserted_person = Person::create(conn, &new_person).unwrap();
+    let new_person = PersonInsertForm::builder()
+      .name("holly".into())
+      .public_key("nada".to_owned())
+      .instance_id(inserted_instance.id)
+      .build();
 
-    let (signature, _meta, _content)  = Person::sign_data(&inserted_person.clone());
-    Person::update_srv_sign(conn, inserted_person.id, signature.clone().unwrap_or_default().as_str()).unwrap();
+    let inserted_person = Person::create(pool, &new_person).await.unwrap();
+
+    let (signature, _meta, _content)  = Person::sign_data(&inserted_person.clone()).await;
+    let inserted_person = Person::update_srv_sign(pool, inserted_person.id, signature.clone().unwrap_or_default().as_str())
+      .await.unwrap();
 
     let expected_person = Person {
       id: inserted_person.id,
@@ -338,7 +380,7 @@ mod tests {
       deleted: false,
       published: inserted_person.published,
       updated: None,
-      actor_id: inserted_person.actor_id.to_owned(),
+      actor_id: inserted_person.actor_id.clone(),
       bio: None,
       local: true,
       bot_account: false,
@@ -346,26 +388,34 @@ mod tests {
       private_key: None,
       public_key: "nada".to_owned(),
       last_refreshed_at: inserted_person.published,
-      inbox_url: inserted_person.inbox_url.to_owned(),
+      inbox_url: inserted_person.inbox_url.clone(),
       shared_inbox_url: None,
       matrix_user_id: None,
       ban_expires: None,
-      extra_user_id: None,
-      verified: false,
-      private_seeds: None,
+      instance_id: inserted_instance.id,
+      external_id: None,
       pi_address: None,
       web3_address: None,
-      sol_address: None,
+      pol_address: None,
       dap_address: None,
       cosmos_address: None,
+      sui_address: None,
       auth_sign: None, 
       srv_sign: signature,
       tx : None,
     };
-    
-    let read_person = Person::read(conn, inserted_person.id).unwrap();
-    let updated_person = Person::update(conn, inserted_person.id, &new_person).unwrap();
-    let num_deleted = Person::delete(conn, inserted_person.id).unwrap();
+        
+    let read_person = Person::read(pool, inserted_person.id).await.unwrap();
+
+    let update_person_form = PersonUpdateForm::builder()
+      .actor_id(Some(inserted_person.actor_id.clone()))
+      .build();
+    let updated_person = Person::update(pool, inserted_person.id, &update_person_form)
+      .await
+      .unwrap();
+
+    let num_deleted = Person::delete(pool, inserted_person.id).await.unwrap();
+    Instance::delete(pool, inserted_instance.id).await.unwrap();
 
     assert_eq!(expected_person, read_person);
     assert_eq!(expected_person, updated_person);

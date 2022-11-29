@@ -56,25 +56,16 @@ pub(crate) fn verify_is_remote_object(id: &Url, settings: &Settings) -> Result<(
 pub(crate) mod tests {
   use actix::Actor;
   use anyhow::anyhow;
-  use diesel::{
-    r2d2::{ConnectionManager, Pool},
-    PgConnection,
-  };
   use lemmy_api_common::request::build_user_agent;
-  use lemmy_db_schema::{
-    newtypes::SecretId,
-    source::secret::Secret,
-    utils::{establish_unpooled_connection, get_database_url_from_env},
-  };
+  use lemmy_db_schema::{source::secret::Secret, utils::build_db_pool_for_tests, newtypes::SecretId};
   use lemmy_utils::{
     error::LemmyError,
-    rate_limit::{rate_limiter::RateLimiter, RateLimit},
+    rate_limit::{RateLimitCell, RateLimitConfig},
     settings::SETTINGS,
   };
   use lemmy_websocket::{chat_server::ChatServer, LemmyContext};
   use reqwest::{Client, Request, Response};
   use reqwest_middleware::{ClientBuilder, Middleware, Next};
-  use std::sync::{Arc, Mutex};
   use task_local_extensions::Extensions;
 
   struct BlockedMiddleware;
@@ -93,48 +84,45 @@ pub(crate) mod tests {
   }
 
   // TODO: would be nice if we didnt have to use a full context for tests.
-  pub(crate) fn init_context() -> LemmyContext {
+  pub(crate) async fn init_context() -> LemmyContext {
+    async fn x() -> Result<String, LemmyError> {
+      Ok(String::new())
+    }
     // call this to run migrations
-    establish_unpooled_connection();
-    let settings = SETTINGS.to_owned();
-    let rate_limiter = RateLimit {
-      rate_limiter: Arc::new(Mutex::new(RateLimiter::default())),
-      rate_limit_config: settings.rate_limit.to_owned().unwrap_or_default(),
-    };
+    let pool = build_db_pool_for_tests().await;
+
+    let settings = SETTINGS.clone();
     let client = Client::builder()
       .user_agent(build_user_agent(&settings))
       .build()
       .unwrap();
 
     let client = ClientBuilder::new(client).with(BlockedMiddleware).build();
-    // TODO: UUID check
-    let uid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let secret = Secret {
-      id: SecretId(uid),
-      jwt_secret: "".to_string(),
+      id: SecretId(uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()),
+      jwt_secret: String::new(),
     };
-    let db_url = match get_database_url_from_env() {
-      Ok(url) => url,
-      Err(_) => settings.get_database_url(),
-    };
-    let manager = ConnectionManager::<PgConnection>::new(&db_url);
-    let pool = Pool::builder()
-      .max_size(settings.database.pool_size)
-      .build(manager)
-      .unwrap_or_else(|_| panic!("Error connecting to {}", db_url));
-    async fn x() -> Result<String, LemmyError> {
-      Ok("".to_string())
-    }
+
+    let rate_limit_config = RateLimitConfig::builder().build();
+    let rate_limit_cell = RateLimitCell::new(rate_limit_config).await;
+
     let chat_server = ChatServer::startup(
       pool.clone(),
-      rate_limiter,
       |_, _, _, _| Box::pin(x()),
       |_, _, _, _| Box::pin(x()),
       client.clone(),
       settings.clone(),
       secret.clone(),
+      rate_limit_cell.clone(),
     )
     .start();
-    LemmyContext::create(pool, chat_server, client, settings, secret)
+    LemmyContext::create(
+      pool,
+      chat_server,
+      client,
+      settings,
+      secret,
+      rate_limit_cell.clone(),
+    )
   }
 }

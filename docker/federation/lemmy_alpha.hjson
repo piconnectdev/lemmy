@@ -6,35 +6,14 @@
     admin_username: lemmy_alpha
     admin_password: lemmylemmy
     site_name: lemmy-alpha
-    sidebar: alphas sidebar
   }
+  # These are ignored, use LEMMY_DATABASE_URL
   database: {
-    database: lemmy
+    database: lemmy_alpha
     user: lemmy
     password: password
-    host: postgres_alpha
+    host: localhost
     port: 5432
     pool_size: 5
-  }
-  federation: {
-    enabled: true
-    allowed_instances: ["lemmy-beta","lemmy-gamma","lemmy-delta","lemmy-epsilon"]
-    debug: true
-  }
-  captcha: {
-    enabled: false
-    difficulty: medium
-  }
-  rate_limit: {
-    message: 180
-    message_per_second: 60
-    post: 99999
-    post_per_second: 600
-    register: 99999
-    register_per_second: 3600
-    image: 6
-    image_per_second: 3600
-    comment: 99999
-    comment_per_second: 600
   }
 }

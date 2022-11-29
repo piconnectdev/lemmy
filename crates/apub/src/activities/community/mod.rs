@@ -32,7 +32,7 @@ where
   send_lemmy_activity(context, activity.clone(), actor, inboxes, false).await?;
 
   if community.local {
-    AnnounceActivity::send(activity, community, context).await?;
+    AnnounceActivity::send(activity.try_into()?, community, context).await?;
   }
 
   Ok(())
@@ -46,6 +46,6 @@ async fn get_community_from_moderators_url(
 ) -> Result<ApubCommunity, LemmyError> {
   let community_id = Url::parse(&moderators.to_string().replace("/moderators", ""))?;
   ObjectId::new(community_id)
-    .dereference(context, local_instance(context), request_counter)
+    .dereference(context, local_instance(context).await, request_counter)
     .await
 }

@@ -1,14 +1,74 @@
 use actix_web::{web, web::Data};
 use captcha::Captcha;
 use lemmy_api_common::{
-  comment::*,
-  community::*,
-  person::*,
-  post::*,
-  private_message::*,
-  site::*,
-  websocket::*,
+  comment::{
+    CreateCommentLike,
+    CreateCommentReport,
+    ListCommentReports,
+    ResolveCommentReport,
+    SaveComment,
+  },
+  community::{
+    AddModToCommunity,
+    BanFromCommunity,
+    BlockCommunity,
+    FollowCommunity,
+    TransferCommunity,
+  },
+  person::{
+    AddAdmin,
+    BanPerson,
+    BlockPerson,
+    ChangePassword,
+    GetBannedPersons,
+    GetCaptcha,
+    GetPersonMentions,
+    GetReplies,
+    GetReportCount,
+    GetUnreadCount,
+    Login,
+    MarkAllAsRead,
+    MarkCommentReplyAsRead,
+    MarkPersonMentionAsRead,
+    PasswordChangeAfterReset,
+    PasswordReset,
+    SaveUserSettings,
+    VerifyEmail, GetToken,
+  },
+  post::{
+    CreatePostLike,
+    CreatePostReport,
+    GetSiteMetadata,
+    ListPostReports,
+    LockPost,
+    MarkPostAsRead,
+    ResolvePostReport,
+    SavePost,
+    StickyPost,
+  },
+  private_message::{
+    CreatePrivateMessageReport,
+    ListPrivateMessageReports,
+    MarkPrivateMessageAsRead,
+    ResolvePrivateMessageReport,
+  },
+  site::{
+    ApproveRegistrationApplication,
+    GetModlog,
+    GetUnreadRegistrationApplicationCount,
+    LeaveAdmin,
+    ListRegistrationApplications,
+    PurgeComment,
+    PurgeCommunity,
+    PurgePerson,
+    PurgePost,
+    ResolveObject,
+    Search,
+  },
+  utils::local_site_to_slur_regex,
+  websocket::{CommunityJoin, ModJoin, PostJoin, UserJoin},
 };
+use lemmy_db_schema::source::local_site::LocalSite;
 use lemmy_utils::{error::LemmyError, utils::check_slurs, ConnectionId};
 use lemmy_websocket::{serialize_websocket_message, LemmyContext, UserOperation};
 use serde::Deserialize;
@@ -228,8 +288,10 @@ pub(crate) fn captcha_as_wav_base64(captcha: &Captcha) -> String {
 }
 
 /// Check size of report and remove whitespace
-pub(crate) fn check_report_reason(reason: &str, context: &LemmyContext) -> Result<(), LemmyError> {
-  check_slurs(reason, &context.settings().slur_regex())?;
+pub(crate) fn check_report_reason(reason: &str, local_site: &LocalSite) -> Result<(), LemmyError> {
+  let slur_regex = &local_site_to_slur_regex(local_site);
+
+  check_slurs(reason, slur_regex)?;
   if reason.is_empty() {
     return Err(LemmyError::from_message("report_reason_required"));
   }
@@ -244,36 +306,40 @@ mod tests {
   use lemmy_api_common::utils::check_validator_time;
   use lemmy_db_schema::{
     source::{
-      local_user::{LocalUser, LocalUserForm},
-      person::{Person, PersonForm},
+      instance::Instance,
+      local_user::{LocalUser, LocalUserInsertForm},
+      person::{Person, PersonInsertForm},
       secret::Secret,
     },
     traits::Crud,
-    utils::establish_unpooled_connection,
+    utils::build_db_pool_for_tests,
   };
   use lemmy_utils::{claims::Claims, settings::SETTINGS};
+  use serial_test::serial;
 
-  #[test]
-  fn test_should_not_validate_user_token_after_password_change() {
-    let conn = &mut establish_unpooled_connection();
-    let secret = Secret::init(conn).unwrap();
+  #[tokio::test]
+  #[serial]
+  async fn test_should_not_validate_user_token_after_password_change() {
+    let pool = &build_db_pool_for_tests().await;
+    let secret = Secret::init(pool).await.unwrap();
     let settings = &SETTINGS.to_owned();
 
-    let new_person = PersonForm {
-      name: "Gerry9812".into(),
-      public_key: Some("pubkey".to_string()),
-      ..PersonForm::default()
-    };
+    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
 
-    let inserted_person = Person::create(conn, &new_person).unwrap();
+    let new_person = PersonInsertForm::builder()
+      .name("Gerry9812".into())
+      .public_key("pubkey".to_string())
+      .instance_id(inserted_instance.id)
+      .build();
 
-    let local_user_form = LocalUserForm {
-      person_id: Some(inserted_person.id),
-      password_encrypted: Some("123456".to_string()),
-      ..LocalUserForm::default()
-    };
+    let inserted_person = Person::create(pool, &new_person).await.unwrap();
 
-    let inserted_local_user = LocalUser::create(conn, &local_user_form).unwrap();
+    let local_user_form = LocalUserInsertForm::builder()
+      .person_id(inserted_person.id)
+      .password_encrypted("123456".to_string())
+      .build();
+
+    let inserted_local_user = LocalUser::create(pool, &local_user_form).await.unwrap();
 
     let jwt = Claims::jwt(
       inserted_local_user.id.0,
@@ -287,11 +353,13 @@ mod tests {
 
     // The check should fail, since the validator time is now newer than the jwt issue time
     let updated_local_user =
-      LocalUser::update_password(conn, inserted_local_user.id, "password111").unwrap();
+      LocalUser::update_password(pool, inserted_local_user.id, "password111")
+        .await
+        .unwrap();
     let check_after = check_validator_time(&updated_local_user.validator_time, &claims);
     assert!(check_after.is_err());
 
-    let num_deleted = Person::delete(conn, inserted_person.id).unwrap();
+    let num_deleted = Person::delete(pool, inserted_person.id).await.unwrap();
     assert_eq!(1, num_deleted);
   }
 }

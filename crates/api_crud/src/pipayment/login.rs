@@ -6,18 +6,18 @@ use lemmy_api_common::{
   person::*,
   pipayment::*,
   sensitive::Sensitive,
-  utils::{blocking, password_length_check},
+  utils::{password_length_check},
 };
 use lemmy_apub::{
   generate_followers_url, generate_inbox_url, generate_local_apub_endpoint,
   generate_shared_inbox_url, EndpointType,
 };
 use lemmy_db_schema::{
-  newtypes::{CommunityId, PaymentId, PersonId},
+  newtypes::{CommunityId, PiPaymentId, PersonId, PiUserId},
   schema::local_user::email_verified,
   source::{
     community::*,
-    local_user::{LocalUser, LocalUserForm},
+    local_user::{LocalUser, LocalUserInsertForm},
     person::*,
     pipayment::*,
     site::*,
@@ -25,7 +25,7 @@ use lemmy_db_schema::{
   traits::{ApubActor, Crud, Followable},
   utils::naive_now,
 };
-use lemmy_db_views::structs::LocalUserView;
+use lemmy_db_views::structs::{LocalUserView, SiteView};
 use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
@@ -54,38 +54,46 @@ impl PerformCrud for PiLogin {
     let data: &PiLogin = &self;
     let settings = SETTINGS.to_owned();
     // Make sure site has open registration
-    if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
-      if !site.open_registration {
-        return Err(LemmyError::from_message("registration_closed"));
-      }
+    // if let Ok(site) = blocking(context.pool(), move |conn| Site::read_local_site(conn)).await? {
+    //   if !site.open_registration {
+    //     return Err(LemmyError::from_message("registration_closed"));
+    //   }
+    // }
+    let site_view = SiteView::read_local(context.pool()).await?;
+    let local_site = site_view.local_site;
+
+    if !local_site.open_registration {
+      return Err(LemmyError::from_message("registration_closed"));
     }
+
+
     if !settings.pinetwork.pi_free_login {
       //return Err(LemmyError::from_message("registration_closed"));
     }
     // Hide Pi user name, not store pi_uid
-    let mut _pi_username = data.pi_username.clone();
-    let mut _pi_uid = data.pi_uid.clone();
-    let _pi_token = data.pi_token.clone();
+    let mut _pi_username = data.ea.account.clone();
+    let mut _pi_uid = data.ea.puid;
+    let _pi_token = data.ea.token.clone();
 
     println!(
       "PiLogin is processing for {} {} {} ",
-      _pi_uid.clone(),
+      _pi_uid.unwrap(),
       _pi_username.clone(),
       _pi_token.clone()
     );
 
     // First, valid user token
-    let user_dto = match pi_me(context.client(), &data.pi_token.clone()).await {
+    let user_dto = match pi_me(context.client(), &_pi_token.clone()).await {
       Ok(dto) => {
         _pi_username = dto.username.clone();
-        _pi_uid = dto.uid.clone();
+        _pi_uid = Some(dto.uid.clone());
         Some(dto)
       }
       Err(_e) => {
         // Pi Server error
         let err_type = format!(
           "Pi Server Error: User not found: {}, error: {}",
-          &data.pi_username,
+          &data.ea.account,
           _e.to_string()
         );
         return Err(LemmyError::from_message(&err_type));
@@ -119,10 +127,11 @@ impl PerformCrud for PiLogin {
     }
 
     // Check if there are admins. False if admins exist
-    let no_admins = blocking(context.pool(), move |conn| {
-      PersonViewSafe::admins(conn).map(|a| a.is_empty())
-    })
-    .await??;
+    // let no_admins = blocking(context.pool(), move |conn| {
+    //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
+    // })
+    // .await??;
+    let no_admins = PersonViewSafe::admins(context.pool()).await.map(|a| a.is_empty());
 
     if create_new {
       password_length_check(&_new_password)?;
@@ -155,27 +164,24 @@ impl PerformCrud for PiLogin {
     }
 
     // Find user exist ?
-    let pi_person = match blocking(context.pool(), move |conn| {
-      Person::find_by_pi_name(conn, &_pi_alias)
-    })
-    .await?
+    let pi_person = match Person::find_by_extra_name(context.pool(), &_pi_alias).await
     {
       Ok(c) => Some(c),
       Err(_e) => None,
     };
 
-    let mut extra_user_id = None;
+    let mut external_id = None;
     match pi_person {
       Some(pi) => {
         pi_exist = true;
         person_id = pi.id;
         username = pi.name.clone();
-        extra_user_id = pi.extra_user_id;
+        external_id = pi.external_id;
       }
       None => {
         if !create_new {
           let err_type = format!("Hi {}, you must register before login.", &username);
-          println!("{} {}", _pi_uid.clone(), err_type);
+          println!("{} {}", _pi_uid.unwrap(), err_type);
           return Err(LemmyError::from_message(&err_type));
         }
       }
@@ -184,12 +190,9 @@ impl PerformCrud for PiLogin {
     if pi_exist {
       let local_user_id;
       let username2 = username.clone();
-      let _local_user = match blocking(context.pool(), move |conn| {
-        LocalUserView::read_from_name(conn, &username2.clone())
-      })
-      .await?
+      let _local_user = match LocalUserView::read_from_name(context.pool(), &username2.clone()).await
       {
-        Ok(lcu) => lcu,
+        Ok(lcu) => lcu.local_user,
         Err(_e) => {
           let err_type = format!(
             "PiLogin local user not found {} {} {}",
@@ -197,7 +200,7 @@ impl PerformCrud for PiLogin {
             username.clone(),
             _e.to_string()
           );
-          println!("{} {}", _pi_uid.clone(), err_type);
+          println!("{} {}", _pi_uid.unwrap().clone(), err_type);
           return Err(LemmyError::from_error_message(_e, &err_type));
 
           //  return Ok(PiRegisterResponse {
@@ -208,14 +211,11 @@ impl PerformCrud for PiLogin {
         }
       };
 
-      local_user_id = _local_user.local_user.id.clone();
+      local_user_id = _local_user.id.clone();
 
       //  let password_hash = hash(_new_password.clone(), DEFAULT_COST).expect("Couldn't hash password");
       if create_new {
-        let updated_local_user = match blocking(context.pool(), move |conn| {
-          LocalUser::update_password(conn, local_user_id.clone(), &_new_password)
-        })
-        .await
+        let updated_local_user = match LocalUser::update_password(context.pool(), local_user_id.clone(), &_new_password).await
         {
           Ok(lcu) => lcu,
           Err(_e) => {
@@ -230,7 +230,7 @@ impl PerformCrud for PiLogin {
       }
       // let _pi_uid_search = _pi_uid.clone();
       // let  _payment = match blocking(context.pool(), move |conn| {
-      //   PiPayment::find_by_pi_uid(&conn, &_pi_uid_search)
+      //   PiPayment::find_by_pi_uid(&context.pool(), &_pi_uid_search)
       // })
       // .await?
       // {
@@ -260,160 +260,18 @@ impl PerformCrud for PiLogin {
     } // Pi exist
 
     // We have to create both a person, and local_user
-    if !create_new {
+    //if !create_new 
+    {
       let err_type = format!(
         "Auto create new account for Pioneers is disabled {} {}",
         &_new_user.to_string().clone(),
-        &_pi_uid.clone()
+        &_pi_uid.unwrap().clone()
       );
       println!("{}", err_type);
       //return LemmyError::from_error_message(e, &err_type)?;
       return Err(LemmyError::from_message(&err_type).into());
     }
 
-    check_slurs(&_new_user.clone(), &context.settings().slur_regex())?;
-    if !is_valid_actor_name(&_new_user.clone(), context.settings().actor_name_max_length) {
-      //println!("Invalid username {} {}", _pi_username.to_owned(), &_new_user.clone());
-      //return LemmyError::from_error_message(e, &err_type)?;
-      return Err(LemmyError::from_message("register:invalid_username").into());
-    }
-
-    let mut change_password = false;
-
-    let _new_user2 = _new_user.clone();
-    let person = match blocking(context.pool(), move |conn| {
-      Person::find_by_name(conn, &_new_user2.clone())
-    })
-    .await?
-    {
-      Ok(c) => Some(c),
-      Err(_e) => None,
-    };
-
-    match person {
-      Some(per) => {
-        if extra_user_id != per.extra_user_id {
-          let err_type = format!(
-            "User {} is exist and belong to other Pi Account ",
-            &_new_user.to_string().clone()
-          );
-          println!("{} {} {}", _pi_username.clone(), err_type, &_pi_alias2);
-          result = false;
-          //return LemmyError::from_error_message(e, &err_type)?;
-          //return Err(LemmyError::from_message(&err_type).into());
-          // return Ok(PiRegisterResponse {
-          //   success: false,
-          //   jwt: format!(""),
-          //   extra: Some(format!("{}",err_type)),
-          //   });
-        } else {
-          // Same name and account: change password ???
-          change_password = true;
-        }
-      }
-      None => {
-        change_password = true;
-        //change_username = true;
-        // Not allow change username
-        //let err_type = format!("Register: You already have user name {}", _new_user.clone());
-        //println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
-        //result = false;
-        //return Err(LemmyError::from_message(&err_type).into());
-        // return Ok(PiRegisterResponse {
-        //   success: false,
-        //   jwt: format!(""),
-        //   extra: Some(format!("{}",err_type)),
-        //   });
-      }
-    };
-
-    let actor_keypair = generate_actor_keypair()?;
-    let actor_id = generate_local_apub_endpoint(
-      EndpointType::Person,
-      &_new_user.clone(),
-      &settings.get_protocol_and_hostname(),
-    )?;
-
-    // Register the new person
-    let person_form = PersonForm {
-      name: _new_user.to_string(),
-      actor_id: Some(actor_id.clone()),
-      private_key: Some(Some(actor_keypair.private_key)),
-      public_key: Some(actor_keypair.public_key),
-      inbox_url: Some(generate_inbox_url(&actor_id)?),
-      shared_inbox_url: Some(Some(generate_shared_inbox_url(&actor_id)?)),
-      admin: None,
-      extra_user_id: Some(_pi_alias2),
-      ..PersonForm::default()
-    };
-
-    // insert the person
-    // let err_type = format!("user_already_exists: {} {}", &data.info.username, _pi_alias3);
-    let inserted_tmp = match blocking(context.pool(), move |conn| {
-      Person::create(conn, &person_form)
-    })
-    .await?
-    {
-      Ok(p) => Some(p),
-      Err(_e) => {
-        let err_type = format!(
-          "PiLogin: user_already_exists: {} {}, exists{},  err:{}",
-          &_new_user.to_string().clone(),
-          _pi_alias3,
-          pi_exist,
-          _e.to_string()
-        );
-        return Err(LemmyError::from_message(&err_type));
-      }
-    };
-
-    let inserted_person = inserted_tmp.unwrap();
-    // Create the local user
-    let local_user_form = LocalUserForm {
-      person_id: Some(inserted_person.id),
-      email: None, //Some(info.email.to_owned()),
-      password_encrypted: Some(_new_password.to_string()),
-      show_nsfw: Some(false),
-      ..LocalUserForm::default()
-    };
-
-    let inserted_local_user = match blocking(context.pool(), move |conn| {
-      LocalUser::register(conn, &local_user_form)
-    })
-    .await?
-    {
-      Ok(lu) => lu,
-      Err(_e) => {
-        let err_type = if _e.to_string()
-          == "duplicate key value violates unique constraint \"local_user_email_key\""
-        {
-          "Register: email_already_exists"
-        } else {
-          "Register: user_already_exists"
-        };
-
-        // If the local user creation errored, then delete that person
-        blocking(context.pool(), move |conn| {
-          Person::delete(conn, inserted_person.id)
-        })
-        .await??;
-
-        return Err(LemmyError::from_message(err_type));
-      }
-    };
-
-    // Return the jwt
-    Ok(LoginResponse {
-      jwt: Some(
-        Claims::jwt(
-          inserted_local_user.id.0,
-          &context.secret().jwt_secret,
-          &context.settings().hostname,
-        )?
-        .into(),
-      ),
-      verify_email_sent: false,
-      registration_created: false,
-    })
+    
   }
 }

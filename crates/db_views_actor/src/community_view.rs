@@ -1,5 +1,14 @@
 use crate::structs::{CommunityModeratorView, CommunityView, PersonViewSafe};
-use diesel::{result::Error, *};
+use diesel::{
+  result::Error,
+  BoolExpressionMethods,
+  ExpressionMethods,
+  JoinOnDsl,
+  NullableExpressionMethods,
+  PgTextExpressionMethods,
+  QueryDsl,
+};
+use diesel_async::RunQueryDsl;
 use lemmy_db_schema::{
   aggregates::structs::CommunityAggregates,
   newtypes::{CommunityId, PersonId},
@@ -10,7 +19,7 @@ use lemmy_db_schema::{
     local_user::LocalUser,
   },
   traits::{ToSafe, ViewToVec},
-  utils::{functions::hot_rank, fuzzy_search, limit_and_offset},
+  utils::{functions::hot_rank, fuzzy_search, get_conn, limit_and_offset, DbPool},
   ListingType,
   SortType,
 };
@@ -24,13 +33,12 @@ type CommunityViewTuple = (
 );
 
 impl CommunityView {
-  pub fn read(
-    conn: &mut PgConnection,
+  pub async fn read(
+    pool: &DbPool,
     community_id: CommunityId,
     my_person_id: Option<PersonId>,
   ) -> Result<Self, Error> {
-  	// TODO: UUID check
-    
+    let conn = &mut get_conn(pool).await?;
     // The left join below will return None in this case
     //let person_id_join = my_person_id.unwrap_or(PersonId(
     //  Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
@@ -61,7 +69,8 @@ impl CommunityView {
         community_follower::all_columns.nullable(),
         community_block::all_columns.nullable(),
       ))
-      .first::<CommunityViewTuple>(conn)?;
+      .first::<CommunityViewTuple>(conn)
+      .await?;
 
     Ok(CommunityView {
       community,
@@ -71,12 +80,13 @@ impl CommunityView {
     })
   }
 
-  pub fn is_mod_or_admin(
-    conn: &mut PgConnection,
+  pub async fn is_mod_or_admin(
+    pool: &DbPool,
     person_id: PersonId,
     community_id: CommunityId,
-  ) -> bool {
-    let is_mod = CommunityModeratorView::for_community(conn, community_id)
+  ) -> Result<bool, Error> {
+    let is_mod = CommunityModeratorView::for_community(pool, community_id)
+      .await
       .map(|v| {
         v.into_iter()
           .map(|m| m.moderator.id)
@@ -85,17 +95,19 @@ impl CommunityView {
       .unwrap_or_default()
       .contains(&person_id);
     if is_mod {
-      return true;
+      return Ok(true);
     }
 
-    PersonViewSafe::admins(conn)
+    let is_admin = PersonViewSafe::admins(pool)
+      .await
       .map(|v| {
         v.into_iter()
           .map(|a| a.person.id)
           .collect::<Vec<PersonId>>()
       })
       .unwrap_or_default()
-      .contains(&person_id)
+      .contains(&person_id);
+    Ok(is_admin)
   }
 }
 
@@ -103,7 +115,7 @@ impl CommunityView {
 #[builder(field_defaults(default))]
 pub struct CommunityQuery<'a> {
   #[builder(!default)]
-  conn: &'a mut PgConnection,
+  pool: &'a DbPool,
   listing_type: Option<ListingType>,
   sort: Option<SortType>,
   local_user: Option<&'a LocalUser>,
@@ -113,8 +125,9 @@ pub struct CommunityQuery<'a> {
 }
 
 impl<'a> CommunityQuery<'a> {
-  pub fn list(self) -> Result<Vec<CommunityView>, Error> {
-    // TODO: UUID check
+  pub async fn list(self) -> Result<Vec<CommunityView>, Error> {
+    let conn = &mut get_conn(self.pool).await?;
+
     // The left join below will return None in this case
     let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     // let person_id_join = self.my_person_id.unwrap_or(PersonId(uuid));
@@ -148,7 +161,7 @@ impl<'a> CommunityQuery<'a> {
     if let Some(search_term) = self.search_term {
       let searcher = fuzzy_search(&search_term);
       query = query
-        .filter(community::name.ilike(searcher.to_owned()))
+        .filter(community::name.ilike(searcher.clone()))
         .or_filter(community::title.ilike(searcher));
     };
 
@@ -212,7 +225,8 @@ impl<'a> CommunityQuery<'a> {
       .offset(offset)
       .filter(community::removed.eq(false))
       .filter(community::deleted.eq(false))
-      .load::<CommunityViewTuple>(self.conn)?;
+      .load::<CommunityViewTuple>(conn)
+      .await?;
 
     Ok(CommunityView::from_tuple_to_vec(res))
   }

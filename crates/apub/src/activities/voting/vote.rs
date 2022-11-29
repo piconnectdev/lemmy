@@ -13,12 +13,10 @@ use crate::{
   PostOrComment,
 };
 use activitypub_federation::{core::object_id::ObjectId, data::Data, traits::ActivityHandler};
-use activitystreams_kinds::public;
 use anyhow::anyhow;
-use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::{
   newtypes::CommunityId,
-  source::{community::Community, post::Post, site::Site},
+  source::{community::Community, local_site::LocalSite, post::Post},
   traits::Crud,
 };
 use lemmy_utils::error::LemmyError;
@@ -37,10 +35,8 @@ impl Vote {
     Ok(Vote {
       actor: ObjectId::new(actor.actor_id()),
       object: ObjectId::new(object.ap_id()),
-      cc: vec![public()],
       kind: kind.clone(),
       id: generate_activity_id(kind, &context.settings().get_protocol_and_hostname())?,
-      unparsed: Default::default(),
     })
   }
 
@@ -52,11 +48,7 @@ impl Vote {
     kind: VoteType,
     context: &LemmyContext,
   ) -> Result<(), LemmyError> {
-    let community = blocking(context.pool(), move |conn| {
-      Community::read(conn, community_id)
-    })
-    .await??
-    .into();
+    let community = Community::read(context.pool(), community_id).await?.into();
     let vote = Vote::new(object, actor, kind, context)?;
 
     let activity = AnnouncableActivities::Vote(vote);
@@ -85,8 +77,11 @@ impl ActivityHandler for Vote {
   ) -> Result<(), LemmyError> {
     let community = self.get_community(context, request_counter).await?;
     verify_person_in_community(&self.actor, &community, context, request_counter).await?;
-    let site = blocking(context.pool(), Site::read_local_site).await??;
-    if self.kind == VoteType::Dislike && !site.enable_downvotes {
+    let enable_downvotes = LocalSite::read(context.pool())
+      .await
+      .map(|l| l.enable_downvotes)
+      .unwrap_or(true);
+    if self.kind == VoteType::Dislike && !enable_downvotes {
       return Err(anyhow!("Downvotes disabled").into());
     }
     Ok(())
@@ -100,11 +95,11 @@ impl ActivityHandler for Vote {
   ) -> Result<(), LemmyError> {
     let actor = self
       .actor
-      .dereference(context, local_instance(context), request_counter)
+      .dereference(context, local_instance(context).await, request_counter)
       .await?;
     let object = self
       .object
-      .dereference(context, local_instance(context), request_counter)
+      .dereference(context, local_instance(context).await, request_counter)
       .await?;
     match object {
       PostOrComment::Post(p) => vote_post(&self.kind, actor, &p, context).await,
@@ -123,17 +118,13 @@ impl GetCommunity for Vote {
   ) -> Result<ApubCommunity, LemmyError> {
     let object = self
       .object
-      .dereference(context, local_instance(context), request_counter)
+      .dereference(context, local_instance(context).await, request_counter)
       .await?;
     let cid = match object {
       PostOrComment::Post(p) => p.community_id,
-      PostOrComment::Comment(c) => {
-        blocking(context.pool(), move |conn| Post::read(conn, c.post_id))
-          .await??
-          .community_id
-      }
+      PostOrComment::Comment(c) => Post::read(context.pool(), c.post_id).await?.community_id,
     };
-    let community = blocking(context.pool(), move |conn| Community::read(conn, cid)).await??;
+    let community = Community::read(context.pool(), cid).await?;
     Ok(community.into())
   }
 }

@@ -1,4 +1,5 @@
-use lemmy_db_schema::source::language::Language;
+use lemmy_db_schema::{newtypes::LanguageId, source::language::Language, utils::DbPool};
+use lemmy_utils::error::LemmyError;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -16,6 +17,7 @@ pub struct Endpoints {
   pub shared_inbox: Url,
 }
 
+/// As specified in https://schema.org/Language
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct LanguageTag {
@@ -24,16 +26,65 @@ pub(crate) struct LanguageTag {
 }
 
 impl LanguageTag {
-  pub(crate) fn new(lang: Language) -> Option<LanguageTag> {
+  pub(crate) async fn new_single(
+    lang: LanguageId,
+    pool: &DbPool,
+  ) -> Result<Option<LanguageTag>, LemmyError> {
+    let lang = Language::read_from_id(pool, lang).await?;
+
     // undetermined
     if lang.code == "und" {
-      None
+      Ok(None)
     } else {
-      Some(LanguageTag {
+      Ok(Some(LanguageTag {
         identifier: lang.code,
         name: lang.name,
-      })
+      }))
     }
+  }
+
+  pub(crate) async fn new_multiple(
+    lang_ids: Vec<LanguageId>,
+    pool: &DbPool,
+  ) -> Result<Vec<LanguageTag>, LemmyError> {
+    let mut langs = Vec::<Language>::new();
+
+    for l in lang_ids {
+      langs.push(Language::read_from_id(pool, l).await?);
+    }
+
+    let langs = langs
+      .into_iter()
+      .map(|l| LanguageTag {
+        identifier: l.code,
+        name: l.name,
+      })
+      .collect();
+    Ok(langs)
+  }
+
+  pub(crate) async fn to_language_id_single(
+    lang: Option<Self>,
+    pool: &DbPool,
+  ) -> Result<Option<LanguageId>, LemmyError> {
+    let identifier = lang.map(|l| l.identifier);
+    let language = Language::read_id_from_code_opt(pool, identifier.as_deref()).await?;
+
+    Ok(language)
+  }
+
+  pub(crate) async fn to_language_id_multiple(
+    langs: Vec<Self>,
+    pool: &DbPool,
+  ) -> Result<Vec<LanguageId>, LemmyError> {
+    let mut language_ids = Vec::new();
+
+    for l in langs {
+      let id = l.identifier;
+      language_ids.push(Language::read_id_from_code(pool, &id).await?);
+    }
+
+    Ok(language_ids)
   }
 }
 
@@ -115,5 +166,12 @@ mod tests {
     test_json::<Group>("assets/peertube/objects/group.json").unwrap();
     test_json::<Page>("assets/peertube/objects/video.json").unwrap();
     test_json::<Note>("assets/peertube/objects/note.json").unwrap();
+  }
+
+  #[test]
+  fn test_parse_object_mobilizon() {
+    test_json::<Group>("assets/mobilizon/objects/group.json").unwrap();
+    test_json::<Page>("assets/mobilizon/objects/event.json").unwrap();
+    test_json::<Person>("assets/mobilizon/objects/person.json").unwrap();
   }
 }

@@ -13,7 +13,6 @@ use activitypub_federation::{
   traits::{ActivityHandler, Actor, ApubObject},
   utils::verify_domains_match,
 };
-use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::{source::person::Person, traits::Crud};
 use lemmy_utils::error::LemmyError;
 use lemmy_websocket::{send::send_pm_ws_message, LemmyContext, UserOperationCrud};
@@ -28,10 +27,7 @@ impl CreateOrUpdatePrivateMessage {
     context: &LemmyContext,
   ) -> Result<(), LemmyError> {
     let recipient_id = private_message.recipient_id;
-    let recipient: ApubPerson =
-      blocking(context.pool(), move |conn| Person::read(conn, recipient_id))
-        .await??
-        .into();
+    let recipient: ApubPerson = Person::read(context.pool(), recipient_id).await?.into();
 
     let id = generate_activity_id(
       kind.clone(),
@@ -43,7 +39,6 @@ impl CreateOrUpdatePrivateMessage {
       to: [ObjectId::new(recipient.actor_id())],
       object: private_message.into_apub(context).await?,
       kind,
-      unparsed: Default::default(),
     };
     let inbox = vec![recipient.shared_inbox_or_inbox()];
     send_lemmy_activity(context, create_or_update, actor, inbox, true).await

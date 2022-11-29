@@ -3,7 +3,6 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   post::{GetPosts, GetPostsResponse},
   utils::{
-    blocking,
     check_private_instance,
     get_local_user_view_from_jwt_opt,
     listing_type_with_site_default,
@@ -12,10 +11,9 @@ use lemmy_api_common::{
 use lemmy_apub::{fetcher::resolve_actor_identifier, objects::community::ApubCommunity};
 use lemmy_db_schema::{
   newtypes::CommunityId,
-  source::{community::Community, site::Site},
+  source::{community::Community, local_site::LocalSite},
   traits::DeleteableOrRemoveable,
 };
-use lemmy_db_views::post_view::PostQueryBuilder;
 use lemmy_db_views::post_view::PostQuery;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_websocket::LemmyContext;
@@ -34,13 +32,14 @@ impl PerformCrud for GetPosts {
     let local_user_view =
       get_local_user_view_from_jwt_opt(data.auth.as_ref(), context.pool(), context.secret())
         .await?;
+    let local_site = LocalSite::read(context.pool()).await?;
 
-    check_private_instance(&local_user_view, context.pool()).await?;
+    check_private_instance(&local_user_view, &local_site)?;
 
     let is_logged_in = local_user_view.is_some();
 
     let sort = data.sort;
-    let listing_type = listing_type_with_site_default(data.type_, context.pool()).await?;
+    let listing_type = listing_type_with_site_default(data.type_, &local_site)?;
 
     let page = data.page;
     let limit = data.limit;
@@ -73,22 +72,20 @@ impl PerformCrud for GetPosts {
     };
     let saved_only = data.saved_only;
 
-    let mut posts = blocking(context.pool(), move |conn| {
-      PostQuery::builder()
-        .conn(conn)
-        .local_user(local_user_view.map(|l| l.local_user).as_ref())
-        .listing_type(Some(listing_type))
-        .sort(sort)
-        .community_id(community_id)
-        .community_actor_id(community_actor_id)
-        .saved_only(saved_only)
-        .page(page)
-        .limit(limit)
-        .build()
-        .list()
-    })
-    .await?
-    .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_posts"))?;
+    let mut posts = PostQuery::builder()
+      .pool(context.pool())
+      .local_user(local_user_view.map(|l| l.local_user).as_ref())
+      .listing_type(Some(listing_type))
+      .sort(sort)
+      .community_id(community_id)
+      .community_actor_id(community_actor_id)
+      .saved_only(saved_only)
+      .page(page)
+      .limit(limit)
+      .build()
+      .list()
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_posts"))?;
 
     // Blank out deleted or removed info for non-logged in users
     if !is_logged_in {
@@ -96,14 +93,14 @@ impl PerformCrud for GetPosts {
         .iter_mut()
         .filter(|p| p.post.deleted || p.post.removed)
       {
-        pv.post = pv.to_owned().post.blank_out_deleted_or_removed_info();
+        pv.post = pv.clone().post.blank_out_deleted_or_removed_info();
       }
 
       for pv in posts
         .iter_mut()
         .filter(|p| p.community.deleted || p.community.removed)
       {
-        pv.community = pv.to_owned().community.blank_out_deleted_or_removed_info();
+        pv.community = pv.clone().community.blank_out_deleted_or_removed_info();
       }
     }
 

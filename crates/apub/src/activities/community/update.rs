@@ -18,11 +18,7 @@ use activitypub_federation::{
   traits::{ActivityHandler, ApubObject},
 };
 use activitystreams_kinds::{activity::UpdateType, public};
-use lemmy_api_common::utils::blocking;
-use lemmy_db_schema::{
-  source::community::{Community, CommunityForm},
-  traits::Crud,
-};
+use lemmy_db_schema::{source::community::Community, traits::Crud};
 use lemmy_utils::error::LemmyError;
 use lemmy_websocket::{send::send_community_ws_message, LemmyContext, UserOperationCrud};
 use url::Url;
@@ -45,7 +41,6 @@ impl UpdateCommunity {
       cc: vec![community.actor_id()],
       kind: UpdateType::Update,
       id: id.clone(),
-      unparsed: Default::default(),
     };
 
     let activity = AnnouncableActivities::UpdateCommunity(update);
@@ -78,7 +73,7 @@ impl ActivityHandler for UpdateCommunity {
     verify_mod_action(
       &self.actor,
       self.object.id.inner(),
-      &community,
+      community.id,
       context,
       request_counter,
     )
@@ -101,21 +96,10 @@ impl ActivityHandler for UpdateCommunity {
   ) -> Result<(), LemmyError> {
     let community = self.get_community(context, request_counter).await?;
 
-    let updated_community = self.object.into_form();
-    let cf = CommunityForm {
-      name: updated_community.name,
-      title: updated_community.title,
-      description: updated_community.description,
-      nsfw: updated_community.nsfw,
-      // TODO: icon and banner would be hosted on the other instance, ideally we would copy it to ours
-      icon: updated_community.icon,
-      banner: updated_community.banner,
-      ..CommunityForm::default()
-    };
-    let updated_community = blocking(context.pool(), move |conn| {
-      Community::update(conn, community.id, &cf)
-    })
-    .await??;
+    let community_update_form = self.object.into_update_form();
+
+    let updated_community =
+      Community::update(context.pool(), community.id, &community_update_form).await?;
 
     send_community_ws_message(
       updated_community.id,
@@ -139,7 +123,7 @@ impl GetCommunity for UpdateCommunity {
   ) -> Result<ApubCommunity, LemmyError> {
     let cid = ObjectId::new(self.object.id.clone());
     cid
-      .dereference(context, local_instance(context), request_counter)
+      .dereference(context, local_instance(context).await, request_counter)
       .await
   }
 }

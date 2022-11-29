@@ -2,7 +2,7 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   private_message::{GetPrivateMessages, PrivateMessagesResponse},
-  utils::{blocking, get_local_user_view_from_jwt},
+  utils::get_local_user_view_from_jwt,
 };
 use lemmy_db_schema::traits::DeleteableOrRemoveable;
 use lemmy_db_views::private_message_view::PrivateMessageQuery;
@@ -27,17 +27,23 @@ impl PerformCrud for GetPrivateMessages {
     let page = data.page;
     let limit = data.limit;
     let unread_only = data.unread_only;
-    let mut messages = blocking(context.pool(), move |conn| {
-      PrivateMessageQuery::builder()
-        .conn(conn)
-        .recipient_id(person_id)
-        .page(page)
-        .limit(limit)
-        .unread_only(unread_only)
-        .build()
-        .list()
-    })
-    .await??;
+    let mut messages = PrivateMessageQuery::builder()
+      .pool(context.pool())
+      .recipient_id(person_id)
+      .page(page)
+      .limit(limit)
+      .unread_only(unread_only)
+      .build()
+      .list()
+      .await?;
+
+    // Messages sent by ourselves should be marked as read. The `read` column in database is only
+    // for the recipient, and shouldnt be exposed to sender.
+    messages.iter_mut().for_each(|pmv| {
+      if pmv.creator.id == person_id {
+        pmv.private_message.read = true
+      }
+    });
 
     // Blank out deleted or removed info
     for pmv in messages
@@ -45,7 +51,7 @@ impl PerformCrud for GetPrivateMessages {
       .filter(|pmv| pmv.private_message.deleted)
     {
       pmv.private_message = pmv
-        .to_owned()
+        .clone()
         .private_message
         .blank_out_deleted_or_removed_info();
     }

@@ -1,6 +1,7 @@
 use crate::{
   activities::{verify_is_public, verify_person_in_community},
   check_apub_id_valid_with_strictness,
+  fetch_local_site_data,
   local_instance,
   mentions::collect_non_local_mentions,
   objects::{read_from_string_or_source, verify_is_remote_object},
@@ -18,12 +19,12 @@ use activitypub_federation::{
 };
 use activitystreams_kinds::{object::NoteType, public};
 use chrono::NaiveDateTime;
-use lemmy_api_common::utils::blocking;
+use lemmy_api_common::utils::local_site_opt_to_slur_regex;
 use lemmy_db_schema::{
   source::{
-    comment::{Comment, CommentForm},
+    comment::{Comment, CommentInsertForm, CommentUpdateForm},
     community::Community,
-    language::Language,
+    local_site::LocalSite,
     person::Person,
     post::Post,
   },
@@ -70,21 +71,17 @@ impl ApubObject for ApubComment {
     context: &LemmyContext,
   ) -> Result<Option<Self>, LemmyError> {
     Ok(
-      blocking(context.pool(), move |conn| {
-        Comment::read_from_apub_id(conn, object_id)
-      })
-      .await??
-      .map(Into::into),
+      Comment::read_from_apub_id(context.pool(), object_id)
+        .await?
+        .map(Into::into),
     )
   }
 
   #[tracing::instrument(skip_all)]
   async fn delete(self, context: &LemmyContext) -> Result<(), LemmyError> {
     if !self.deleted {
-      blocking(context.pool(), move |conn| {
-        Comment::update_deleted(conn, self.id, true)
-      })
-      .await??;
+      let form = CommentUpdateForm::builder().deleted(Some(true)).build();
+      Comment::update(context.pool(), self.id, &form).await?;
     }
     Ok(())
   }
@@ -92,28 +89,20 @@ impl ApubObject for ApubComment {
   #[tracing::instrument(skip_all)]
   async fn into_apub(self, context: &LemmyContext) -> Result<Note, LemmyError> {
     let creator_id = self.creator_id;
-    let creator = blocking(context.pool(), move |conn| Person::read(conn, creator_id)).await??;
+    let creator = Person::read(context.pool(), creator_id).await?;
 
     let post_id = self.post_id;
-    let post = blocking(context.pool(), move |conn| Post::read(conn, post_id)).await??;
+    let post = Post::read(context.pool(), post_id).await?;
     let community_id = post.community_id;
-    let community = blocking(context.pool(), move |conn| {
-      Community::read(conn, community_id)
-    })
-    .await??;
+    let community = Community::read(context.pool(), community_id).await?;
 
     let in_reply_to = if let Some(comment_id) = self.parent_comment_id() {
-      let parent_comment =
-        blocking(context.pool(), move |conn| Comment::read(conn, comment_id)).await??;
+      let parent_comment = Comment::read(context.pool(), comment_id).await?;
       ObjectId::<PostOrComment>::new(parent_comment.ap_id)
     } else {
       ObjectId::<PostOrComment>::new(post.ap_id)
     };
-    let language = self.language_id;
-    let language = blocking(context.pool(), move |conn| {
-      Language::read_from_id(conn, language)
-    })
-    .await??;
+    let language = LanguageTag::new_single(self.language_id, context.pool()).await?;
     let maa =
       collect_non_local_mentions(&self, ObjectId::new(community.actor_id), context, &mut 0).await?;
 
@@ -131,7 +120,7 @@ impl ApubObject for ApubComment {
       updated: self.updated.map(convert_datetime),
       tag: maa.tags,
       distinguished: Some(self.distinguished),
-      language: LanguageTag::new(language),
+      language,
     };
 
     Ok(note)
@@ -149,11 +138,15 @@ impl ApubObject for ApubComment {
     verify_is_public(&note.to, &note.cc)?;
     let (post, _) = note.get_parents(context, request_counter).await?;
     let community_id = post.community_id;
-    let community = blocking(context.pool(), move |conn| {
-      Community::read(conn, community_id)
-    })
-    .await??;
-    check_apub_id_valid_with_strictness(note.id.inner(), community.local, context.settings())?;
+    let community = Community::read(context.pool(), community_id).await?;
+    let local_site_data = fetch_local_site_data(context.pool()).await?;
+
+    check_apub_id_valid_with_strictness(
+      note.id.inner(),
+      community.local,
+      &local_site_data,
+      context.settings(),
+    )?;
     verify_is_remote_object(note.id.inner(), context.settings())?;
     verify_person_in_community(
       &note.attributed_to,
@@ -179,38 +172,35 @@ impl ApubObject for ApubComment {
   ) -> Result<ApubComment, LemmyError> {
     let creator = note
       .attributed_to
-      .dereference(context, local_instance(context), request_counter)
+      .dereference(context, local_instance(context).await, request_counter)
       .await?;
     let (post, parent_comment) = note.get_parents(context, request_counter).await?;
 
     let content = read_from_string_or_source(&note.content, &note.media_type, &note.source);
-    let content_slurs_removed = remove_slurs(&content, &context.settings().slur_regex());
 
-    let language = note.language.map(|l| l.identifier);
-    let language = blocking(context.pool(), move |conn| {
-      Language::read_id_from_code_opt(conn, language.as_deref())
-    })
-    .await??;
+    let local_site = LocalSite::read(context.pool()).await.ok();
+    let slur_regex = &local_site_opt_to_slur_regex(&local_site);
+    let content_slurs_removed = remove_slurs(&content, slur_regex);
+    let language_id = LanguageTag::to_language_id_single(note.language, context.pool()).await?;
 
-    let form = CommentForm {
+    let form = CommentInsertForm {
       creator_id: creator.id,
       post_id: post.id,
       content: content_slurs_removed,
       removed: None,
       published: note.published.map(|u| u.naive_local()),
       updated: note.updated.map(|u| u.naive_local()),
-      deleted: None,
+      deleted: Some(false),
       ap_id: Some(note.id.into()),
       distinguished: note.distinguished,
       local: Some(false),
-      language_id: language,
-      ..CommentForm::default()
+      language_id,
+      auth_sign: None,
+      srv_sign: None,
+      tx: None,
     };
     let parent_comment_path = parent_comment.map(|t| t.0.path);
-    let comment = blocking(context.pool(), move |conn| {
-      Comment::create(conn, &form, parent_comment_path.as_ref())
-    })
-    .await??;
+    let comment = Comment::create(context.pool(), &form, parent_comment_path.as_ref()).await?;
     Ok(comment.into())
   }
 }
@@ -249,19 +239,18 @@ pub(crate) mod tests {
     (person, community, post, site)
   }
 
-  fn cleanup(data: (ApubPerson, ApubCommunity, ApubPost, ApubSite), context: &LemmyContext) {
-    let conn = &mut context.pool().get().unwrap();
-    Post::delete(conn, data.2.id).unwrap();
-    Community::delete(conn, data.1.id).unwrap();
-    Person::delete(conn, data.0.id).unwrap();
-    Site::delete(conn, data.3.id).unwrap();
+  async fn cleanup(data: (ApubPerson, ApubCommunity, ApubPost, ApubSite), context: &LemmyContext) {
+    Post::delete(context.pool(), data.2.id).await.unwrap();
+    Community::delete(context.pool(), data.1.id).await.unwrap();
+    Person::delete(context.pool(), data.0.id).await.unwrap();
+    Site::delete(context.pool(), data.3.id).await.unwrap();
+    LocalSite::delete(context.pool()).await.unwrap();
   }
 
   #[actix_rt::test]
   #[serial]
   pub(crate) async fn test_parse_lemmy_comment() {
-    let context = init_context();
-    let conn = &mut context.pool().get().unwrap();
+    let context = init_context().await;
     let url = Url::parse("https://enterprise.lemmy.ml/comment/38741").unwrap();
     let data = prepare_comment_test(&url, &context).await;
 
@@ -283,15 +272,14 @@ pub(crate) mod tests {
     let to_apub = comment.into_apub(&context).await.unwrap();
     assert_json_include!(actual: json, expected: to_apub);
 
-    Comment::delete(conn, comment_id).unwrap();
-    cleanup(data, &context);
+    Comment::delete(context.pool(), comment_id).await.unwrap();
+    cleanup(data, &context).await;
   }
 
   #[actix_rt::test]
   #[serial]
   async fn test_parse_pleroma_comment() {
-    let context = init_context();
-    let conn = &mut context.pool().get().unwrap();
+    let context = init_context().await;
     let url = Url::parse("https://enterprise.lemmy.ml/comment/38741").unwrap();
     let data = prepare_comment_test(&url, &context).await;
 
@@ -319,8 +307,8 @@ pub(crate) mod tests {
     assert!(!comment.local);
     assert_eq!(request_counter, 0);
 
-    Comment::delete(conn, comment.id).unwrap();
-    cleanup(data, &context);
+    Comment::delete(context.pool(), comment.id).await.unwrap();
+    cleanup(data, &context).await;
   }
 
   #[actix_rt::test]

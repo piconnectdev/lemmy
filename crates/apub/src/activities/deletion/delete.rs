@@ -11,11 +11,10 @@ use crate::{
 use activitypub_federation::{core::object_id::ObjectId, data::Data, traits::ActivityHandler};
 use activitystreams_kinds::activity::DeleteType;
 use anyhow::anyhow;
-use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::{
   source::{
-    comment::Comment,
-    community::Community,
+    comment::{Comment, CommentUpdateForm},
+    community::{Community, CommunityUpdateForm},
     moderator::{
       ModRemoveComment,
       ModRemoveCommentForm,
@@ -24,7 +23,7 @@ use lemmy_db_schema::{
       ModRemovePost,
       ModRemovePostForm,
     },
-    post::Post,
+    post::{Post, PostUpdateForm},
   },
   traits::Crud,
 };
@@ -76,7 +75,7 @@ impl ActivityHandler for Delete {
       receive_remove_action(
         &self
           .actor
-          .dereference(context, local_instance(context), request_counter)
+          .dereference(context, local_instance(context).await, request_counter)
           .await?,
         self.object.id(),
         reason,
@@ -118,7 +117,6 @@ impl Delete {
       kind: DeleteType::Delete,
       summary,
       id,
-      unparsed: Default::default(),
     })
   }
 }
@@ -145,14 +143,13 @@ pub(in crate::activities) async fn receive_remove_action(
         reason,
         expires: None,
       };
-      blocking(context.pool(), move |conn| {
-        ModRemoveCommunity::create(conn, &form)
-      })
-      .await??;
-      let deleted_community = blocking(context.pool(), move |conn| {
-        Community::update_removed(conn, community.id, true)
-      })
-      .await??;
+      ModRemoveCommunity::create(context.pool(), &form).await?;
+      let deleted_community = Community::update(
+        context.pool(),
+        community.id,
+        &CommunityUpdateForm::builder().removed(Some(true)).build(),
+      )
+      .await?;
 
       send_community_ws_message(deleted_community.id, RemoveCommunity, None, None, context).await?;
     }
@@ -163,14 +160,13 @@ pub(in crate::activities) async fn receive_remove_action(
         removed: Some(true),
         reason,
       };
-      blocking(context.pool(), move |conn| {
-        ModRemovePost::create(conn, &form)
-      })
-      .await??;
-      let removed_post = blocking(context.pool(), move |conn| {
-        Post::update_removed(conn, post.id, true)
-      })
-      .await??;
+      ModRemovePost::create(context.pool(), &form).await?;
+      let removed_post = Post::update(
+        context.pool(),
+        post.id,
+        &PostUpdateForm::builder().removed(Some(true)).build(),
+      )
+      .await?;
 
       send_post_ws_message(removed_post.id, RemovePost, None, None, context).await?;
     }
@@ -181,14 +177,13 @@ pub(in crate::activities) async fn receive_remove_action(
         removed: Some(true),
         reason,
       };
-      blocking(context.pool(), move |conn| {
-        ModRemoveComment::create(conn, &form)
-      })
-      .await??;
-      let removed_comment = blocking(context.pool(), move |conn| {
-        Comment::update_removed(conn, comment.id, true)
-      })
-      .await??;
+      ModRemoveComment::create(context.pool(), &form).await?;
+      let removed_comment = Comment::update(
+        context.pool(),
+        comment.id,
+        &CommentUpdateForm::builder().removed(Some(true)).build(),
+      )
+      .await?;
 
       send_comment_ws_message_simple(removed_comment.id, RemoveComment, context).await?;
     }
@@ -208,7 +203,7 @@ impl GetCommunity for Delete {
     let community_id = match DeletableObjects::read_from_db(self.object.id(), context).await? {
       DeletableObjects::Community(c) => c.id,
       DeletableObjects::Comment(c) => {
-        let post = blocking(context.pool(), move |conn| Post::read(conn, c.post_id)).await??;
+        let post = Post::read(context.pool(), c.post_id).await?;
         post.community_id
       }
       DeletableObjects::Post(p) => p.community_id,
@@ -216,10 +211,7 @@ impl GetCommunity for Delete {
         return Err(anyhow!("Private message is not part of community").into())
       }
     };
-    let community = blocking(context.pool(), move |conn| {
-      Community::read(conn, community_id)
-    })
-    .await??;
+    let community = Community::read(context.pool(), community_id).await?;
     Ok(community.into())
   }
 }

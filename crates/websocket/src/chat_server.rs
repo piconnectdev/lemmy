@@ -1,5 +1,5 @@
 use crate::{
-  messages::*,
+  messages::{CaptchaItem, StandardMessage, WsMessage, TokenItem},
   serialize_websocket_message,
   LemmyContext,
   OperationType,
@@ -8,19 +8,16 @@ use crate::{
 };
 use actix::prelude::*;
 use anyhow::Context as acontext;
-use diesel::{
-  r2d2::{ConnectionManager, Pool},
-  PgConnection,
-};
-use lemmy_api_common::{comment::*, post::*};
+use lemmy_api_common::{comment::CommentResponse, post::PostResponse};
 use lemmy_db_schema::{
   newtypes::{CommunityId, LocalUserId, PostId},
   source::secret::Secret,
+  utils::DbPool,
 };
 use lemmy_utils::{
   error::LemmyError,
   location_info,
-  rate_limit::RateLimit,
+  rate_limit::RateLimitCell,
   settings::structs::Settings,
   ConnectionId,
   IpAddr,
@@ -72,16 +69,13 @@ pub struct ChatServer {
   pub(super) rng: ThreadRng,
 
   /// The DB Pool
-  pub(super) pool: Pool<ConnectionManager<PgConnection>>,
+  pub(super) pool: DbPool,
 
   /// The Settings
   pub(super) settings: Settings,
 
   /// The Secrets
   pub(super) secret: Secret,
-
-  /// Rate limiting based on rate type and IP addr
-  pub(super) rate_limiter: RateLimit,
 
   /// A list of the current captchas
   pub(super) captchas: Vec<CaptchaItem>,
@@ -94,6 +88,8 @@ pub struct ChatServer {
 
   /// An HTTP Client
   client: ClientWithMiddleware,
+
+  rate_limit_cell: RateLimitCell,
 }
 
 pub struct SessionInfo {
@@ -107,13 +103,13 @@ pub struct SessionInfo {
 impl ChatServer {
   #![allow(clippy::too_many_arguments)]
   pub fn startup(
-    pool: Pool<ConnectionManager<PgConnection>>,
-    rate_limiter: RateLimit,
+    pool: DbPool,
     message_handler: MessageHandlerType,
     message_handler_crud: MessageHandlerCrudType,
     client: ClientWithMiddleware,
     settings: Settings,
     secret: Secret,
+    rate_limit_cell: RateLimitCell,
   ) -> ChatServer {
     ChatServer {
       sessions: HashMap::new(),
@@ -123,7 +119,6 @@ impl ChatServer {
       user_rooms: HashMap::new(),
       rng: rand::thread_rng(),
       pool,
-      rate_limiter,
       captchas: Vec::new(),
       tokens: Vec::new(),
       message_handler,
@@ -131,6 +126,7 @@ impl ChatServer {
       client,
       settings,
       secret,
+      rate_limit_cell,
     }
   }
 
@@ -456,22 +452,22 @@ impl ChatServer {
     msg: StandardMessage,
     ctx: &mut Context<Self>,
   ) -> impl Future<Output = Result<String, LemmyError>> {
-    let rate_limiter = self.rate_limiter.clone();
-
     let ip: IpAddr = match self.sessions.get(&msg.id) {
-      Some(info) => info.ip.to_owned(),
+      Some(info) => info.ip.clone(),
       None => IpAddr("blank_ip".to_string()),
     };
 
     let context = LemmyContext {
       pool: self.pool.clone(),
       chat_server: ctx.address(),
-      client: self.client.to_owned(),
-      settings: self.settings.to_owned(),
-      secret: self.secret.to_owned(),
+      client: self.client.clone(),
+      settings: self.settings.clone(),
+      secret: self.secret.clone(),
+      rate_limit_cell: self.rate_limit_cell.clone(),
     };
     let message_handler_crud = self.message_handler_crud;
     let message_handler = self.message_handler;
+    let rate_limiter = self.rate_limit_cell.clone();
     async move {
       let json: Value = serde_json::from_str(&msg.msg)?;
       let data = &json["data"].to_string();

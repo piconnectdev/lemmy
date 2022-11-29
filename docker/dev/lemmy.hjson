@@ -1,0 +1,27 @@
+{
+  # for more info about the config, check out the documentation
+  # https://join-lemmy.org/docs/en/administration/configuration.html
+
+  # This is a minimal lemmy config for the dev / main branch. Do not use for a 
+  # release / stable version.
+
+  setup: {
+    admin_username: "lemmy"
+    admin_password: "lemmylemmy"
+    site_name: "lemmy-dev"
+  }
+  database: {
+    host: postgres
+  }
+
+  hostname: "localhost"
+  bind: "0.0.0.0"
+  port: 8536
+
+  pictrs: {
+    url: "http://pictrs:8080/"
+    # api_key: "API_KEY"
+  }
+
+  opentelemetry_url: "http://otel:4137"
+}

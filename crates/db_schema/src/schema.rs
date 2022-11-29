@@ -28,10 +28,10 @@ table! {
         path -> Ltree,
         distinguished -> Bool,
         language_id -> Int4,
-        //cert -> Nullable<Text>,
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
     }
 }
 
@@ -104,8 +104,10 @@ table! {
         shared_inbox_url -> Nullable<Varchar>,
         hidden -> Bool,
         posting_restricted_to_mods -> Bool,
+        instance_id -> Uuid,
         srv_sign -> Nullable<Text>,
-        tx -> Nullable<Text>,        
+        tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
     }
 }
 
@@ -173,6 +175,9 @@ table! {
         show_new_post_notifs -> Bool,
         email_verified -> Bool,
         accepted_application -> Bool,
+        //private_seeds -> Nullable<Text>,
+        //signing_data -> Bool,
+        //extras -> Nullable<Jsonb>,
     }
 }
 
@@ -318,18 +323,21 @@ table! {
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
         bot_account -> Bool,
-        ban_expires -> Nullable<Timestamp>,		
-		extra_user_id -> Nullable<Text>,
-        verified -> Bool,
-        private_seeds -> Nullable<Text>,
+        ban_expires -> Nullable<Timestamp>,
+        instance_id -> Uuid,	
+        external_id -> Nullable<Text>,
+        //private_seeds -> Nullable<Text>,
+        //verified -> Bool,
         pi_address -> Nullable<Text>,
         web3_address -> Nullable<Text>,
-        sol_address -> Nullable<Text>,
+        pol_address -> Nullable<Text>,
         dap_address -> Nullable<Text>,
-        cosmos_address -> Nullable<Text>,   
+        cosmos_address -> Nullable<Text>,
+        sui_address -> Nullable<Text>,   
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
-        tx -> Nullable<Text>,        
+        tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,        
     }
 }
 
@@ -397,6 +405,7 @@ table! {
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
     }
 }
 
@@ -485,6 +494,7 @@ table! {
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
         tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
     }
 }
 
@@ -509,28 +519,18 @@ table! {
         sidebar -> Nullable<Text>,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
-        enable_downvotes -> Bool,
-        open_registration -> Bool,
-        enable_nsfw -> Bool,
         icon -> Nullable<Varchar>,
         banner -> Nullable<Varchar>,
         description -> Nullable<Text>,
-        community_creation_admin_only -> Bool,
-        require_email_verification -> Bool,
-        require_application -> Bool,
-        application_question -> Nullable<Text>,
-        private_instance -> Bool,
         actor_id -> Text,
         last_refreshed_at -> Timestamp,
         inbox_url -> Text,
         private_key -> Nullable<Text>,
         public_key -> Text,
-        default_theme -> Text,
-        default_post_listing_type -> Text,
-        legal_information -> Nullable<Text>,
-        application_email_admins -> Bool,
-        hide_modlog_mod_names -> Bool,
+        instance_id -> Uuid,
         srv_sign -> Nullable<Text>,
+        tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
     }
 }
 
@@ -645,6 +645,137 @@ table! {
 }
 
 table! {
+    language (id) {
+        id -> Int4,
+        code -> Text,
+        name -> Text,
+    }
+}
+
+
+table! {
+    local_user_language(id) {
+        id -> Uuid,
+        local_user_id -> Uuid,
+        language_id -> Int4,
+    }
+}
+
+table! {
+    site_language(id) {
+        id -> Uuid,
+        site_id -> Uuid,
+        language_id -> Int4,
+    }
+}
+
+table! {
+    community_language(id) {
+        id -> Uuid,
+        community_id -> Uuid,
+        language_id -> Int4,
+    }
+}
+
+table! {
+  instance(id) {
+    id -> Uuid,
+    domain -> Text,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
+  }
+}
+
+table! {
+  federation_allowlist(id) {
+    id -> Uuid,
+    instance_id -> Uuid,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
+  }
+}
+
+table! {
+  federation_blocklist(id) {
+    id -> Uuid,
+    instance_id -> Uuid,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
+  }
+}
+
+table! {
+  local_site(id) {
+    id -> Uuid,
+    site_id -> Uuid,
+    site_setup -> Bool,
+    enable_downvotes -> Bool,
+    open_registration -> Bool,
+    enable_nsfw -> Bool,
+    community_creation_admin_only -> Bool,
+    require_email_verification -> Bool,
+    require_application -> Bool,
+    application_question -> Nullable<Text>,
+    private_instance -> Bool,
+    default_theme -> Text,
+    default_post_listing_type -> Text,
+    legal_information -> Nullable<Text>,
+    hide_modlog_mod_names -> Bool,
+    application_email_admins -> Bool,
+    slur_filter_regex -> Nullable<Text>,
+    actor_name_max_length -> Int4,
+    federation_enabled -> Bool,
+    federation_debug -> Bool,
+    federation_worker_count -> Int4,
+    captcha_enabled -> Bool,
+    captcha_difficulty -> Text,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
+  }
+}
+
+table! {
+  local_site_rate_limit(id) {
+    id -> Uuid,
+    local_site_id -> Uuid,
+    message -> Int4,
+    message_per_second-> Int4,
+    post -> Int4,
+    post_per_second -> Int4,
+    register -> Int4,
+    register_per_second -> Int4,
+    image -> Int4,
+    image_per_second -> Int4,
+    comment -> Int4,
+    comment_per_second -> Int4,
+    search -> Int4,
+    search_per_second -> Int4,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
+  }
+}
+
+table! {
+  tagline(id) {
+    id -> Uuid,
+    local_site_id -> Uuid,
+    content -> Text,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
+  }
+}
+
+table! {
+    person_follower (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        follower_id -> Uuid,
+        published -> Timestamp,
+        pending -> Bool,
+    }
+}
+
+table! {
     pipayment (id) {
         id -> Uuid,
         person_id -> Nullable<Uuid>, // WePi user's id
@@ -655,10 +786,10 @@ table! {
         updated -> Nullable<Timestamp>,
         comment -> Nullable<Text>,
 
-        pi_uid -> Nullable<Uuid>,
-        pi_username -> Text,
-        identifier -> Text,
-        user_uid -> Text, //  PaymentDto
+        pi_uid -> Nullable<Uuid>,   // UserDTO - uid
+        pi_username -> Text,        // UserDTO - username
+        identifier -> Text,         // PaymentDto - identifier
+        user_uid -> Text,           // PaymentDto - user_uid
         amount -> Double,
         memo -> Text,
         to_address -> Text,
@@ -677,24 +808,38 @@ table! {
     }
 }
 
-//joinable!(pipayment -> person (person_id));
+// table! {
+//     person_web3address (id) {
+//         id -> Uuid,
+//         person_id -> Nullable<Uuid>,
+//         name -> Text,
+//         pi -> Nullable<Text>,
+//         web3 -> Nullable<Text>,
+//         dap -> Nullable<Text>,
+//         cosmos -> Nullable<Text>,
+//         xlm -> Nullable<Text>,
+//         sui -> Nullable<Text>,
+//         ton -> Nullable<Text>,
+//         egld -> Nullable<Text>,
+//         near -> Nullable<Text>,
+//         apt -> Nullable<Text>,
+//         dot -> Nullable<Text>,
+//         mina -> Nullable<Text>,
+//         zil -> Nullable<Text>,
+//         avax -> Nullable<Text>,
+//         icp -> Nullable<Text>,
+//         trx -> Nullable<Text>,        
+//         xtz -> Nullable<Text>,        
+//         ada -> Nullable<Text>,
+//         btc -> Nullable<Text>,
+//         doge -> Nullable<Text>,
+//         xmr -> Nullable<Text>,
+//         extras -> Nullable<Jsonb>,
+//     }
+// }
 
-table! {
-    language (id) {
-        id -> Int4,
-        code -> Text,
-        name -> Text,
-    }
-}
-
-
-table! {
-    local_user_language(id) {
-        id -> Uuid,
-        local_user_id -> Uuid,
-        language_id -> Int4,
-    }
-}
+//joinable!(pipayment -> person (person_id)); 
+//joinable!(person_web3address -> person (person_id));
 
 joinable!(person_block -> person (person_id));
 
@@ -760,6 +905,11 @@ joinable!(comment -> language (language_id));
 joinable!(local_user_language -> language (language_id));
 joinable!(local_user_language -> local_user (local_user_id));
 joinable!(private_message_report -> private_message (private_message_id));
+joinable!(site_language -> language (language_id));
+joinable!(site_language -> site (site_id));
+joinable!(community_language -> language (language_id));
+joinable!(community_language -> community (community_id));
+joinable!(person_follower -> person (follower_id));
 
 joinable!(admin_purge_comment -> person (admin_person_id));
 joinable!(admin_purge_comment -> post (post_id));
@@ -767,6 +917,15 @@ joinable!(admin_purge_community -> person (admin_person_id));
 joinable!(admin_purge_person -> person (admin_person_id));
 joinable!(admin_purge_post -> community (community_id));
 joinable!(admin_purge_post -> person (admin_person_id));
+
+joinable!(site -> instance (instance_id));
+joinable!(person -> instance (instance_id));
+joinable!(community -> instance (instance_id));
+joinable!(federation_allowlist -> instance (instance_id));
+joinable!(federation_blocklist -> instance (instance_id));
+joinable!(local_site -> site (site_id));
+joinable!(local_site_rate_limit -> local_site (local_site_id));
+joinable!(tagline -> local_site (local_site_id));
 
 allow_tables_to_appear_in_same_query!(
   activity,
@@ -818,6 +977,15 @@ allow_tables_to_appear_in_same_query!(
   email_verification,
   registration_application,
   language,
+  tagline,
   local_user_language,
-  pipayment
+  site_language,
+  community_language,
+  instance,
+  federation_allowlist,
+  federation_blocklist,
+  local_site,
+  local_site_rate_limit,
+  person_follower,
+  pipayment,
 );

@@ -2,7 +2,7 @@ use crate::Perform;
 use actix_web::web::Data;
 use lemmy_api_common::{
   person::{BanPerson, BanPersonResponse},
-  utils::{blocking, get_local_user_view_from_jwt, is_admin, remove_user_data},
+  utils::{get_local_user_view_from_jwt, is_admin, remove_user_data},
 };
 use lemmy_apub::{
   activities::block::SiteOrCommunity,
@@ -11,11 +11,11 @@ use lemmy_apub::{
 use lemmy_db_schema::{
   source::{
     moderator::{ModBan, ModBanForm},
-    person::Person,
-    site::Site,
+    person::{Person, PersonUpdateForm},
   },
   traits::Crud,
 };
+use lemmy_db_views::structs::SiteView;
 use lemmy_db_views_actor::structs::PersonViewSafe;
 use lemmy_utils::{error::LemmyError, utils::naive_from_unix, ConnectionId};
 use lemmy_websocket::{messages::SendAllMessage, LemmyContext, UserOperation};
@@ -41,10 +41,16 @@ impl Perform for BanPerson {
     let banned_person_id = data.person_id;
     let expires = data.expires.map(naive_from_unix);
 
-    let ban_person = move |conn: &mut _| Person::ban_person(conn, banned_person_id, ban, expires);
-    let person = blocking(context.pool(), ban_person)
-      .await?
-      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_user"))?;
+    let person = Person::update(
+      context.pool(),
+      banned_person_id,
+      &PersonUpdateForm::builder()
+        .banned(Some(ban))
+        .ban_expires(Some(expires))
+        .build(),
+    )
+    .await
+    .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_user"))?;
 
     // Remove their data if that's desired
     let remove_data = data.remove_data.unwrap_or(false);
@@ -62,24 +68,17 @@ impl Perform for BanPerson {
     let form = ModBanForm {
       mod_person_id: local_user_view.person.id,
       other_person_id: data.person_id,
-      reason: data.reason.to_owned(),
+      reason: data.reason.clone(),
       banned: Some(data.ban),
       expires,
     };
 
-    blocking(context.pool(), move |conn| ModBan::create(conn, &form)).await??;
+    ModBan::create(context.pool(), &form).await?;
 
     let person_id = data.person_id;
-    let person_view = blocking(context.pool(), move |conn| {
-      PersonViewSafe::read(conn, person_id)
-    })
-    .await??;
+    let person_view = PersonViewSafe::read(context.pool(), person_id).await?;
 
-    let site = SiteOrCommunity::Site(
-      blocking(context.pool(), Site::read_local_site)
-        .await??
-        .into(),
-    );
+    let site = SiteOrCommunity::Site(SiteView::read_local(context.pool()).await?.site.into());
     // if the action affects a local user, federate to other instances
     if person.local {
       if ban {

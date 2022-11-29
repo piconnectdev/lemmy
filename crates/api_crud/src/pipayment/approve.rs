@@ -14,13 +14,13 @@ impl PerformCrud for PiApprove {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiApproveResponse, LemmyError> {
-    let data = &self;
+    let data = self;
 
     let _payment_id = data.paymentid.clone();
     let _pi_username = data.pi_username.to_owned();
     let _pi_uid = data.pi_uid.clone();
 
-    let _payment = match pi_update_payment(context, &data, None).await {
+    let _payment = match pi_payment_update(context, &data, None).await {
       Ok(c) => c,
       Err(e) => {
         let err_type = e.to_string();

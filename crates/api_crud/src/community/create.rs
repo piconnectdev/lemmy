@@ -3,7 +3,7 @@ use activitypub_federation::core::{object_id::ObjectId, signatures::generate_act
 use actix_web::web::Data;
 use lemmy_api_common::{
   community::{CommunityResponse, CreateCommunity},
-  utils::{blocking, get_local_user_view_from_jwt, is_admin},
+  utils::{get_local_user_view_from_jwt, is_admin, local_site_to_slur_regex},
 };
 use lemmy_apub::{
   generate_followers_url,
@@ -14,20 +14,18 @@ use lemmy_apub::{
   EndpointType,
 };
 use lemmy_db_schema::{
-  source::{
-    community::{
-      Community,
-      CommunityFollower,
-      CommunityFollowerForm,
-      CommunityForm,
-      CommunityModerator,
-      CommunityModeratorForm,
-    },
-    site::Site,
+  source::community::{
+    Community,
+    CommunityFollower,
+    CommunityFollowerForm,
+    CommunityInsertForm,
+    CommunityModerator,
+    CommunityModeratorForm,
   },
-  traits::{Crud, Followable, Joinable},
-  utils::{diesel_option_overwrite, diesel_option_overwrite_to_url},
+  traits::{Crud, Followable, Joinable, Signable},
+  utils::diesel_option_overwrite_to_url_create,
 };
+use lemmy_db_views::structs::SiteView;
 use lemmy_db_views_actor::structs::CommunityView;
 use lemmy_utils::{
   error::LemmyError,
@@ -49,24 +47,25 @@ impl PerformCrud for CreateCommunity {
     let data: &CreateCommunity = self;
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let site_view = SiteView::read_local(context.pool()).await?;
+    let local_site = site_view.local_site;
 
-    let site = blocking(context.pool(), Site::read_local_site).await??;
-    if site.community_creation_admin_only && is_admin(&local_user_view).is_err() {
+    if local_site.community_creation_admin_only && is_admin(&local_user_view).is_err() {
       return Err(LemmyError::from_message(
         "only_admins_can_create_communities",
       ));
     }
 
     // Check to make sure the icon and banners are urls
-    let icon = diesel_option_overwrite_to_url(&data.icon)?;
-    let banner = diesel_option_overwrite_to_url(&data.banner)?;
-    let description = diesel_option_overwrite(&data.description);
+    let icon = diesel_option_overwrite_to_url_create(&data.icon)?;
+    let banner = diesel_option_overwrite_to_url_create(&data.banner)?;
 
-    check_slurs(&data.name, &context.settings().slur_regex())?;
-    check_slurs(&data.title, &context.settings().slur_regex())?;
-    check_slurs_opt(&data.description, &context.settings().slur_regex())?;
+    let slur_regex = local_site_to_slur_regex(&local_site);
+    check_slurs(&data.name, &slur_regex)?;
+    check_slurs(&data.title, &slur_regex)?;
+    check_slurs_opt(&data.description, &slur_regex)?;
 
-    if !is_valid_actor_name(&data.name, context.settings().actor_name_max_length) {
+    if !is_valid_actor_name(&data.name, local_site.actor_name_max_length as usize) {
       return Err(LemmyError::from_message("invalid_community_name"));
     }
 
@@ -85,28 +84,30 @@ impl PerformCrud for CreateCommunity {
     // When you create a community, make sure the user becomes a moderator and a follower
     let keypair = generate_actor_keypair()?;
 
-    let community_form = CommunityForm {
-      name: data.name.to_owned(),
-      title: data.title.to_owned(),
-      description,
-      icon,
-      banner,
-      nsfw: data.nsfw,
-      actor_id: Some(community_actor_id.to_owned()),
-      private_key: Some(Some(keypair.private_key)),
-      public_key: Some(keypair.public_key),
-      followers_url: Some(generate_followers_url(&community_actor_id)?),
-      inbox_url: Some(generate_inbox_url(&community_actor_id)?),
-      shared_inbox_url: Some(Some(generate_shared_inbox_url(&community_actor_id)?)),
-      posting_restricted_to_mods: data.posting_restricted_to_mods,
-      ..CommunityForm::default()
-    };
+    let community_form = CommunityInsertForm::builder()
+      .name(data.name.clone())
+      .title(data.title.clone())
+      .description(data.description.clone())
+      .icon(icon)
+      .banner(banner)
+      .nsfw(data.nsfw)
+      .actor_id(Some(community_actor_id.clone()))
+      .private_key(Some(keypair.private_key))
+      .public_key(keypair.public_key)
+      .followers_url(Some(generate_followers_url(&community_actor_id)?))
+      .inbox_url(Some(generate_inbox_url(&community_actor_id)?))
+      .shared_inbox_url(Some(generate_shared_inbox_url(&community_actor_id)?))
+      .posting_restricted_to_mods(data.posting_restricted_to_mods)
+      .instance_id(site_view.site.instance_id)
+      .build();
 
-    let inserted_community = blocking(context.pool(), move |conn| {
-      Community::create(conn, &community_form)
-    })
-    .await?
-    .map_err(|e| LemmyError::from_error_message(e, "community_already_exists"))?;
+    let inserted_community = Community::create(context.pool(), &community_form)
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "community_already_exists"))?;
+
+    let (signature, _meta, _content)  = Community::sign_data(&inserted_community.clone()).await;
+    Community::update_srv_sign(context.pool(), inserted_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
+    .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
 
     // The community creator becomes a moderator
     let community_moderator_form = CommunityModeratorForm {
@@ -114,9 +115,8 @@ impl PerformCrud for CreateCommunity {
       person_id: local_user_view.person.id,
     };
 
-    let join = move |conn: &mut _| CommunityModerator::join(conn, &community_moderator_form);
-    blocking(context.pool(), join)
-      .await?
+    CommunityModerator::join(context.pool(), &community_moderator_form)
+      .await
       .map_err(|e| LemmyError::from_error_message(e, "community_moderator_already_exists"))?;
 
     // Follow your own community
@@ -126,16 +126,13 @@ impl PerformCrud for CreateCommunity {
       pending: false,
     };
 
-    let follow = move |conn: &mut _| CommunityFollower::follow(conn, &community_follower_form);
-    blocking(context.pool(), follow)
-      .await?
+    CommunityFollower::follow(context.pool(), &community_follower_form)
+      .await
       .map_err(|e| LemmyError::from_error_message(e, "community_follower_already_exists"))?;
 
     let person_id = local_user_view.person.id;
-    let community_view = blocking(context.pool(), move |conn| {
-      CommunityView::read(conn, inserted_community.id, Some(person_id))
-    })
-    .await??;
+    let community_view =
+      CommunityView::read(context.pool(), inserted_community.id, Some(person_id)).await?;
 
     Ok(CommunityResponse { community_view })
   }

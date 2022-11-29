@@ -1,11 +1,10 @@
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
-use lemmy_api_common::utils::blocking;
 use lemmy_db_schema::{
-  impls::pipayment::PiPayment_,
+  //impls::pipayment::PiPaymentModerator,
   newtypes::{CommentId, *},
   source::{comment::*, pipayment::*, post::*},
-  traits::Crud,
+  traits::{Crud, Signable } ,
   utils::naive_now,
 };
 use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS};
@@ -109,7 +108,7 @@ pub async fn pi_me(client: &ClientWithMiddleware, key: &str) -> Result<PiUserDto
   Ok(res)
 }
 
-pub async fn pi_update_payment(
+pub async fn pi_payment_update(
   context: &Data<LemmyContext>,
   approve: &PiApprove,
   tx: Option<String>,
@@ -139,10 +138,7 @@ pub async fn pi_update_payment(
   //let mut fetch_pi_server = true;
   let mut pid;
   let mut pmt;
-  let mut _payment = match blocking(context.pool(), move |conn| {
-    PiPayment::find_by_pipayment_id(conn, &_payment_id.to_owned())
-  })
-  .await?
+  let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id.to_owned()).await
   {
     Ok(c) => {
       exist = true;
@@ -195,26 +191,9 @@ pub async fn pi_update_payment(
     _payment_dto = dto.unwrap();
   }
 
-  // TODO: UUID check
-  // let refid = match info {
-  //   Some(inf) => {
-  //     let _info = info.unwrap();
-  //     match _info.captcha_uuid {
-  //       Some(uid) => match Uuid::parse_str(&uid) {
-  //         Ok(uidx) => Some(uidx),
-  //         Err(_e) => None
-  //       },
-  //       None => None
-  //     }
-  //   },
-  //   None => {
-  //     None
-  //   }
-  // };
   let refid = person_id;
-  let create_at =
-    match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z")
-    {
+  let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z")
+  {
       Ok(dt) => Some(dt),
       Err(_e) => {
         let err_type = format!(
@@ -227,53 +206,49 @@ pub async fn pi_update_payment(
         //return Err(LemmyError::from_message(&err_type));
         None
       }
-    };
-
-  completed = _payment_dto.status.developer_completed.clone();
-  let mut payment_form = PiPaymentForm {
-    person_id: None,
-    ref_id: person_id,
-    testnet: settings.pinetwork.pi_testnet,
-    finished: false,
-    updated: None,
-    pi_uid: _pi_uid,
-    pi_username: _pi_user_alias.clone(),
-    comment: comment,
-
-    identifier: payment_id.clone(),
-    user_uid: _payment_dto.user_uid,
-    amount: _payment_dto.amount,
-    memo: _payment_dto.memo,
-    to_address: _payment_dto.to_address,
-    created_at: create_at,
-    approved: _payment_dto.status.developer_approved,
-    verified: _payment_dto.status.transaction_verified,
-    completed: _payment_dto.status.developer_completed,
-    cancelled: _payment_dto.status.cancelled,
-    user_cancelled: _payment_dto.status.user_cancelled,
-    tx_link: "".to_string(),
-    tx_id: "".to_string(),
-    tx_verified: false,
-    metadata: None, //_payment_dto.metadata,
-    extras: None,
-    //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
-    //..PiPaymentForm::default()
   };
 
-  match _payment_dto.transaction {
-    Some(tx) => {
-      payment_form.tx_link = tx._link;
-      payment_form.tx_verified = tx.verified;
-      payment_form.tx_id = tx.txid;
-      //payment_form.finished = true;
-    }
-    None => {}
-  }
+  completed = _payment_dto.status.developer_completed.clone();
+  
   if !exist {
-    _payment = match blocking(context.pool(), move |conn| {
-      PiPayment::create(conn, &payment_form)
-    })
-    .await?
+    let mut payment_form = PiPaymentInsertForm::builder()
+    .person_id( None)
+    .ref_id( person_id)
+    .testnet( settings.pinetwork.pi_testnet)
+    .finished( false)
+    .updated( None)
+    .pi_uid( _pi_uid)
+    .pi_username( _pi_user_alias.clone())
+    .comment( comment)
+
+    .identifier( payment_id.clone())
+    .user_uid( _payment_dto.user_uid)
+    .amount( _payment_dto.amount)
+    .memo( _payment_dto.memo)
+    .to_address( _payment_dto.to_address)
+    .created_at( create_at)
+    .approved( _payment_dto.status.developer_approved)
+    .verified( _payment_dto.status.transaction_verified)
+    .completed( _payment_dto.status.developer_completed)
+    .cancelled( _payment_dto.status.cancelled)
+    .user_cancelled( _payment_dto.status.user_cancelled)
+    .tx_link("".to_string())
+    .tx_id( "".to_string())
+    .tx_verified( false)
+    .metadata( None) //_payment_dto.metadata,
+    .extras( None)
+    .build();
+
+    match _payment_dto.transaction {
+      Some(tx) => {
+        payment_form.tx_link = tx._link;
+        payment_form.tx_verified = tx.verified;
+        payment_form.tx_id = tx.txid;
+        //payment_form.finished = true;
+      }
+      None => {}
+    }
+    _payment = match PiPayment::create(context.pool(), &payment_form).await
     {
       Ok(payment) => {
         pid = payment.id;
@@ -286,7 +261,19 @@ pub async fn pi_update_payment(
     };
     pmt = _payment.unwrap();
   } else {
+    let mut payment_form = PiPaymentUpdateForm::builder()
+    .build();
     payment_form.updated = Some(naive_now());
+    match _payment_dto.transaction {
+      Some(tx) => {
+        payment_form.tx_link = tx._link;
+        payment_form.tx_verified = tx.verified;
+        payment_form.tx_id = tx.txid;
+        //payment_form.finished = true;
+      }
+      None => {}
+    }
+    
     //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
     // TODO: UUID check
     if completed {
@@ -298,10 +285,7 @@ pub async fn pi_update_payment(
         match uuid {
           Ok(u) => {
             let post_id = PostId(u);
-            let updated_post = match blocking(context.pool(), move |conn| {
-              Post::update_tx(conn, post_id, &link.unwrap_or("".to_string()))
-            })
-            .await?
+            let updated_post = match Post::update_tx(context.pool(), post_id, &link.unwrap_or("".to_string())) .await
             {
               Ok(p) => {
                 println!(
@@ -326,10 +310,7 @@ pub async fn pi_update_payment(
         match uuid {
           Ok(u) => {
             let comment_id = CommentId(u);
-            let updated_comment = match blocking(context.pool(), move |conn| {
-              Comment::update_tx(conn, comment_id, &link.unwrap_or("".to_string()))
-            })
-            .await?
+            let updated_comment = match Comment::update_tx(context.pool(), comment_id, &link.unwrap_or("".to_string())).await
             {
               Ok(c) => {
                 println!(
@@ -348,10 +329,7 @@ pub async fn pi_update_payment(
     }
     pmt = _payment.unwrap();
     pid = pmt.id;
-    let updated_payment = match blocking(context.pool(), move |conn| {
-      PiPayment::update(conn, pid, &payment_form)
-    })
-    .await?
+    let updated_payment = match PiPayment::update(context.pool(), pid, &payment_form).await
     {
       Ok(payment) => Some(payment),
       Err(_e) => {
@@ -363,5 +341,4 @@ pub async fn pi_update_payment(
     };
   }
   return Ok(pmt);
-  //Ok(res)
 }

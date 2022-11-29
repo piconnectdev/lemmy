@@ -1,4 +1,4 @@
-ARG RUST_BUILDER_IMAGE=rust:1.60-slim-buster
+ARG RUST_BUILDER_IMAGE=rust:1.64-slim-buster
 
 # Build Lemmy
 FROM $RUST_BUILDER_IMAGE as builder
@@ -14,9 +14,6 @@ COPY ./ ./
 RUN echo "pub const VERSION: &str = \"$(git describe --tag)\";" > "crates/utils/src/version.rs"
 
 RUN cargo build --release
-
-# reduce binary size
-RUN strip ./target/release/lemmy_server
 
 RUN cp ./target/release/lemmy_server /app/lemmy_server
 

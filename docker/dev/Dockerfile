@@ -1,4 +1,4 @@
-ARG RUST_BUILDER_IMAGE=clux/muslrust:1.59.0
+ARG RUST_BUILDER_IMAGE=clux/muslrust:1.64.0
 
 FROM $RUST_BUILDER_IMAGE as chef
 USER root
@@ -28,9 +28,6 @@ COPY . .
 # Build the project
 RUN echo "pub const VERSION: &str = \"$(git describe --tag)\";" > "crates/utils/src/version.rs"
 RUN cargo build --target ${CARGO_BUILD_TARGET}
-
-# reduce binary size
-RUN strip ./target/$CARGO_BUILD_TARGET/$RUSTRELEASEDIR/lemmy_server
 
 RUN cp ./target/$CARGO_BUILD_TARGET/$RUSTRELEASEDIR/lemmy_server /app/lemmy_server
 

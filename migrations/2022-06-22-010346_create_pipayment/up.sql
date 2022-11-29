@@ -24,8 +24,10 @@ create table pipayment (
   tx_id text,  
   tx_link text,
   metadata jsonb,
-  extras jsonb
+  extras jsonb,
+  CONSTRAINT pipayment_identifier_unique UNIQUE (identifier)
 );
 
-alter table person add column extra_user_id text;
-
+create index pipayment_creator on pipayment (person_id);
+create index pipayment_user_name on pipayment (pi_username);
+create index pipayment_user_uid on pipayment (user_uid);

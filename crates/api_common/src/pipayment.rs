@@ -1,96 +1,88 @@
-use crate::person::*;
-use lemmy_db_schema::newtypes::{PaymentId, PiUserId};
+use crate::{person::*, web3::ExternalAccount};
+use lemmy_db_schema::newtypes::{PiPaymentId, PiUserId};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct PiPaymentFound {
-  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
+  pub pi_token: Option<String>,
+  pub paymentid: String,
   pub auth: Option<String>,
   pub dto: Option<PiPaymentDto>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiPaymentFoundResponse {
-  pub id: PaymentId,
+  pub id: PiPaymentId,
   pub paymentid: String,
 }
 
 #[derive(Deserialize)]
 pub struct PiAgreeRegister {
-  pub paymentid: String,
-  pub pi_username: String,
-  pub pi_uid: Option<PiUserId>,
-  pub comment: Option<String>,
+  pub ea: ExternalAccount,
   pub info: Register,
+  pub paymentid: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiAgreeResponse {
   pub success: bool,
-  pub id: Option<PaymentId>,
+  pub id: Option<PiPaymentId>,
   pub paymentid: String,
   pub extra: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct PiRegisterWithFee {
-  pub paymentid: String,
-  pub pi_username: String,
-  pub pi_uid: Option<PiUserId>,
-  pub comment: Option<String>,
+  pub ea: ExternalAccount,
   pub txid: String,
+  pub info: Register,
+}
+
+#[derive(Deserialize)]
+pub struct PiRegister {
+  pub ea: ExternalAccount,
   pub info: Register,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiRegisterResponse {
   pub success: bool,
-  pub jwt: String,
+  pub login: LoginResponse,
   pub extra: Option<String>,
 }
 
 #[derive(Deserialize)]
-pub struct PiRegister {
-  pub pi_username: String,
-  pub pi_uid: PiUserId,
-  pub pi_token: String,
-  pub info: Register,
-}
-
-#[derive(Deserialize)]
 pub struct PiLogin {
-  pub pi_username: String,
-  pub pi_uid: PiUserId,
-  pub pi_token: String,
+  pub ea: ExternalAccount,
   pub info: Option<Login>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
-  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub person_id: Option<Uuid>,
+  pub paymentid: String,
   pub comment: Option<String>,
   pub auth: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApproveResponse {
-  pub id: PaymentId,
+  pub id: PiPaymentId,
   pub paymentid: String,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiTip {
-  pub paymentid: String,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub person_id: Option<Uuid>,
+  pub paymentid: String,
   pub comment: Option<String>,
   pub txid: String,
   pub auth: Option<String>,
@@ -98,7 +90,7 @@ pub struct PiTip {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiTipResponse {
-  pub id: PaymentId,
+  pub id: PiPaymentId,
   pub paymentid: String,
 }
 
@@ -137,23 +129,28 @@ pub struct TxRequest {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct GetPayment {
-  pub id: PaymentId,
+pub struct GetPiPayment {
+  pub id: PiPaymentId,
   pub auth: String,
 }
 
 #[derive(Serialize, Debug, Default)]
-pub struct GetPaymentResponse {
+pub struct GetPiPaymentResponse {
   pub pid: String,
   //pub dto: PiPaymentDto,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct GetPayments {
+pub struct GetPiPayments {
   pub sort: Option<String>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub auth: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GetPiPaymentsResponse {
+  pub pipayments: Vec<PiPaymentId>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

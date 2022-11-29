@@ -1,4 +1,4 @@
-use crate::{local_instance, ActorType};
+use crate::{local_instance, ActorType, FEDERATION_HTTP_FETCH_LIMIT};
 use activitypub_federation::{core::object_id::ObjectId, traits::ApubObject};
 use anyhow::anyhow;
 use itertools::Itertools;
@@ -28,6 +28,7 @@ pub struct WebfingerResponse {
 #[tracing::instrument(skip_all)]
 pub(crate) async fn webfinger_resolve_actor<Kind>(
   identifier: &str,
+  local_only: bool,
   context: &LemmyContext,
   request_counter: &mut i32,
 ) -> Result<DbUrl, LemmyError>
@@ -47,7 +48,7 @@ where
   debug!("Fetching webfinger url: {}", &fetch_url);
 
   *request_counter += 1;
-  if *request_counter > context.settings().federation.http_fetch_retry_limit {
+  if *request_counter > FEDERATION_HTTP_FETCH_LIMIT {
     return Err(LemmyError::from_message("Request retry limit reached"));
   }
 
@@ -68,9 +69,14 @@ where
     .filter_map(|l| l.href.clone())
     .collect();
   for l in links {
-    let object = ObjectId::<Kind>::new(l)
-      .dereference(context, local_instance(context), request_counter)
-      .await;
+    let object_id = ObjectId::<Kind>::new(l);
+    let object = if local_only {
+      object_id.dereference_local(context).await
+    } else {
+      object_id
+        .dereference(context, local_instance(context).await, request_counter)
+        .await
+    };
     if object.is_ok() {
       return object.map(|o| o.actor_id().into());
     }
