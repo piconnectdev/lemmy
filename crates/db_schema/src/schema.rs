@@ -132,7 +132,7 @@ table! {
         community_id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
-        pending -> Nullable<Bool>,
+        pending -> Bool,
     }
 }
 

@@ -1,13 +1,9 @@
 use crate::person::*;
 use serde::{Deserialize};
-use lemmy_db_schema::newtypes::{PiPaymentId, PiUserId};
+use lemmy_db_schema::newtypes::{PiUserId};
 
 #[derive(Deserialize)]
 pub struct Web3Register {
-  // pub address: String,
-  // pub signature: String,
-  // pub token: String,
-  // pub cli_time: i64,
   pub external_account: ExternalAccount,
   pub info: Register,
 }
@@ -33,9 +29,4 @@ pub struct ExternalAccount {
   pub comment: Option<String>,
 }
 
-#[derive(Deserialize)]
-pub struct ExternalRegister {
-  pub external_account: ExternalAccount,
-  pub info: Register,
-}
 

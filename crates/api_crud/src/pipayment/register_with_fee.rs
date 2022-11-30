@@ -13,8 +13,10 @@ use lemmy_utils::{
   settings::SETTINGS,
   ConnectionId,
 };
-use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
+use lemmy_websocket::{LemmyContext};
 use crate::web3::ext::*;
+
+use super::client::pi_payment_update;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegisterWithFee {
@@ -29,9 +31,9 @@ impl PerformCrud for PiRegisterWithFee {
     let ext_account = data.ea.clone();
 
     // no email verification, or applications if the site is not setup yet
-    let (mut email_verification, mut require_application) = (false, false);
+    //let (mut email_verification, mut require_application) = (false, false);
 
-    let mut result = true;
+    //let mut result = true;
 
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
@@ -43,10 +45,33 @@ impl PerformCrud for PiRegisterWithFee {
       if !settings.pi_enabled {
         return Err(LemmyError::from_message("registration_disabled"));
       }
-      if !settings.pinetwork.pi_allow_all {
-        return Err(LemmyError::from_message("registration_disabled"));
-      }
+      // if !settings.pinetwork.pi_allow_all {
+      //   return Err(LemmyError::from_message("registration_disabled"));
+      // }
     }
+    let payment_id = data.ea.signature.clone();
+    // TODO: Check paymentid complete
+    let approve = PiApprove {
+      paymentid: payment_id.clone(),
+      pi_username: ext_account.account.clone(),
+      pi_uid: ext_account.puid.clone(),
+      person_id: None,
+      comment: None,
+      auth: None,
+    };
+
+    let payment = match pi_payment_update(context, &approve.clone(), Some(data.txid.clone())).await
+    {
+      Ok(p) => {
+        if !p.finished {
+          return Err(LemmyError::from_message("registration_disabled"));
+        }
+        Some(p)
+      },
+      Err(_c) => {
+        return Err(LemmyError::from_message("registration_disabled"));
+      },
+    };
 
     let login_response = match create_external_account(context, &ext_account.account.clone(), &ext_account.clone(), &data.info.clone()).await
     {

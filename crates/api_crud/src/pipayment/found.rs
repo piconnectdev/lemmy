@@ -3,8 +3,7 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{pipayment::*, };
 use lemmy_db_schema::{
-  //impls::pipayment::PiPaymentModerator, 
-  newtypes::PiPaymentId, source::pipayment::*, traits::Crud,
+  newtypes::{PiPaymentId, PersonId}, source::{pipayment::*, person::*}, traits::Crud,
   utils::naive_now,
 };
 
@@ -25,16 +24,10 @@ impl PerformCrud for PiPaymentFound {
     let settings = SETTINGS.to_owned();
     let data: &PiPaymentFound = self;
 
-    let mut sha256 = Sha256::new();
-    sha256.update(settings.pi_seed());
-    sha256.update(data.pi_username.to_owned());
-    let _pi_username: String = format!("{:X}", sha256.finalize());
-    let _pi_username2 = _pi_username.clone();
-
-    let _payment_id = data.paymentid.to_owned();
-    let _payment_id2 = _payment_id.clone();
+    let _pi_username = hide_username(&data.pi_username.clone());
     let _pi_username = data.pi_username.to_owned();
     let _pi_uid = data.pi_uid.clone();
+    let _payment_id = data.paymentid.to_owned();
 
     let mut exist = false;
     let mut payment_id: PiPaymentId;
@@ -53,6 +46,16 @@ impl PerformCrud for PiPaymentFound {
     let mut txid: String;
     let txlink: String;
     let mut dto: Option<PiPaymentDto> = None;
+    
+    let mut person_id: Option<PersonId> = None;
+    let person = match Person::find_by_extra_name(context.pool(), &_pi_username.clone()).await
+    {
+      Ok(c) => {
+        person_id = Some(c.id.clone());
+        Some(c)
+      },
+      Err(_e) => None
+    };
 
     let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {

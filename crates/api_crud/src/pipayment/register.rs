@@ -1,38 +1,32 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
-use bcrypt::{hash, DEFAULT_COST};
 use lemmy_api_common::{
   person::LoginResponse,
   pipayment::*,
-  utils::{honeypot_check, password_length_check, local_site_to_slur_regex},
+  //utils::{honeypot_check, password_length_check, local_site_to_slur_regex},
 };
-use lemmy_apub::{
-  generate_inbox_url, generate_local_apub_endpoint, generate_shared_inbox_url, EndpointType,
-};
-use lemmy_db_schema::{
-  newtypes::PersonId,
-  source::{
-    local_user::{LocalUser, LocalUserInsertForm},
-    person::*,
-    site::*,
-  },
-  traits::{ Crud},
-  utils::naive_now,
-};
+// use lemmy_apub::{
+//   generate_inbox_url, generate_local_apub_endpoint, generate_shared_inbox_url, EndpointType,
+// };
+// use lemmy_db_schema::{
+//   newtypes::PersonId,
+//   source::{
+//     local_user::{LocalUser, LocalUserInsertForm},
+//     person::*,
+//     site::*,
+//   },
+//   traits::{ Crud},
+//   utils::naive_now,
+// };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 use lemmy_db_views_actor::{ structs::PersonViewSafe};
 
 use lemmy_utils::{
-  apub::generate_actor_keypair,
-  claims::Claims,
   error::LemmyError,
   settings::SETTINGS,
-  utils::{check_slurs, is_valid_actor_name},
   ConnectionId,
 };
-use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use sha2::{Digest, Sha256};
-use uuid::Uuid;
+use lemmy_websocket::{LemmyContext};
 
 use crate::web3::ext::*;
 
@@ -49,9 +43,9 @@ impl PerformCrud for PiRegister {
     let data: &PiRegister = &self;
     let ext_account = data.ea.clone();
     // no email verification, or applications if the site is not setup yet
-    let (mut email_verification, mut require_application) = (false, false);
+    //let (mut email_verification, mut require_application) = (false, false);
 
-    let mut result = true;
+    //let mut result = true;
 
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
@@ -76,6 +70,7 @@ impl PerformCrud for PiRegister {
         return Err(LemmyError::from_message("registration_disabled"));
       },
     };
+    
     /*
     email_verification = local_site.require_email_verification;
     require_application = local_site.require_application;

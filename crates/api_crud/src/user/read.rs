@@ -39,48 +39,6 @@ impl PerformCrud for GetPersonDetails {
     let local_site = LocalSite::read(context.pool()).await?;
 
     check_private_instance(&local_user_view, &local_site)?;
-
-    /// TODO: person_id may be name.
-    /*
-    let username = data
-      .username
-      .to_owned()
-      .unwrap_or_else(|| "admin".to_string());
-    let person_details_id = match &data.person_id {
-      Some(id) => {
-        let uuid = Uuid::parse_str(&id.clone());
-        match uuid {
-          Ok(u) => PersonId(u),
-          Err(e) => {
-            let name = id.clone();
-            let actor_id = build_actor_id_from_shortname(EndpointType::Person, &name)?;
-            let person = blocking(context.pool(), move |conn| {
-              Person::read_from_apub_id(conn, &actor_id)
-            })
-            .await?;
-            person
-              .map_err(|_| ApiError::err("couldnt_find_that_username_or_email"))?
-              .id  
-          }
-        }
-      },
-      None => {
-        let name = data
-          .username
-          .to_owned()
-          .unwrap_or_else(|| "admin".to_string());
-        let actor_id = build_actor_id_from_shortname(EndpointType::Person, &name)?;
-
-        let person = blocking(context.pool(), move |conn| {
-          Person::read_from_apub_id(conn, &actor_id)
-        })
-        .await?;
-        person
-          .map_err(|_| ApiError::err("couldnt_find_that_username_or_email"))?
-          .id
-      }
-    };
-    */
     
     let person_details_id = match data.person_id {
       Some(id) => id,

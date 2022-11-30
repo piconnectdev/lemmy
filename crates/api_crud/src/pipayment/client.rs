@@ -1,20 +1,29 @@
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
 use lemmy_db_schema::{
-  //impls::pipayment::PiPaymentModerator,
   newtypes::{CommentId, *},
-  source::{comment::*, pipayment::*, post::*},
+  source::{comment::*, pipayment::*, post::*, person::*},
   traits::{Crud, Signable } ,
   utils::naive_now,
 };
-use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS};
+use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS, REQWEST_TIMEOUT};
 use lemmy_websocket::LemmyContext;
-use reqwest_middleware::ClientWithMiddleware;
+use reqwest_middleware::{ ClientWithMiddleware};
+
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
+pub fn hide_username(name: &str) -> String {
+  let settings = SETTINGS.to_owned();
+  let mut sha256 = Sha256::new();
+  sha256.update(settings.pi_seed());
+  sha256.update(name.clone().to_owned());
+  let username: String = format!("{:X}", sha256.finalize());
+  return username;
+}
+
 pub async fn pi_payment(
-  client: &ClientWithMiddleware,
+  client: &ClientWithMiddleware, 
   id: &str,
 ) -> Result<PiPaymentDto, LemmyError> {
   let settings = SETTINGS.to_owned();
@@ -23,6 +32,7 @@ pub async fn pi_payment(
   let response = retry(|| {
     client
       .get(&fetch_url)
+      .timeout(REQWEST_TIMEOUT)
       .header("Authorization", format!("Key {}", settings.pi_key()))
       .header("Content-Type", format!("application/json"))
       .send()
@@ -71,6 +81,7 @@ pub async fn pi_complete(
   let r = TxRequest {
     txid: txid_.to_owned(),
   };
+
   let response = retry(|| {
     client
       .post(&fetch_url)
@@ -115,21 +126,33 @@ pub async fn pi_payment_update(
 ) -> Result<PiPayment, LemmyError> {
   let settings = SETTINGS.to_owned();
 
-  let payment_id = approve.paymentid.clone();
   let pi_username = approve.pi_username.clone();
   let pi_uid = approve.pi_uid.clone();
-  let person_id = approve.person_id.clone();
-  let comment = approve.comment.clone();
-  let comment2 = approve.comment.clone().unwrap_or("".to_string());
-  // Hide PiUserName
-  let mut sha256 = Sha256::new();
-  sha256.update(pi_username.to_owned());
-  let _pi_user_alias: String = format!("{:X}", sha256.finalize());
-  //let _pi_user_alias = pi_username;
+  let payment_id = approve.paymentid.clone();  
+  //let comment = approve.comment.clone();
+  let comment = approve.comment.clone().unwrap_or("".to_string());
+  let mut person_id: Option<PersonId> = None;
 
-  let mut _payment_id = format!("{}", payment_id); //payment_id.to_string();
-  let mut _payment_id2 = payment_id.to_string();
-  //let _payment_id: String = "123".into();
+  let person = match Person::find_by_extra_name(context.pool(), &pi_username.clone()).await
+  {
+    Ok(c) => {
+      person_id = Some(c.id.clone());
+      Some(c)
+    },
+    Err(_e) => None
+  };
+
+  // let local_user_view =
+  //   get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+  // let local_site = LocalSite::read(context.pool()).await?;
+
+  // Hide PiUserName
+  // let mut sha256 = Sha256::new();
+  // sha256.update(pi_username.to_owned());
+  // let _pi_user_alias: String = format!("{:X}", sha256.finalize());
+  let _pi_user_alias = pi_username;
+
+  let mut _payment_id = format!("{}", payment_id);
   let _pi_uid = pi_uid;
 
   let mut approved = false;
@@ -138,7 +161,7 @@ pub async fn pi_payment_update(
   //let mut fetch_pi_server = true;
   let mut pid;
   let mut pmt;
-  let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id.to_owned()).await
+  let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id.clone().to_owned()).await
   {
     Ok(c) => {
       exist = true;
@@ -178,11 +201,6 @@ pub async fn pi_payment_update(
   } else {
   }
 
-  // if _payment.is_some() {
-
-  // }
-  //let mut pm = None;
-
   let mut _payment_dto = PiPaymentDto {
     ..PiPaymentDto::default()
   };
@@ -196,13 +214,13 @@ pub async fn pi_payment_update(
   {
       Ok(dt) => Some(dt),
       Err(_e) => {
-        let err_type = format!(
-          "Pi Server: get payment datetime error: user {}, paymentid {} {} {}",
-          &pi_username,
-          &_payment_dto.identifier.clone(),
-          _payment_dto.created_at,
-          _e.to_string()
-        );
+        // let err_type = format!(
+        //   "Pi Server: get payment datetime error: user {}, paymentid {} {} {}",
+        //   &pi_username,
+        //   &_payment_dto.identifier.clone(),
+        //   _payment_dto.created_at,
+        //   _e.to_string()
+        // );
         //return Err(LemmyError::from_message(&err_type));
         None
       }
@@ -210,16 +228,21 @@ pub async fn pi_payment_update(
 
   completed = _payment_dto.status.developer_completed.clone();
   
+  let refid =  match person_id {
+    Some(x) => Some(x.0),
+    None => None,
+  };
+
   if !exist {
     let mut payment_form = PiPaymentInsertForm::builder()
-    .person_id( None)
-    .ref_id( person_id)
+    .person_id( person_id.clone())
+    .ref_id(refid)
     .testnet( settings.pinetwork.pi_testnet)
     .finished( false)
     .updated( None)
     .pi_uid( _pi_uid)
     .pi_username( _pi_user_alias.clone())
-    .comment( comment)
+    .comment( Some(comment))
 
     .identifier( payment_id.clone())
     .user_uid( _payment_dto.user_uid)
@@ -244,7 +267,7 @@ pub async fn pi_payment_update(
         payment_form.tx_link = tx._link;
         payment_form.tx_verified = tx.verified;
         payment_form.tx_id = tx.txid;
-        //payment_form.finished = true;
+        payment_form.finished = true;
       }
       None => {}
     }
@@ -262,14 +285,14 @@ pub async fn pi_payment_update(
     pmt = _payment.unwrap();
   } else {
     let mut payment_form = PiPaymentUpdateForm::builder()
-    .build();
+        .build();
     payment_form.updated = Some(naive_now());
     match _payment_dto.transaction {
       Some(tx) => {
         payment_form.tx_link = tx._link;
         payment_form.tx_verified = tx.verified;
         payment_form.tx_id = tx.txid;
-        //payment_form.finished = true;
+        payment_form.finished = true;
       }
       None => {}
     }
@@ -278,10 +301,10 @@ pub async fn pi_payment_update(
     // TODO: UUID check
     if completed {
       payment_form.finished = true;
-      if payment_form.memo == "wepi:post" {
+      if payment_form.memo == "post" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
-        let uuid = Uuid::parse_str(&comment2.clone());
+        let uuid = Uuid::parse_str(&comment.clone());
         match uuid {
           Ok(u) => {
             let post_id = PostId(u);
@@ -290,7 +313,7 @@ pub async fn pi_payment_update(
               Ok(p) => {
                 println!(
                   "Post: Success update blockchain link, id:{} link:{}",
-                  comment2.clone(),
+                  comment.clone(),
                   link2.clone()
                 );
                 Some(p)
@@ -302,11 +325,11 @@ pub async fn pi_payment_update(
             //None
           }
         };
-      } else if payment_form.memo == "wepi:comment" {
+      } else if payment_form.memo == "comment" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
         // TODO: UUID check
-        let uuid = Uuid::parse_str(&comment2.clone());
+        let uuid = Uuid::parse_str(&comment.clone());
         match uuid {
           Ok(u) => {
             let comment_id = CommentId(u);
