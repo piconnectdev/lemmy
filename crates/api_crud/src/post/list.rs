@@ -43,10 +43,10 @@ impl PerformCrud for GetPosts {
 
     let page = data.page;
     let limit = data.limit;
-    //let community_id = data.community_id;
+    let community_id = data.community_id;
     
     // TODO: UUID check
-    
+    /* 
     let community_id = match &data.community_id {
       Some(id) => {
         let uuid = uuid::Uuid::parse_str(&id.clone());
@@ -61,7 +61,7 @@ impl PerformCrud for GetPosts {
         None
       }
     };
-	
+	*/
     let community_actor_id = if let Some(name) = &data.community_name {
       resolve_actor_identifier::<ApubCommunity, Community>(name, context, true)
         .await

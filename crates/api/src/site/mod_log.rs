@@ -53,10 +53,6 @@ impl Perform for GetModlog {
     let type_ = data.type_.unwrap_or(All);
     let community_id = data.community_id;
 
-    //let site = blocking(context.pool(), Site::read_local_site).await??;
-    //let site_view = SiteView::read_local(context.pool()).await?;
-    //let site = site_view.local_site;
-
     let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     let (local_person_id, is_admin) = match local_user_view {
       Some(s) => (s.person.id, is_admin(&s).is_ok()),

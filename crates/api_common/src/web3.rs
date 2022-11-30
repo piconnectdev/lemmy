@@ -4,7 +4,7 @@ use lemmy_db_schema::newtypes::{PiUserId};
 
 #[derive(Deserialize)]
 pub struct Web3Register {
-  pub external_account: ExternalAccount,
+  pub ea: ExternalAccount,
   pub info: Register,
 }
 

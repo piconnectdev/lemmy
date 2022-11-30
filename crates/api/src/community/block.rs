@@ -4,7 +4,6 @@ use lemmy_api_common::{
   community::{BlockCommunity, BlockCommunityResponse},
   utils::get_local_user_view_from_jwt,
 };
-//use lemmy_apub::protocol::activities::following::undo_follow::UndoFollowCommunity;
 use lemmy_apub::protocol::activities::following::undo_follow::UndoFollow;
 
 use lemmy_db_schema::{

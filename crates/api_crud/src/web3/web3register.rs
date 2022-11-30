@@ -39,7 +39,7 @@ impl PerformCrud for Web3Register {
   ) -> Result<LoginResponse, LemmyError> {
     let settings = SETTINGS.to_owned();
     let data: &Web3Register = &self;
-    let ext_account = data.external_account.clone();
+    let ext_account = data.ea.clone();
 
     // no email verification, or applications if the site is not setup yet
     let (mut email_verification, mut require_application) = (false, false);
