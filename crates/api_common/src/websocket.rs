@@ -14,7 +14,7 @@ pub struct UserJoinResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CommunityJoin {
-  pub community_id: CommunityId,
+  pub community_id: Option<CommunityId>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

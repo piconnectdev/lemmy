@@ -72,7 +72,7 @@ impl PerformCrud for PiLogin {
     }
     // Hide Pi user name, not store pi_uid
     let mut _pi_username = data.ea.account.clone();
-    let mut _pi_uid = data.ea.puid;
+    let mut _pi_uid = Some(PiUserId(data.ea.uuid.unwrap_or_default()));
     let _pi_token = data.ea.token.clone();
 
     println!(

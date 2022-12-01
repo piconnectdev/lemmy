@@ -49,12 +49,12 @@ impl PerformCrud for PiRegisterWithFee {
       //   return Err(LemmyError::from_message("registration_disabled"));
       // }
     }
-    let payment_id = data.ea.signature.clone();
+    let payment_id = data.ea.signature.clone().unwrap_or_default();
     // TODO: Check paymentid complete
     let approve = PiApprove {
       paymentid: payment_id.clone(),
       pi_username: ext_account.account.clone(),
-      pi_uid: ext_account.puid.clone(),
+      pi_uid: None, //ext_account.puid.clone(),
       person_id: None,
       comment: None,
       auth: None,

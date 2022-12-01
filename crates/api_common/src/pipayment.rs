@@ -38,6 +38,7 @@ pub struct PiAgreeResponse {
 #[derive(Deserialize)]
 pub struct PiRegisterWithFee {
   pub ea: ExternalAccount,
+  pub paymentid: String,
   pub txid: String,
   pub info: Register,
 }
@@ -73,6 +74,7 @@ pub struct PiApprove {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApproveResponse {
+  pub success: bool,
   pub id: PiPaymentId,
   pub paymentid: String,
 }
@@ -81,10 +83,10 @@ pub struct PiApproveResponse {
 pub struct PiTip {
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
-  pub person_id: Option<Uuid>,
   pub paymentid: String,
-  pub comment: Option<String>,
   pub txid: String,
+  pub person_id: Option<Uuid>,
+  pub comment: Option<String>,
   pub auth: Option<String>,
 }
 

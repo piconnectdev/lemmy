@@ -50,13 +50,17 @@ impl PerformCrud for Register {
   ) -> Result<LoginResponse, LemmyError> {
     let data: &Register = self;
 
+    println!("LOGIN {}", &data.username.clone());
+
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
     if !local_site.open_registration {
+      println!("registration_closed {}", &data.username.clone());
       return Err(LemmyError::from_message("registration_closed"));
     }
 
+    println!("Check password_length_check {}", &data.username.clone());
     password_length_check(&data.password)?;
     honeypot_check(&data.honeypot)?;
 
@@ -82,7 +86,8 @@ impl PerformCrud for Register {
         return Err(LemmyError::from_message("registration_disabled").into());
       }
     }
-
+    println!("Check captcha_enabled {}", &data.username.clone());
+    
     // If the site is set up, check the captcha
     if local_site.site_setup && local_site.captcha_enabled {
       let check = context

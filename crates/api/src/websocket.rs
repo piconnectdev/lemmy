@@ -56,11 +56,13 @@ impl Perform for CommunityJoin {
   ) -> Result<CommunityJoinResponse, LemmyError> {
     let data: &CommunityJoin = self;
 
-    if let Some(ws_id) = websocket_id {
-      context.chat_server().do_send(JoinCommunityRoom {
-        community_id: data.community_id,
-        id: ws_id,
-      });
+    if data.community_id.is_some() {
+      if let Some(ws_id) = websocket_id {
+        context.chat_server().do_send(JoinCommunityRoom {
+          community_id: data.community_id.unwrap_or_default(),
+          id: ws_id,
+        });
+      }
     }
 
     Ok(CommunityJoinResponse { joined: true })

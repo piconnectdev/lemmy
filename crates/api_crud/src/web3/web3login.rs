@@ -48,10 +48,10 @@ impl PerformCrud for Web3Login {
     //email_verification = local_site.require_email_verification;
     //require_application = local_site.require_application;
 
-    let mut _address = data.address.clone();
+    let mut _address = data.account.clone();
     let mut _signature = data.signature.clone();
     let _token = data.token.clone();
-    let _cli_time = data.cli_time;
+    let _cli_time = data.epoch;
 
     let text = format!(
       "LOGIN:{};TOKEN:{};TIME:{}",
@@ -95,7 +95,7 @@ impl PerformCrud for Web3Login {
         _new_password = info.password.clone();
       }
       None => {
-        let err_type = format!("Server Error: Web3 user not provided: {}", &data.address);
+        let err_type = format!("Server Error: Web3 user not provided: {}", &data.account);
         return Err(LemmyError::from_message(&err_type));
       }
     }

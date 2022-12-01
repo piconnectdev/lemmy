@@ -49,7 +49,14 @@ impl PerformCrud for Web3Register {
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
+    println!(
+      "Web3Registration is processing for xxx"
+    );
+
     if !local_site.open_registration {
+      println!(
+        "Web3Registration is processing for xxx registration_closed"
+      );
       return Err(LemmyError::from_message("registration_closed"));
     }
     
@@ -62,9 +69,9 @@ impl PerformCrud for Web3Register {
     // If its not the admin, check the token / sign
     if local_site.site_setup {
       let mut _address = ext_account.account.clone();
-      let mut _signature = ext_account.signature.clone();
+      let mut _signature = ext_account.signature.clone().unwrap();
       let _token = ext_account.token.clone();
-      let _cli_time = ext_account.cli_time;
+      let _cli_time = ext_account.epoch;
   
       let check = context
         .chat_server()
@@ -88,7 +95,7 @@ impl PerformCrud for Web3Register {
         text.clone(),
         _address.clone(),
         _token.clone(),
-        ext_account.signature.clone()
+        _signature.clone()
       );
       if !eth_verify(_address.clone(), text.clone(), _signature) {
         return Err(LemmyError::from_message("registration_closed"));
