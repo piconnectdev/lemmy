@@ -149,7 +149,9 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::PiApprove => {
       do_websocket_operation::<PiApprove>(context, id, op, data).await
     }
-    UserOperationCrud::PiTip => do_websocket_operation::<PiTip>(context, id, op, data).await,
+    UserOperationCrud::PiTip => {
+      do_websocket_operation::<PiTip>(context, id, op, data).await
+    }
     UserOperationCrud::PiPaymentFound => {
       do_websocket_operation::<PiPaymentFound>(context, id, op, data).await
     }

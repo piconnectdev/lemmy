@@ -54,7 +54,7 @@ impl Perform for Search {
     let sort = data.sort;
     let listing_type = data.listing_type;
     let search_type = data.type_.unwrap_or(SearchType::All);
-    let community_id = data.community_id;
+    //let community_id = data.community_id;
     let community_actor_id = if let Some(name) = &data.community_name {
       resolve_actor_identifier::<ApubCommunity, Community>(name, context, false)
         .await
@@ -63,39 +63,39 @@ impl Perform for Search {
     } else {
       None
     };
-    let creator_id = data.creator_id;
+    //let creator_id = data.creator_id;
     
     // TODO: UUID check
-    // let creator_id = match &data.creator_id {
-    //   Some(id) => {
-    //     let uuid = Uuid::parse_str(&id.clone());
-    //     match uuid {
-    //       Ok(u) => Some(PersonId(u)),
-    //       Err(_e) => {
-    //         None
-    //       }
-    //     }
-    //   },
-    //   None => {
-    //     None
-    //   }
-    // };
+    let creator_id = match &data.creator_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => Some(PersonId(u)),
+          Err(_e) => {
+            None
+          }
+        }
+      },
+      None => {
+        None
+      }
+    };
     
     // // TODO: UUID check
-    // let community_id = match &data.community_id {
-    //   Some(id) => {
-    //     let uuid = Uuid::parse_str(&id.clone());
-    //     match uuid {
-    //       Ok(u) => Some(CommunityId(u)),
-    //       Err(_e) => {
-    //         None
-    //       }
-    //     }
-    //   },
-    //   None => {
-    //     None
-    //   }
-    // };
+    let community_id = match &data.community_id {
+      Some(id) => {
+        let uuid = Uuid::parse_str(&id.clone());
+        match uuid {
+          Ok(u) => Some(CommunityId(u)),
+          Err(_e) => {
+            None
+          }
+        }
+      },
+      None => {
+        None
+      }
+    };
 
     match search_type {
       SearchType::Posts => {
