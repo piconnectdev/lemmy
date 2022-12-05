@@ -14,13 +14,13 @@ pub struct ExternalAccount {
   pub comment: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct Web3Register {
   pub ea: ExternalAccount,
   pub info: Register,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct Web3Login {
   pub account: String,
   pub token: String,

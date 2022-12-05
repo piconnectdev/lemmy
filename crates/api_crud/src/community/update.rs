@@ -2,9 +2,10 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   community::{CommunityResponse, EditCommunity},
+  context::LemmyContext,
   utils::{get_local_user_view_from_jwt, local_site_to_slur_regex},
+  websocket::{send::send_community_ws_message, UserOperationCrud},
 };
-use lemmy_apub::protocol::activities::community::update::UpdateCommunity;
 use lemmy_db_schema::{
   newtypes::PersonId,
   source::{
@@ -17,7 +18,6 @@ use lemmy_db_schema::{
 };
 use lemmy_db_views_actor::structs::CommunityModeratorView;
 use lemmy_utils::{error::LemmyError, utils::check_slurs_opt, ConnectionId};
-use lemmy_websocket::{send::send_community_ws_message, LemmyContext, UserOperationCrud};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditCommunity {
@@ -79,15 +79,7 @@ impl PerformCrud for EditCommunity {
 
     let (signature, _meta, _content)  = Community::sign_data(&updated_community.clone()).await;
     let updated_community = Community::update_srv_sign(context.pool(), updated_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
-
-    UpdateCommunity::send(
-      updated_community.into(),
-      &local_user_view.person.into(),
-      context,
-    )
-    .await?;
-
+    .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;  
     let op = UserOperationCrud::EditCommunity;
     send_community_ws_message(data.community_id, op, websocket_id, None, context).await
   }

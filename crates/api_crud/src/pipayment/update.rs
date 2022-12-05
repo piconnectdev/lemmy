@@ -1,10 +1,10 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
+use lemmy_api_common::{context::LemmyContext};
 use lemmy_api_common::pipayment::*;
 
-use lemmy_utils::{error::LemmyError, settings::SETTINGS, ConnectionId};
-use lemmy_websocket::LemmyContext;
+use lemmy_utils::{error::LemmyError, ConnectionId};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiTip {

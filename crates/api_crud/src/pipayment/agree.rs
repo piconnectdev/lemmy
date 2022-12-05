@@ -19,7 +19,7 @@ use lemmy_utils::{
   ConnectionId,
 };
 use lemmy_db_views::structs::SiteView;
-use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
+use lemmy_api_common::{websocket::{messages::CheckCaptcha}, context::LemmyContext};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 

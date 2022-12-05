@@ -2,6 +2,9 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   person::LoginResponse,
+  context::LemmyContext,
+  websocket::messages::CheckToken,
+
   web3::*,
 };
 use lemmy_db_schema::{ *
@@ -21,10 +24,6 @@ use lemmy_utils::{
   settings::SETTINGS,
   utils::{eth_verify, },
   ConnectionId,
-};
-use lemmy_websocket::{
-  messages::{CheckToken},
-  LemmyContext,
 };
 
 use crate::web3::ext::*;

@@ -7,7 +7,7 @@ use lemmy_db_schema::{
   utils::naive_now,
 };
 use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS, REQWEST_TIMEOUT};
-use lemmy_websocket::LemmyContext;
+use lemmy_api_common::{context::LemmyContext};
 use reqwest_middleware::{ ClientWithMiddleware};
 
 use sha2::{Digest, Sha256};

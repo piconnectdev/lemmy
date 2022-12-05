@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct PiPaymentFound {
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
@@ -20,7 +20,7 @@ pub struct PiPaymentFoundResponse {
   pub paymentid: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct PiAgreeRegister {
   pub ea: ExternalAccount,
   pub info: Register,
@@ -35,7 +35,7 @@ pub struct PiAgreeResponse {
   pub extra: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct PiRegisterWithFee {
   pub ea: ExternalAccount,
   pub paymentid: String,
@@ -43,7 +43,7 @@ pub struct PiRegisterWithFee {
   pub info: Register,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct PiRegister {
   pub ea: ExternalAccount,
   pub info: Register,
@@ -56,7 +56,7 @@ pub struct PiRegisterResponse {
   pub extra: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct PiLogin {
   pub ea: ExternalAccount,
   pub info: Option<Login>,

@@ -6,9 +6,9 @@ use crate::{
   protocol::activities::community::announce::AnnounceActivity,
 };
 use activitypub_federation::{core::object_id::ObjectId, traits::Actor};
+use lemmy_api_common::context::LemmyContext;
 use lemmy_db_schema::source::person::PersonFollower;
 use lemmy_utils::error::LemmyError;
-use lemmy_websocket::LemmyContext;
 use url::Url;
 
 pub mod add_mod;
@@ -64,7 +64,7 @@ pub(crate) async fn send_activity_in_community(
 }
 
 #[tracing::instrument(skip_all)]
-async fn get_community_from_moderators_url(
+pub(crate) async fn get_community_from_moderators_url(
   moderators: &Url,
   context: &LemmyContext,
   request_counter: &mut i32,

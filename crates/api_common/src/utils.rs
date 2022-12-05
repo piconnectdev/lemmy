@@ -1,8 +1,9 @@
 use crate::{request::purge_image_from_pictrs, sensitive::Sensitive, site::FederatedInstances};
+use anyhow::Context;
 use chrono::NaiveDateTime;
 use lemmy_db_schema::{
   impls::person::is_banned,
-  newtypes::{CommunityId, LocalUserId, PersonId, PostId},
+  newtypes::{CommunityId, DbUrl, LocalUserId, PersonId, PostId},
   source::{
     comment::{Comment, CommentUpdateForm},
     community::{Community, CommunityUpdateForm},
@@ -34,6 +35,7 @@ use lemmy_utils::{
   claims::Claims,
   email::{send_email, translations::Lang},
   error::LemmyError,
+  location_info,
   rate_limit::RateLimitConfig,
   settings::structs::Settings,
   utils::{build_slur_regex, generate_random_string},
@@ -43,6 +45,7 @@ use reqwest_middleware::ClientWithMiddleware;
 use rosetta_i18n::{Language, LanguageId};
 use std::str::FromStr;
 use tracing::warn;
+use url::{ParseError, Url};
 
 #[tracing::instrument(skip_all)]
 pub async fn is_mod_or_admin(
@@ -307,7 +310,7 @@ pub fn site_description_length_check(description: &str) -> Result<(), LemmyError
 
 /// Checks for a honeypot. If this field is filled, fail the rest of the function
 pub fn honeypot_check(honeypot: &Option<String>) -> Result<(), LemmyError> {
-  if honeypot.is_some() {
+  if honeypot.is_some() && honeypot != &Some(String::new()) {
     Err(LemmyError::from_message("honeypot_fail"))
   } else {
     Ok(())
@@ -725,7 +728,7 @@ pub fn listing_type_with_site_default(
 
 #[cfg(test)]
 mod tests {
-  use crate::utils::password_length_check;
+  use crate::utils::{honeypot_check, password_length_check};
 
   #[test]
   #[rustfmt::skip]
@@ -735,4 +738,74 @@ mod tests {
     assert!(password_length_check("short").is_err());
     assert!(password_length_check("looooooooooooooooooooooooooooooooooooooooooooooooooooooooooong").is_err());
   }
+
+  #[test]
+  fn honeypot() {
+    assert!(honeypot_check(&None).is_ok());
+    assert!(honeypot_check(&Some(String::new())).is_ok());
+    assert!(honeypot_check(&Some("1".to_string())).is_err());
+    assert!(honeypot_check(&Some("message".to_string())).is_err());
+  }
+}
+
+pub enum EndpointType {
+  Community,
+  Person,
+  Post,
+  Comment,
+  PrivateMessage,
+}
+
+/// Generates an apub endpoint for a given domain, IE xyz.tld
+pub fn generate_local_apub_endpoint(
+  endpoint_type: EndpointType,
+  name: &str,
+  domain: &str,
+) -> Result<DbUrl, ParseError> {
+  let point = match endpoint_type {
+    EndpointType::Community => "c",
+    EndpointType::Person => "u",
+    EndpointType::Post => "post",
+    EndpointType::Comment => "comment",
+    EndpointType::PrivateMessage => "private_message",
+  };
+
+  Ok(Url::parse(&format!("{}/{}/{}", domain, point, name))?.into())
+}
+
+pub fn generate_followers_url(actor_id: &DbUrl) -> Result<DbUrl, ParseError> {
+  Ok(Url::parse(&format!("{}/followers", actor_id))?.into())
+}
+
+pub fn generate_inbox_url(actor_id: &DbUrl) -> Result<DbUrl, ParseError> {
+  Ok(Url::parse(&format!("{}/inbox", actor_id))?.into())
+}
+
+pub fn generate_site_inbox_url(actor_id: &DbUrl) -> Result<DbUrl, ParseError> {
+  let mut actor_id: Url = actor_id.clone().into();
+  actor_id.set_path("site_inbox");
+  Ok(actor_id.into())
+}
+
+pub fn generate_shared_inbox_url(actor_id: &DbUrl) -> Result<DbUrl, LemmyError> {
+  let actor_id: Url = actor_id.clone().into();
+  let url = format!(
+    "{}://{}{}/inbox",
+    &actor_id.scheme(),
+    &actor_id.host_str().context(location_info!())?,
+    if let Some(port) = actor_id.port() {
+      format!(":{}", port)
+    } else {
+      String::new()
+    },
+  );
+  Ok(Url::parse(&url)?.into())
+}
+
+pub fn generate_outbox_url(actor_id: &DbUrl) -> Result<DbUrl, ParseError> {
+  Ok(Url::parse(&format!("{}/outbox", actor_id))?.into())
+}
+
+pub fn generate_moderators_url(community_id: &DbUrl) -> Result<DbUrl, LemmyError> {
+  Ok(Url::parse(&format!("{}/moderators", community_id))?.into())
 }

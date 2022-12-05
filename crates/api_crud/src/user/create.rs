@@ -2,20 +2,20 @@ use crate::PerformCrud;
 use activitypub_federation::core::signatures::generate_actor_keypair;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  context::LemmyContext,
   person::{LoginResponse, Register},
   utils::{
+    generate_inbox_url,
+    generate_local_apub_endpoint,
+    generate_shared_inbox_url,
     honeypot_check,
     local_site_to_slur_regex,
     password_length_check,
     send_new_applicant_email_to_admins,
     send_verification_email,
+    EndpointType,
   },
-};
-use lemmy_apub::{
-  generate_inbox_url,
-  generate_local_apub_endpoint,
-  generate_shared_inbox_url,
-  EndpointType,
+  websocket::messages::CheckCaptcha,
 };
 use lemmy_db_schema::{
   aggregates::structs::PersonAggregates,
@@ -35,8 +35,6 @@ use lemmy_utils::{
   utils::{check_slurs, check_slurs_opt, is_valid_actor_name},
   ConnectionId,
 };
-use lemmy_websocket::{messages::CheckCaptcha, LemmyContext};
-use lemmy_utils::settings::SETTINGS;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for Register {
@@ -80,9 +78,8 @@ impl PerformCrud for Register {
     }
 
     if local_site.site_setup {
-      let settings = SETTINGS.to_owned();
       // Uncomment to disable registration
-      if !settings.open_enabled {
+      if !context.settings().open_enabled {
         return Err(LemmyError::from_message("registration_disabled").into());
       }
     }

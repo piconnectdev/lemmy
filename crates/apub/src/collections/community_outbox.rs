@@ -1,12 +1,11 @@
 use crate::{
   activity_lists::AnnouncableActivities,
   collections::CommunityContext,
-  generate_outbox_url,
   objects::post::ApubPost,
   protocol::{
     activities::{
       community::announce::AnnounceActivity,
-      create_or_update::post::CreateOrUpdatePost,
+      create_or_update::page::CreateOrUpdatePage,
       CreateOrUpdateType,
     },
     collections::group_outbox::GroupOutbox,
@@ -20,6 +19,7 @@ use activitypub_federation::{
 use activitystreams_kinds::collection::OrderedCollectionType;
 use chrono::NaiveDateTime;
 use futures::future::join_all;
+use lemmy_api_common::utils::generate_outbox_url;
 use lemmy_db_schema::{
   source::{person::Person, post::Post},
   traits::Crud,
@@ -70,7 +70,7 @@ impl ApubObject for ApubCommunityOutbox {
     for post in self.0 {
       let person = Person::read(data.1.pool(), post.creator_id).await?.into();
       let create =
-        CreateOrUpdatePost::new(post, &person, &data.0, CreateOrUpdateType::Create, &data.1)
+        CreateOrUpdatePage::new(post, &person, &data.0, CreateOrUpdateType::Create, &data.1)
           .await?;
       let announcable = AnnouncableActivities::CreateOrUpdatePost(create);
       let announce = AnnounceActivity::new(announcable.try_into()?, &data.0, &data.1)?;

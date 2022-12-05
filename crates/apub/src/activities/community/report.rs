@@ -2,9 +2,10 @@ use crate::{
   activities::{generate_activity_id, send_lemmy_activity, verify_person_in_community},
   local_instance,
   objects::{community::ApubCommunity, person::ApubPerson},
-  protocol::activities::community::report::Report,
+  protocol::{activities::community::report::Report, InCommunity},
   ActorType,
   PostOrComment,
+  SendActivity,
 };
 use activitypub_federation::{
   core::object_id::ObjectId,
@@ -12,7 +13,13 @@ use activitypub_federation::{
   traits::{ActivityHandler, Actor},
 };
 use activitystreams_kinds::activity::FlagType;
-use lemmy_api_common::{comment::CommentReportResponse, post::PostReportResponse};
+use lemmy_api_common::{
+  comment::{CommentReportResponse, CreateCommentReport},
+  context::LemmyContext,
+  post::{CreatePostReport, PostReportResponse},
+  utils::get_local_user_view_from_jwt,
+  websocket::{messages::SendModRoomMessage, UserOperation},
+};
 use lemmy_db_schema::{
   source::{
     comment_report::{CommentReport, CommentReportForm},
@@ -22,12 +29,55 @@ use lemmy_db_schema::{
 };
 use lemmy_db_views::structs::{CommentReportView, PostReportView};
 use lemmy_utils::error::LemmyError;
-use lemmy_websocket::{messages::SendModRoomMessage, LemmyContext, UserOperation};
 use url::Url;
+
+#[async_trait::async_trait(?Send)]
+impl SendActivity for CreatePostReport {
+  type Response = PostReportResponse;
+
+  async fn send_activity(
+    request: &Self,
+    response: &Self::Response,
+    context: &LemmyContext,
+  ) -> Result<(), LemmyError> {
+    let local_user_view =
+      get_local_user_view_from_jwt(&request.auth, context.pool(), context.secret()).await?;
+    Report::send(
+      ObjectId::new(response.post_report_view.post.ap_id.clone()),
+      &local_user_view.person.into(),
+      ObjectId::new(response.post_report_view.community.actor_id.clone()),
+      request.reason.to_string(),
+      context,
+    )
+    .await
+  }
+}
+
+#[async_trait::async_trait(?Send)]
+impl SendActivity for CreateCommentReport {
+  type Response = CommentReportResponse;
+
+  async fn send_activity(
+    request: &Self,
+    response: &Self::Response,
+    context: &LemmyContext,
+  ) -> Result<(), LemmyError> {
+    let local_user_view =
+      get_local_user_view_from_jwt(&request.auth, context.pool(), context.secret()).await?;
+    Report::send(
+      ObjectId::new(response.comment_report_view.comment.ap_id.clone()),
+      &local_user_view.person.into(),
+      ObjectId::new(response.comment_report_view.community.actor_id.clone()),
+      request.reason.to_string(),
+      context,
+    )
+    .await
+  }
+}
 
 impl Report {
   #[tracing::instrument(skip_all)]
-  pub async fn send(
+  async fn send(
     object_id: ObjectId<PostOrComment>,
     actor: &ApubPerson,
     community_id: ObjectId<ApubCommunity>,
@@ -47,6 +97,7 @@ impl Report {
       summary: reason,
       kind,
       id: id.clone(),
+      audience: Some(ObjectId::new(community.actor_id())),
     };
 
     let inbox = vec![community.shared_inbox_or_inbox()];
@@ -73,9 +124,7 @@ impl ActivityHandler for Report {
     context: &Data<LemmyContext>,
     request_counter: &mut i32,
   ) -> Result<(), LemmyError> {
-    let community = self.to[0]
-      .dereference(context, local_instance(context).await, request_counter)
-      .await?;
+    let community = self.community(context, request_counter).await?;
     verify_person_in_community(&self.actor, &community, context, request_counter).await?;
     Ok(())
   }

@@ -8,7 +8,7 @@ use lemmy_db_schema::{
 };
 
 use lemmy_utils::{error::LemmyError, settings::SETTINGS, ConnectionId};
-use lemmy_websocket::LemmyContext;
+use lemmy_api_common::{context::LemmyContext};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 

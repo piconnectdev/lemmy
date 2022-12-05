@@ -1,11 +1,18 @@
 use crate::{
-  objects::{comment::ApubComment, post::ApubPost},
-  protocol::objects::{note::Note, page::Page},
+  objects::{comment::ApubComment, community::ApubCommunity, post::ApubPost},
+  protocol::{
+    objects::{note::Note, page::Page},
+    InCommunity,
+  },
 };
 use activitypub_federation::traits::ApubObject;
 use chrono::NaiveDateTime;
+use lemmy_api_common::context::LemmyContext;
+use lemmy_db_schema::{
+  source::{community::Community, post::Post},
+  traits::Crud,
+};
 use lemmy_utils::error::LemmyError;
-use lemmy_websocket::LemmyContext;
 use serde::Deserialize;
 use url::Url;
 
@@ -90,12 +97,17 @@ impl ApubObject for PostOrComment {
   }
 }
 
-impl PostOrComment {
-  pub(crate) fn ap_id(&self) -> Url {
-    match self {
-      PostOrComment::Post(p) => p.ap_id.clone(),
-      PostOrComment::Comment(c) => c.ap_id.clone(),
-    }
-    .into()
+#[async_trait::async_trait(?Send)]
+impl InCommunity for PostOrComment {
+  async fn community(
+    &self,
+    context: &LemmyContext,
+    _: &mut i32,
+  ) -> Result<ApubCommunity, LemmyError> {
+    let cid = match self {
+      PostOrComment::Post(p) => p.community_id,
+      PostOrComment::Comment(c) => Post::read(context.pool(), c.post_id).await?.community_id,
+    };
+    Ok(Community::read(context.pool(), cid).await?.into())
   }
 }

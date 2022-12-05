@@ -1,10 +1,6 @@
 use crate::{
   activities::{
-    community::{
-      announce::GetCommunity,
-      get_community_from_moderators_url,
-      send_activity_in_community,
-    },
+    community::send_activity_in_community,
     generate_activity_id,
     verify_add_remove_moderator_target,
     verify_is_public,
@@ -12,11 +8,14 @@ use crate::{
     verify_person_in_community,
   },
   activity_lists::AnnouncableActivities,
-  generate_moderators_url,
   local_instance,
   objects::{community::ApubCommunity, person::ApubPerson},
-  protocol::activities::community::add_mod::AddMod,
+  protocol::{
+    activities::community::{add_mod::AddMod, remove_mod::RemoveMod},
+    InCommunity,
+  },
   ActorType,
+  SendActivity,
 };
 use activitypub_federation::{
   core::object_id::ObjectId,
@@ -24,15 +23,20 @@ use activitypub_federation::{
   traits::{ActivityHandler, Actor},
 };
 use activitystreams_kinds::{activity::AddType, public};
+use lemmy_api_common::{
+  community::{AddModToCommunity, AddModToCommunityResponse},
+  context::LemmyContext,
+  utils::{generate_moderators_url, get_local_user_view_from_jwt},
+};
 use lemmy_db_schema::{
   source::{
-    community::{CommunityModerator, CommunityModeratorForm},
+    community::{Community, CommunityModerator, CommunityModeratorForm},
     moderator::{ModAddCommunity, ModAddCommunityForm},
+    person::Person,
   },
   traits::{Crud, Joinable},
 };
 use lemmy_utils::error::LemmyError;
-use lemmy_websocket::LemmyContext;
 use url::Url;
 
 impl AddMod {
@@ -55,6 +59,7 @@ impl AddMod {
       cc: vec![community.actor_id()],
       kind: AddType::Add,
       id: id.clone(),
+      audience: Some(ObjectId::new(community.actor_id())),
     };
 
     let activity = AnnouncableActivities::AddMod(add);
@@ -83,7 +88,7 @@ impl ActivityHandler for AddMod {
     request_counter: &mut i32,
   ) -> Result<(), LemmyError> {
     verify_is_public(&self.to, &self.cc)?;
-    let community = self.get_community(context, request_counter).await?;
+    let community = self.community(context, request_counter).await?;
     verify_person_in_community(&self.actor, &community, context, request_counter).await?;
     verify_mod_action(
       &self.actor,
@@ -103,7 +108,7 @@ impl ActivityHandler for AddMod {
     context: &Data<LemmyContext>,
     request_counter: &mut i32,
   ) -> Result<(), LemmyError> {
-    let community = self.get_community(context, request_counter).await?;
+    let community = self.community(context, request_counter).await?;
     let new_mod = self
       .object
       .dereference(context, local_instance(context).await, request_counter)
@@ -140,13 +145,38 @@ impl ActivityHandler for AddMod {
 }
 
 #[async_trait::async_trait(?Send)]
-impl GetCommunity for AddMod {
-  #[tracing::instrument(skip_all)]
-  async fn get_community(
-    &self,
+impl SendActivity for AddModToCommunity {
+  type Response = AddModToCommunityResponse;
+
+  async fn send_activity(
+    request: &Self,
+    _response: &Self::Response,
     context: &LemmyContext,
-    request_counter: &mut i32,
-  ) -> Result<ApubCommunity, LemmyError> {
-    get_community_from_moderators_url(&self.target, context, request_counter).await
+  ) -> Result<(), LemmyError> {
+    let local_user_view =
+      get_local_user_view_from_jwt(&request.auth, context.pool(), context.secret()).await?;
+    let community: ApubCommunity = Community::read(context.pool(), request.community_id)
+      .await?
+      .into();
+    let updated_mod: ApubPerson = Person::read(context.pool(), request.person_id)
+      .await?
+      .into();
+    if request.added {
+      AddMod::send(
+        &community,
+        &updated_mod,
+        &local_user_view.person.into(),
+        context,
+      )
+      .await
+    } else {
+      RemoveMod::send(
+        &community,
+        &updated_mod,
+        &local_user_view.person.into(),
+        context,
+      )
+      .await
+    }
   }
 }

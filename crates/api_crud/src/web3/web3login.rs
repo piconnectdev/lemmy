@@ -1,9 +1,12 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
+
 use lemmy_api_common::{
   person::*,
   sensitive::Sensitive,
   utils::{password_length_check},
+  context::LemmyContext,
+  websocket::messages::CheckToken,
   web3::*,
 };
 use lemmy_db_schema::{
@@ -23,7 +26,6 @@ use lemmy_utils::{
   utils::{eth_verify, },
   ConnectionId,
 };
-use lemmy_websocket::{messages::CheckToken, LemmyContext};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for Web3Login {

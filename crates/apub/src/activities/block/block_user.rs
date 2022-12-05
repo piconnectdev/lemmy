@@ -1,7 +1,7 @@
 use crate::{
   activities::{
     block::{generate_cc, SiteOrCommunity},
-    community::{announce::GetCommunity, send_activity_in_community},
+    community::send_activity_in_community,
     generate_activity_id,
     send_lemmy_activity,
     verify_is_public,
@@ -10,7 +10,7 @@ use crate::{
   },
   activity_lists::AnnouncableActivities,
   local_instance,
-  objects::{community::ApubCommunity, instance::remote_instance_inboxes, person::ApubPerson},
+  objects::{instance::remote_instance_inboxes, person::ApubPerson},
   protocol::activities::block::block_user::BlockUser,
   ActorType,
 };
@@ -23,7 +23,10 @@ use activitypub_federation::{
 use activitystreams_kinds::{activity::BlockType, public};
 use anyhow::anyhow;
 use chrono::NaiveDateTime;
-use lemmy_api_common::utils::{remove_user_data, remove_user_data_in_community};
+use lemmy_api_common::{
+  context::LemmyContext,
+  utils::{remove_user_data, remove_user_data_in_community},
+};
 use lemmy_db_schema::{
   source::{
     community::{
@@ -38,7 +41,6 @@ use lemmy_db_schema::{
   traits::{Bannable, Crud, Followable},
 };
 use lemmy_utils::{error::LemmyError, utils::convert_datetime};
-use lemmy_websocket::LemmyContext;
 use url::Url;
 
 impl BlockUser {
@@ -51,6 +53,11 @@ impl BlockUser {
     expires: Option<NaiveDateTime>,
     context: &LemmyContext,
   ) -> Result<BlockUser, LemmyError> {
+    let audience = if let SiteOrCommunity::Community(c) = target {
+      Some(ObjectId::new(c.actor_id()))
+    } else {
+      None
+    };
     Ok(BlockUser {
       actor: ObjectId::new(mod_.actor_id()),
       to: vec![public()],
@@ -64,6 +71,7 @@ impl BlockUser {
         BlockType::Block,
         &context.settings().get_protocol_and_hostname(),
       )?,
+      audience,
       expires: expires.map(convert_datetime),
     })
   }
@@ -240,24 +248,5 @@ impl ActivityHandler for BlockUser {
     }
 
     Ok(())
-  }
-}
-
-#[async_trait::async_trait(?Send)]
-impl GetCommunity for BlockUser {
-  #[tracing::instrument(skip_all)]
-  async fn get_community(
-    &self,
-    context: &LemmyContext,
-    request_counter: &mut i32,
-  ) -> Result<ApubCommunity, LemmyError> {
-    let target = self
-      .target
-      .dereference(context, local_instance(context).await, request_counter)
-      .await?;
-    match target {
-      SiteOrCommunity::Community(c) => Ok(c),
-      SiteOrCommunity::Site(_) => Err(anyhow!("Calling get_community() on site activity").into()),
-    }
   }
 }

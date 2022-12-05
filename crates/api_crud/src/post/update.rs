@@ -1,6 +1,7 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  context::LemmyContext,
   post::{EditPost, PostResponse},
   request::fetch_site_data,
   utils::{
@@ -9,10 +10,7 @@ use lemmy_api_common::{
     get_local_user_view_from_jwt,
     local_site_to_slur_regex,
   },
-};
-use lemmy_apub::protocol::activities::{
-  create_or_update::post::CreateOrUpdatePost,
-  CreateOrUpdateType,
+  websocket::{send::send_post_ws_message, UserOperationCrud},
 };
 use lemmy_db_schema::{
   source::{
@@ -28,7 +26,6 @@ use lemmy_utils::{
   utils::{check_slurs_opt, clean_url_params, is_valid_post_title},
   ConnectionId,
 };
-use lemmy_websocket::{send::send_post_ws_message, LemmyContext, UserOperationCrud};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditPost {
@@ -114,31 +111,19 @@ impl PerformCrud for EditPost {
     
     let post_id = data.post_id;
     let res = Post::update(context.pool(), post_id, &post_form).await;
-    let updated_post: Post = match res {
-      Ok(post) => post,
-      Err(e) => {
-        let err_type = if e.to_string() == "value too long for type character varying(200)" {
-          "post_title_too_long"
-        } else {
-          "couldnt_update_post"
-        };
+    if let Err(e) = res {
+      let err_type = if e.to_string() == "value too long for type character varying(200)" {
+        "post_title_too_long"
+      } else {
+        "couldnt_update_post"
+      };
 
-        return Err(LemmyError::from_error_message(e, err_type));
-      }
-    };
-
+      return Err(LemmyError::from_error_message(e, err_type));
+    }
+    let updated_post = res.unwrap();
     let (signature, _meta, _content)  = Post::sign_data(&updated_post.clone()).await;
     let updated_post = Post::update_srv_sign(context.pool(), updated_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
         .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
-    // Send apub update
-    CreateOrUpdatePost::send(
-      updated_post.into(),
-      &local_user_view.person.clone().into(),
-      CreateOrUpdateType::Update,
-      context,
-    )
-    .await?;
-
     send_post_ws_message(
       data.post_id,
       UserOperationCrud::EditPost,

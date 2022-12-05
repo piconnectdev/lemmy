@@ -12,13 +12,14 @@ use crate::{
     activities::community::announce::{AnnounceActivity, RawAnnouncableActivities},
     Id,
     IdOrNestedObject,
+    InCommunity,
   },
   ActorType,
 };
 use activitypub_federation::{core::object_id::ObjectId, data::Data, traits::ActivityHandler};
 use activitystreams_kinds::{activity::AnnounceType, public};
+use lemmy_api_common::context::LemmyContext;
 use lemmy_utils::error::LemmyError;
-use lemmy_websocket::LemmyContext;
 use serde_json::Value;
 use tracing::debug;
 use url::Url;
@@ -56,7 +57,7 @@ impl ActivityHandler for RawAnnouncableActivities {
     if let AnnouncableActivities::Page(_) = activity {
       return Err(LemmyError::from_message("Cant receive page"));
     }
-    let community = activity.get_community(data, &mut 0).await?;
+    let community = activity.community(data, &mut 0).await?;
     let actor_id = ObjectId::new(activity.actor().clone());
 
     // verify and receive activity
@@ -70,15 +71,6 @@ impl ActivityHandler for RawAnnouncableActivities {
     }
     Ok(())
   }
-}
-
-#[async_trait::async_trait(?Send)]
-pub(crate) trait GetCommunity {
-  async fn get_community(
-    &self,
-    context: &LemmyContext,
-    request_counter: &mut i32,
-  ) -> Result<ApubCommunity, LemmyError>;
 }
 
 impl AnnounceActivity {

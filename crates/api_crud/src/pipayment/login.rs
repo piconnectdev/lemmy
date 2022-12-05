@@ -7,10 +7,15 @@ use lemmy_api_common::{
   pipayment::*,
   sensitive::Sensitive,
   utils::{password_length_check},
-};
-use lemmy_apub::{
-  generate_followers_url, generate_inbox_url, generate_local_apub_endpoint,
-  generate_shared_inbox_url, EndpointType,
+  utils::{
+    generate_followers_url,
+    generate_inbox_url,
+    generate_local_apub_endpoint,
+    generate_shared_inbox_url,
+    get_local_user_view_from_jwt,
+    is_admin,
+    EndpointType,
+  },
 };
 use lemmy_db_schema::{
   newtypes::{CommunityId, PiPaymentId, PersonId, PiUserId},
@@ -36,7 +41,7 @@ use lemmy_utils::{
   utils::{check_slurs, is_valid_actor_name},
   ConnectionId,
 };
-use lemmy_websocket::LemmyContext;
+use lemmy_api_common::{context::LemmyContext};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 

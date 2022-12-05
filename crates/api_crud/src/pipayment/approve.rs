@@ -1,9 +1,8 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::pipayment::*;
+use lemmy_api_common::{context::LemmyContext, pipayment::*};
 use lemmy_utils::{error::LemmyError, ConnectionId};
-use lemmy_websocket::LemmyContext;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiApprove {

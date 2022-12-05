@@ -2363,7 +2363,6 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 name = "lemmy_api"
 version = "0.16.5"
 dependencies = [
- "activitypub_federation",
  "actix-web",
  "anyhow",
  "async-trait",
@@ -2373,13 +2372,11 @@ dependencies = [
  "chrono",
  "diesel",
  "lemmy_api_common",
- "lemmy_apub",
  "lemmy_db_schema",
  "lemmy_db_views",
  "lemmy_db_views_actor",
  "lemmy_db_views_moderator",
  "lemmy_utils",
- "lemmy_websocket",
  "serde",
  "serde_json",
  "serial_test",
@@ -2392,8 +2389,12 @@ dependencies = [
 name = "lemmy_api_common"
 version = "0.16.5"
 dependencies = [
+ "actix",
  "actix-rt",
  "actix-web",
+ "actix-web-actors",
+ "anyhow",
+ "background-jobs",
  "chrono",
  "diesel",
  "encoding",
@@ -2402,14 +2403,20 @@ dependencies = [
  "lemmy_db_views_actor",
  "lemmy_db_views_moderator",
  "lemmy_utils",
+ "opentelemetry 0.17.0",
  "percent-encoding",
+ "rand 0.8.5",
  "regex",
  "reqwest",
  "reqwest-middleware",
  "rosetta-i18n",
  "serde",
  "serde_json",
+ "strum",
+ "strum_macros",
+ "tokio",
  "tracing",
+ "tracing-opentelemetry 0.17.4",
  "url",
  "uuid",
  "webpage",
@@ -2425,12 +2432,10 @@ dependencies = [
  "bcrypt",
  "chrono",
  "lemmy_api_common",
- "lemmy_apub",
  "lemmy_db_schema",
  "lemmy_db_views",
  "lemmy_db_views_actor",
  "lemmy_utils",
- "lemmy_websocket",
  "reqwest",
  "reqwest-middleware",
  "reqwest-retry",
@@ -2469,7 +2474,6 @@ dependencies = [
  "lemmy_db_views",
  "lemmy_db_views_actor",
  "lemmy_utils",
- "lemmy_websocket",
  "once_cell",
  "reqwest",
  "reqwest-middleware",
@@ -2566,12 +2570,10 @@ dependencies = [
  "diesel",
  "futures",
  "lemmy_api_common",
- "lemmy_apub",
  "lemmy_db_schema",
  "lemmy_db_views",
  "lemmy_db_views_actor",
  "lemmy_utils",
- "lemmy_websocket",
  "once_cell",
  "reqwest",
  "reqwest-middleware",
@@ -2603,7 +2605,6 @@ dependencies = [
  "lemmy_db_schema",
  "lemmy_routes",
  "lemmy_utils",
- "lemmy_websocket",
  "opentelemetry 0.17.0",
  "opentelemetry-otlp",
  "parking_lot 0.12.1",
@@ -2612,6 +2613,7 @@ dependencies = [
  "reqwest-retry",
  "reqwest-tracing",
  "serde",
+ "serde_json",
  "tracing",
  "tracing-actix-web",
  "tracing-error",
@@ -2662,35 +2664,6 @@ dependencies = [
  "url",
  "uuid",
  "web3",
-]
-
-[[package]]
-name = "lemmy_websocket"
-version = "0.16.5"
-dependencies = [
- "actix",
- "actix-web",
- "actix-web-actors",
- "anyhow",
- "background-jobs",
- "chrono",
- "diesel",
- "lemmy_api_common",
- "lemmy_db_schema",
- "lemmy_db_views",
- "lemmy_db_views_actor",
- "lemmy_utils",
- "opentelemetry 0.17.0",
- "rand 0.8.5",
- "reqwest-middleware",
- "serde",
- "serde_json",
- "strum",
- "strum_macros",
- "tokio",
- "tracing",
- "tracing-opentelemetry 0.17.4",
- "uuid",
 ]
 
 [[package]]
@@ -5190,9 +5163,9 @@ checksum = "9e79c4d996edb816c91e4308506774452e55e95c3c9de07b6729e17e15a5ef81"
 
 [[package]]
 name = "uint"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a45526d29728d135c2900b0d30573fe3ee79fceb12ef534c7bb30e810a91b601"
+checksum = "76f64bba2c53b04fcab63c01a7d7427eadc821e3bc48c34dc9ba29c501164b52"
 dependencies = [
  "byteorder",
  "crunchy",
