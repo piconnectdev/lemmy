@@ -48,7 +48,6 @@ impl PerformCrud for PiPaymentFound {
     let mut dto: Option<PiPaymentDto> = None;
     
     let mut person_id: Option<PersonId> = None;
-    println!("PiPaymentFound: {} - {} ", _pi_username.clone(), data.paymentid.clone());
     let person = match Person::find_by_extra_name(context.pool(), &_pi_username.clone()).await
     {
       Ok(c) => {
