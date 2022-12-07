@@ -380,9 +380,12 @@ pub async fn pi_payment_update(
     }
     pmt = _payment.unwrap();
     pid = pmt.id;
-    let updated_payment = match PiPayment::update(context.pool(), pid, &payment_form).await
+    match PiPayment::update(context.pool(), pid, &payment_form).await
     {
-      Ok(payment) => Some(payment),
+      Ok(payment) => {
+        return Ok(payment)
+        //Some(payment)
+      },
       Err(_e) => {
         let err_type = _e.to_string();
         //return LemmyError::from_error_message(e, &err_type)?;

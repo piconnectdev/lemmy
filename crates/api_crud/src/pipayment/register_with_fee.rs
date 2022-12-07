@@ -50,7 +50,8 @@ impl PerformCrud for PiRegisterWithFee {
       //   return Err(LemmyError::from_message("registration_disabled"));
       // }
     }
-    let payment_id = data.ea.signature.clone().unwrap_or_default();
+    //let payment_id = data.ea.signature.clone().unwrap_or_default();
+    let payment_id = data.paymentid.clone();
     // TODO: Check paymentid complete
     let approve = PiApprove {
       paymentid: payment_id.clone(),
@@ -61,12 +62,13 @@ impl PerformCrud for PiRegisterWithFee {
       auth: None,
     };
 
+    println!("call pi_payment_update, PiApprove: {} - {} ", ext_account.account.clone(), payment_id.clone());
     let payment = match pi_payment_update(context, &approve.clone(), Some(data.txid.clone())).await
     {
       Ok(p) => {
         if !p.completed {
           println!("PiRegisterWithFee: not completed: {} ", p.identifier.clone());
-          return Err(LemmyError::from_message("registration_disabled"));
+          //return Err(LemmyError::from_message("registration_disabled"));
         }
         Some(p)
       },
