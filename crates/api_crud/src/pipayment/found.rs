@@ -43,11 +43,12 @@ impl PerformCrud for PiPaymentFound {
     let mut completed = false;
     let mut finished = false;
     let mut cancelled = false;
-    let mut txid: String;
-    let txlink: String;
+    let mut txid: String = "".to_string();
+    let mut txlink: String = "".to_string();
     let mut dto: Option<PiPaymentDto> = None;
     
     let mut person_id: Option<PersonId> = None;
+    println!("PiPaymentFound: {} - {} ", _pi_username.clone(), data.paymentid.clone());
     let person = match Person::find_by_extra_name(context.pool(), &_pi_username.clone()).await
     {
       Ok(c) => {
@@ -62,7 +63,7 @@ impl PerformCrud for PiPaymentFound {
       Ok(c) => {
         exist = true;
         payment_id = c.id;
-        comment = c.comment.clone().unwrap();
+        comment = c.comment.clone().unwrap_or_default();
         ref_id = c.ref_id;
 
         approved = c.approved;
@@ -107,6 +108,7 @@ impl PerformCrud for PiPaymentFound {
     };
 
     if cancelled {
+      println!("PiPaymentFound, cancelled: {} - {} ", _pi_username.clone(), data.paymentid.clone());
       let err_type = format!(
         "Pi Server: payment cancelled: user {}, paymentid {}",
         &data.pi_username, &data.paymentid
@@ -115,6 +117,7 @@ impl PerformCrud for PiPaymentFound {
     }
 
     if !approved {
+      println!("PiPaymentFound, do approve: {} - {} ", _pi_username.clone(), data.paymentid.clone());
       dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
         Ok(c) => {
           dto_source = 2;
@@ -134,10 +137,12 @@ impl PerformCrud for PiPaymentFound {
       };
     } else {
       if !completed {
+        println!("PiPaymentFound, do complete: {} - {} ", _pi_username.clone(), data.paymentid.clone());
         let tx = dto_read.transaction.clone();
         match tx {
           Some(_tx) => {
             txid = _tx.txid;
+            txlink = _tx._link;
             dto = match pi_complete(context.client(), &data.paymentid.clone(), &txid.clone()).await
             {
               Ok(c) => {
@@ -272,6 +277,10 @@ impl PerformCrud for PiPaymentFound {
       payment = _payment.unwrap();
       payment_id = payment.id;
       let mut payment_form = PiPaymentUpdateForm::builder()
+              .completed(completed)
+              .approved(approved)
+              .tx_id(txid)
+              .tx_link(txlink)
               .build();
       _payment = match PiPayment::update(context.pool(), payment_id, &payment_form).await
       {
