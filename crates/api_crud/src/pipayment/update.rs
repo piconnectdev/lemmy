@@ -21,6 +21,8 @@ impl PerformCrud for PiTip {
     let _pi_uid = data.pi_uid.clone();
     let _tx = Some(data.txid.clone());
     let approve = PiApprove {
+      domain: data.domain.clone(),
+      pi_token: data.pi_token.clone(),
       paymentid: data.paymentid.clone(),
       pi_username: data.pi_username.clone(),
       pi_uid: data.pi_uid.clone(),
@@ -42,3 +44,23 @@ impl PerformCrud for PiTip {
     })
   }
 }
+
+#[async_trait::async_trait(?Send)]
+impl PerformCrud for PiKey {
+  type Response = PiKeyResponse;
+
+  async fn perform(
+    &self,
+    context: &Data<LemmyContext>,
+    _websocket_id: Option<ConnectionId>,
+  ) -> Result<PiKeyResponse, LemmyError> {
+    let data: &PiKey = self;
+
+    let res = PiKeyResponse {
+      success: true,
+      id: None,
+    };
+    Ok(res)
+  }
+}
+

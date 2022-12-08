@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Deserialize)]
 pub struct PiPaymentFound {
+  pub domain: Option<String>,
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
@@ -22,6 +23,7 @@ pub struct PiPaymentFoundResponse {
 
 #[derive(Clone, Deserialize)]
 pub struct PiAgreeRegister {
+  pub domain: Option<String>,
   pub ea: ExternalAccount,
   pub info: Register,
   pub paymentid: String,
@@ -37,6 +39,7 @@ pub struct PiAgreeResponse {
 
 #[derive(Clone, Deserialize)]
 pub struct PiRegisterWithFee {
+  pub domain: Option<String>,  
   pub ea: ExternalAccount,
   pub paymentid: String,
   pub txid: String,
@@ -45,6 +48,7 @@ pub struct PiRegisterWithFee {
 
 #[derive(Clone, Deserialize)]
 pub struct PiRegister {
+  pub domain: Option<String>,  
   pub ea: ExternalAccount,
   pub info: Register,
 }
@@ -58,14 +62,17 @@ pub struct PiRegisterResponse {
 
 #[derive(Clone, Deserialize)]
 pub struct PiLogin {
+  pub domain: Option<String>,  
   pub ea: ExternalAccount,
   pub info: Option<Login>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
+  pub domain: Option<String>,  
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
+  pub pi_token: Option<String>,
   pub person_id: Option<Uuid>,
   pub paymentid: String,
   pub comment: Option<String>,
@@ -81,8 +88,10 @@ pub struct PiApproveResponse {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiTip {
+  pub domain: Option<String>,  
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
+  pub pi_token: Option<String>,
   pub paymentid: String,
   pub txid: String,
   pub person_id: Option<Uuid>,
@@ -94,6 +103,22 @@ pub struct PiTip {
 pub struct PiTipResponse {
   pub id: PiPaymentId,
   pub paymentid: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiKey {
+  pub domain: Option<String>,  
+  pub pi_username: String,
+  pub pi_uid: Option<PiUserId>,
+  pub pi_token: Option<String>,
+  pub pi_key: Option<String>,
+  pub auth: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiKeyResponse {
+  pub success: bool,
+  pub id: Option<Uuid>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]

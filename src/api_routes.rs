@@ -385,7 +385,8 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
             web::post().to(route_post_crud::<PiRegisterWithFee>),
           )
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
-          .route("/complete", web::post().to(route_post_crud::<PiTip>)),
+          .route("/complete", web::post().to(route_post_crud::<PiTip>))
+          .route("/key", web::post().to(route_post_crud::<PiKey>)),
           //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
       ),
   );
@@ -612,6 +613,9 @@ pub async fn match_websocket_operation_crud(
     }
     UserOperationCrud::PiPaymentFound => {
       do_websocket_operation_crud::<PiPaymentFound>(context, id, op, data).await
+    }
+    UserOperationCrud::PiKey => {
+      do_websocket_operation_crud::<PiKey>(context, id, op, data).await
     }
     UserOperationCrud::Web3Register => {
       do_websocket_operation_crud::<Web3Register>(context, id, op, data).await

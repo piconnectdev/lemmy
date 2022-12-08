@@ -130,6 +130,7 @@ pub enum UserOperationCrud {
   PiRegisterWithFee,
   PiApprove,
   PiTip,
+  PiKey,
 }
 
 #[derive(EnumString, Display, Debug, Clone)]

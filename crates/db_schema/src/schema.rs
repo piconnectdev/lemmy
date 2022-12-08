@@ -784,8 +784,10 @@ table! {
         finished -> Bool,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
-        comment -> Nullable<Text>,
-
+        comment -> Nullable<Text>, 
+        //object_type -> Nullable<Text>,  // register - page - note - message - person - instance - group
+        //object_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
+       
         pi_uid -> Nullable<Uuid>,   // UserDTO - uid
         pi_username -> Text,        // UserDTO - username
         identifier -> Text,         // PaymentDto - identifier

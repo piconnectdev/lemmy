@@ -277,8 +277,7 @@ impl PerformCrud for PiPaymentFound {
       payment_id = payment.id;
       match _payment_dto.transaction {
         Some(tx) => {
-          txlink = tx._link;
-          
+          txlink = tx._link;          
           txid = tx.txid;
         }
         None => {}

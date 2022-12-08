@@ -132,7 +132,7 @@ use lemmy_api_common::{
     PiApproveResponse,
     PiRegisterResponse,
     PiTipResponse, 
-    PiPaymentFoundResponse,
+    PiPaymentFoundResponse, PiKey, PiKeyResponse,
   },
 };
 
@@ -392,7 +392,7 @@ impl SendActivity for PiAgreeRegister {
 }
 
 impl SendActivity for PiRegisterWithFee {
-  type Response = PiRegisterResponse;
+  type Response = LoginResponse;
 }
 impl SendActivity for PiApprove {
   type Response = PiApproveResponse;
@@ -402,4 +402,7 @@ impl SendActivity for PiTip {
 }
 impl SendActivity for PiPaymentFound {
   type Response = PiPaymentFoundResponse;
+}
+impl SendActivity for PiKey {
+  type Response = PiKeyResponse;
 }
