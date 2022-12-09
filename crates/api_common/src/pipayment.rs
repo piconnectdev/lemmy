@@ -73,7 +73,7 @@ pub struct PiApprove {
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
-  pub person_id: Option<Uuid>,
+  pub object_id: Option<Uuid>,
   pub paymentid: String,
   pub comment: Option<String>,
   pub auth: Option<String>,
@@ -94,7 +94,7 @@ pub struct PiTip {
   pub pi_token: Option<String>,
   pub paymentid: String,
   pub txid: String,
-  pub person_id: Option<Uuid>,
+  pub object_id: Option<Uuid>,
   pub comment: Option<String>,
   pub auth: Option<String>,
 }

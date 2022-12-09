@@ -168,7 +168,7 @@ use serial_test::serial;
 
     let read_payment = PiPayment::read(pool, inserted_payment.id).await.unwrap();
     let update_payment_form = PiPaymentUpdateForm::builder()
-        .amount(0.001)
+        //.amount(0.001)
         .approved(true)
         .verified(true)
         .memo("wepi.social".into())

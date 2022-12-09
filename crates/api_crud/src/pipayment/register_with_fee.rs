@@ -77,8 +77,8 @@ impl PerformCrud for PiRegisterWithFee {
       pi_uid: _pi_uid,
       paymentid: _payment_id.clone(),
       
-      person_id: None,
-      comment: None,
+      object_id: None,
+      comment: Some("register".to_string()),
       auth: None,
     };
 

@@ -50,7 +50,7 @@ impl PerformCrud for PiTip {
       pi_username: _pi_username.clone(),
       pi_uid: _pi_uid.clone(),
       paymentid: data.paymentid.clone(),
-      person_id: data.person_id.clone(),
+      object_id: data.object_id.clone(),
       comment: data.comment.clone(),
       auth: data.auth.clone(),
     };

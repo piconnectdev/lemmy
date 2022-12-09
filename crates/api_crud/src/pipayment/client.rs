@@ -156,11 +156,12 @@ pub async fn pi_payment_update(
   //let comment = approve.comment.clone();
   let comment = approve.comment.clone().unwrap_or("".to_string());
   let mut person_id: Option<PersonId> = None;
-
+  let mut verified = false;
   let person = match Person::find_by_extra_name(context.pool(), &pi_username.clone()).await
   {
     Ok(c) => {
       person_id = Some(c.id.clone());
+      verified = c.verified;
       Some(c)
     },
     Err(_e) => None
@@ -231,7 +232,10 @@ pub async fn pi_payment_update(
   if !approved {
     println!("pi_payment_update, pi_approve: {} - {} ", _pi_user_alias.clone(), _payment_id.clone());
     dto = match pi_approve(context.client(), &payment_id).await {
-      Ok(c) => Some(c),
+      Ok(c) => { 
+        println!("pi_payment_update, pi_approve with dto: {} - {} {}", _pi_user_alias.clone(), _payment_id.clone(), c.amount);
+        Some(c)
+      },
       Err(_e) => None,
     };
   } else if !completed {
@@ -239,6 +243,7 @@ pub async fn pi_payment_update(
     dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
       Ok(c) => {
         completed = true;
+        println!("pi_payment_update, pi_complete with dto: {} - {} {}", _pi_user_alias.clone(), _payment_id.clone(), c.amount);
         Some(c)
       }
       Err(_e) => None,
@@ -254,10 +259,13 @@ pub async fn pi_payment_update(
   };
 
   if dto.is_some() {
+    if completed && person.is_some() && !verified {
+      Person::update_kyced(context.pool(), person.unwrap().id).await;
+    }
     _payment_dto = dto.unwrap();
+    println!("pi_payment_update, dto is_some: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
   }
 
-  let refid = person_id;
   let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z")
   {
       Ok(dt) => Some(dt),
@@ -276,27 +284,23 @@ pub async fn pi_payment_update(
 
   completed = _payment_dto.status.developer_completed.clone();
   
-  let refid =  match person_id {
-    Some(x) => Some(x.0),
-    None => None,
-  };
-
+  let refid = approve.object_id.clone();
   if !exist {
-    println!("pi_payment_update, create local clone: {} - {} ", _pi_user_alias.clone(), _payment_id.clone());
+    println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
     .person_id( person_id.clone())
-    .ref_id(refid)
     .testnet( settings.pinetwork.pi_testnet)
     .finished( false)
     .updated( None)
     .pi_uid( _pi_uid)
     .pi_username( _pi_user_alias.clone())
     .comment( Some(comment))
-
+    .ref_id(refid)
+    
     .identifier( payment_id.clone())
     .user_uid( _payment_dto.user_uid)
     .amount( _payment_dto.amount)
-    .memo( _payment_dto.memo)
+    .memo( _payment_dto.memo.clone())
     .to_address( _payment_dto.to_address)
     .created_at( create_at)
     .approved( _payment_dto.status.developer_approved)
@@ -353,7 +357,7 @@ pub async fn pi_payment_update(
     // TODO: UUID check
     if completed {
       payment_form.finished = true;
-      if payment_form.memo == "post" {
+      if _payment_dto.memo.clone() == "page" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
         let uuid = Uuid::parse_str(&comment.clone());
@@ -377,7 +381,7 @@ pub async fn pi_payment_update(
             //None
           }
         };
-      } else if payment_form.memo == "comment" {
+      } else if _payment_dto.memo.clone() == "note" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
         // TODO: UUID check
