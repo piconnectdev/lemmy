@@ -135,7 +135,7 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
   let token_item = PiTokenItem {
     answer: res.clone(),
     uuid: key.to_string(),
-    expires: naive_now() + Duration::days(5), // expires in 5 days
+    expires: naive_now() + Duration::days(3), // expires in 5 days
   };
   // Stores the PiTokenItem item on the queue
   context.chat_server().do_send(token_item);
@@ -188,7 +188,6 @@ pub async fn pi_payment_update(
   let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id.clone().to_owned()).await
   {
     Ok(c) => {
-      println!("pi_payment_update, found local pipayment: {} - {} ", _pi_user_alias.clone(), _payment_id.clone());
       exist = true;
       approved = c.approved;
       completed = c.completed;
@@ -232,21 +231,20 @@ pub async fn pi_payment_update(
   }
 
   if !approved {
-    println!("pi_payment_update, pi_approve: {} - {} ", _pi_user_alias.clone(), _payment_id.clone());
     dto = match pi_approve(context.client(), &payment_id).await {
       Ok(c) => { 
-        println!("pi_payment_update, pi_approve with dto: {} - {} {}", _pi_user_alias.clone(), _payment_id.clone(), c.amount);
+        println!("pi_payment_update, pi_approve with dto: {} {}", _payment_id.clone(), c.amount);
         Some(c)
       },
       Err(_e) => None,
     };
   } else if !completed {
     if tx.is_some() {
-      println!("pi_payment_update, pi_complete: {} - {}, tx: {}", _pi_user_alias.clone(), _payment_id.clone(), tx.clone().unwrap());
+      println!("pi_payment_update, pi_complete: {}, tx: {}", _payment_id.clone(), tx.clone().unwrap());
       dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
         Ok(c) => {
           completed = true;
-          println!("pi_payment_update, pi_complete with dto: {} - {} {}", _pi_user_alias.clone(), _payment_id.clone(), c.amount);
+          println!("pi_payment_update, pi_complete with dto: {} {}", _payment_id.clone(), c.amount);
           Some(c)
         }
         Err(_e) => None,
@@ -267,21 +265,12 @@ pub async fn pi_payment_update(
       Person::update_kyced(context.pool(), person.unwrap().id).await;
     }
     _payment_dto = dto.unwrap();
-    println!("pi_payment_update, dto is_some: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
   }
 
   let create_at = match chrono::NaiveDateTime::parse_from_str(&_payment_dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z")
   {
       Ok(dt) => Some(dt),
       Err(_e) => {
-        // let err_type = format!(
-        //   "Pi Server: get payment datetime error: user {}, paymentid {} {} {}",
-        //   &pi_username,
-        //   &_payment_dto.identifier.clone(),
-        //   _payment_dto.created_at,
-        //   _e.to_string()
-        // );
-        //return Err(LemmyError::from_message(&err_type));
         None
       }
   };
@@ -348,6 +337,9 @@ pub async fn pi_payment_update(
         .user_cancelled(usercancelled)
         .build();
     payment_form.updated = Some(naive_now());
+    if refid.is_none() {
+      payment_form.metadata = _payment_dto.metadata;
+    }
     match _payment_dto.transaction {
       Some(tx) => {
         payment_form.tx_link = tx._link;
@@ -364,9 +356,9 @@ pub async fn pi_payment_update(
       if _payment_dto.memo.clone() == "page" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
-        let uuid = Uuid::parse_str(&comment.clone());
+        let uuid = refid.clone();
         match uuid {
-          Ok(u) => {
+          Some(u) => {
             let post_id = PostId(u);
             let updated_post = match Post::update_tx(context.pool(), post_id, &link.unwrap_or("".to_string())) .await
             {
@@ -380,18 +372,17 @@ pub async fn pi_payment_update(
               }
               Err(_e) => None,
             };
-          }
-          Err(e) => {
+          },
+          None => {
             //None
           }
         };
       } else if _payment_dto.memo.clone() == "note" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
-        // TODO: UUID check
-        let uuid = Uuid::parse_str(&comment.clone());
+        let uuid = refid.clone();
         match uuid {
-          Ok(u) => {
+          Some(u) => {
             let comment_id = CommentId(u);
             let updated_comment = match Comment::update_tx(context.pool(), comment_id, &link.unwrap_or("".to_string())).await
             {
@@ -405,8 +396,9 @@ pub async fn pi_payment_update(
               }
               Err(_e) => None,
             };
+          },
+          None => {
           }
-          Err(e) => {}
         };
       }
     }
@@ -416,7 +408,6 @@ pub async fn pi_payment_update(
     {
       Ok(payment) => {
         return Ok(payment)
-        //Some(payment)
       },
       Err(_e) => {
         let err_type = _e.to_string();

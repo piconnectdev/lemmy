@@ -9,7 +9,6 @@ use lemmy_db_schema::{
 
 use lemmy_utils::{error::LemmyError, settings::SETTINGS, ConnectionId};
 use lemmy_api_common::{context::LemmyContext};
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -52,6 +51,32 @@ impl PerformCrud for PiPaymentFound {
       }
     };
 
+    //let _tx = Some(data.txid.clone());
+    let approve = PiApprove {
+      domain: data.domain.clone(),
+      pi_token: data.pi_token.clone(),
+      pi_username: _pi_username.clone(),
+      pi_uid: _pi_uid.clone(),
+      paymentid: data.paymentid.clone(),
+      object_id: None,
+      comment: Some("PiPaymentFound".to_string()),
+      auth: data.auth.clone(),
+    };
+
+    let _payment = match pi_payment_update(context, &approve, None).await {
+      Ok(c) => c,
+      Err(e) => {
+        let err_type = e.to_string();
+        return Err(LemmyError::from_message(&err_type));
+      }
+    };
+
+    let payment = _payment.clone();
+    return Ok(PiPaymentFoundResponse {
+      id: payment.id,
+      paymentid: payment.identifier,
+    });
+
     //_pi_username = hide_username(&_pi_username.clone());
     
     let mut exist = false;
@@ -68,6 +93,7 @@ impl PerformCrud for PiPaymentFound {
     let mut completed = false;
     let mut finished = false;
     let mut cancelled = false;
+    let mut usercancelled = false;
     let mut txid: String = "".to_string();
     let mut txlink: String = "".to_string();
     let mut dto: Option<PiPaymentDto> = None;
@@ -94,6 +120,7 @@ impl PerformCrud for PiPaymentFound {
         completed = c.completed;
         cancelled = c.cancelled;
         finished = c.finished;
+        usercancelled = c.user_cancelled;
         txid = c.tx_id.clone();
         txlink = c.tx_link.clone();
         memo = c.memo.clone();
@@ -103,9 +130,7 @@ impl PerformCrud for PiPaymentFound {
     };
 
     if _payment.is_some() {
-      exist = true;
       updated = Some(naive_now());
-      //txid = payment.tx_id.clone();
     } else {
       exist = false;
     }
@@ -115,6 +140,7 @@ impl PerformCrud for PiPaymentFound {
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
+        usercancelled = c.status.user_cancelled;
         memo = c.memo.clone();
         dto_source = 1;
         c
@@ -135,7 +161,7 @@ impl PerformCrud for PiPaymentFound {
       println!("PiPaymentFound, cancelled: {} - {} ", _pi_username.clone(), data.paymentid.clone());
       let err_type = format!(
         "Pi Server: payment cancelled: user {}, paymentid {}",
-        &data.pi_username, &data.paymentid
+        &_pi_username, &data.paymentid
       );
       return Err(LemmyError::from_message(&err_type));
     }
@@ -243,8 +269,8 @@ impl PerformCrud for PiPaymentFound {
       .testnet( settings.pinetwork.pi_testnet)
       .finished( finished)
       .updated( updated)
-      .pi_uid( data.pi_uid)         //data.pi_uid
-      .pi_username( "".to_string()) //data.pi_username.clone(), Hide user name
+      .pi_uid( _pi_uid)         //data.pi_uid
+      .pi_username( _pi_username) //data.pi_username.clone(), Hide user name
       .comment( Some(_comment))     //"".to_string(),
 
       .identifier( data.paymentid.clone())
@@ -263,8 +289,6 @@ impl PerformCrud for PiPaymentFound {
       .tx_verified( false)
       .metadata( _payment_dto.metadata)
       .extras( None)
-      //tx_id:  _payment_dto.transaction.map(|tx| tx.txid),
-      //..PiPaymentForm::default()
       .build();
 
       match _payment_dto.transaction {
@@ -310,6 +334,8 @@ impl PerformCrud for PiPaymentFound {
       let mut payment_form = PiPaymentUpdateForm::builder()
               .completed(completed)
               .approved(approved)
+              .cancelled(cancelled)
+              .user_cancelled(usercancelled)
               .tx_id(txid)
               .tx_link(txlink)
               .build();
@@ -317,11 +343,6 @@ impl PerformCrud for PiPaymentFound {
       {
         Ok(payment) => Some(payment),
         Err(_e) => {
-          // let err_type = if e.to_string() == "value too long for type character varying(200)" {
-          //   "post_title_too_long"
-          // } else {
-          //   "couldnt_create_post"
-          // };
           let err_type = format!(
             "Error update payment: user {}, paymentid {} error: {}",
             &data.pi_username,

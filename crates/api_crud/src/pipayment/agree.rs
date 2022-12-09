@@ -6,21 +6,15 @@ use lemmy_api_common::{
   utils::{password_length_check},
 };
 use lemmy_db_schema::{
-  //impls::pipayment::PiPaymentModerator,
-  newtypes::*,
-  source::{person::*, pipayment::*, site::*},
+  source::{person::*, pipayment::*},
   traits::Crud,
 };
-use lemmy_db_views_actor::structs::PersonViewSafe;
 use lemmy_utils::{
   error::LemmyError,
-  settings::SETTINGS,
-  utils::{check_slurs, is_valid_actor_name},
   ConnectionId,
 };
 use lemmy_db_views::structs::SiteView;
-use lemmy_api_common::{websocket::{messages::CheckCaptcha}, context::LemmyContext};
-use sha2::{Digest, Sha256};
+use lemmy_api_common::{context::LemmyContext};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -101,8 +95,6 @@ impl PerformCrud for PiAgreeRegister {
     };
 
     if _payment.is_some() {
-      // Why here ????
-      let err_type = format!("Payment {} was approved", data.paymentid);
       return Ok(PiAgreeResponse {
         success: true,
         id: None,
@@ -222,9 +214,8 @@ impl PerformCrud for PiAgreeRegister {
       .testnet( context.settings().pinetwork.pi_testnet)
       .finished( false)
       .updated( None)
-      //.pi_uid( data.pi_uid)
-      .pi_uid( None)
-      .pi_username( "".to_string()) //data.pi_username.clone(), => Hide user info
+      .pi_uid( _pi_uid)
+      .pi_username( _pi_username) //data.pi_username.clone(), => Hide user info
       .comment( data.ea.comment.clone()) // Peer address
 
       .identifier( data.paymentid.clone())
