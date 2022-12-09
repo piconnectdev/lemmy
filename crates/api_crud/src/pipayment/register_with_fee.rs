@@ -17,7 +17,7 @@ use lemmy_utils::{
 };
 use crate::web3::ext::*;
 
-use super::client::pi_payment_update;
+use super::client::{pi_payment_update, pi_me};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegisterWithFee {
@@ -27,14 +27,8 @@ impl PerformCrud for PiRegisterWithFee {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
-    let settings = SETTINGS.to_owned();
     let data: &PiRegisterWithFee = &self;
     let ext_account = data.ea.clone();
-
-    // no email verification, or applications if the site is not setup yet
-    //let (mut email_verification, mut require_application) = (false, false);
-
-    //let mut result = true;
 
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
@@ -43,30 +37,52 @@ impl PerformCrud for PiRegisterWithFee {
       return Err(LemmyError::from_message("registration_closed"));
     }
     if local_site.site_setup {
-      if !settings.pi_enabled {
+      if !context.settings().pi_enabled {
         println!("PiRegisterWithFee: not pi_enabled: {} ", data.paymentid.clone());
         return Err(LemmyError::from_message("registration_disabled"));
       }
-      // if !settings.pinetwork.pi_allow_all {
+      // if !context.settings().pinetwork.pi_allow_all {
       //   return Err(LemmyError::from_message("registration_disabled"));
       // }
     }
-    //let payment_id = data.ea.signature.clone().unwrap_or_default();
-    let payment_id = data.paymentid.clone();
-    // TODO: Check paymentid complete
+
+    let _pi_token = ext_account.token.clone();
+    let mut _pi_username = ext_account.account.clone();
+    let mut _pi_uid = None;
+
+    let _payment_id = data.paymentid.clone();
+
+    // First, valid user token
+    let user_dto = match pi_me(context, &_pi_token.clone()).await {
+      Ok(dto) => {
+        _pi_username = dto.username.clone();
+        _pi_uid = Some(dto.uid.clone());
+        Some(dto)
+      }
+      Err(_e) => {
+        // Pi Server error
+        let err_type = format!(
+          "Pi Network Server Error: User not found: {}, error: {}",
+          &_pi_username.clone(),
+          _e.to_string()
+        );
+        return Err(LemmyError::from_message(&err_type));
+      }
+    };
+
     let approve = PiApprove {
       domain: data.domain.clone(),
-      pi_token: Some(ext_account.token.clone()),
-      pi_username: ext_account.account.clone(),
-      pi_uid: None, //ext_account.puid.clone(),
-      paymentid: payment_id.clone(),
+      pi_token: Some(_pi_token.clone()),
+      pi_username: _pi_username.clone(),
+      pi_uid: _pi_uid,
+      paymentid: _payment_id.clone(),
       
       person_id: None,
       comment: None,
       auth: None,
     };
 
-    println!("call pi_payment_update, PiApprove: {} - {} ", ext_account.account.clone(), payment_id.clone());
+    println!("call pi_payment_update: {} - {} ", _pi_username.clone(), _payment_id.clone());
     let payment = match pi_payment_update(context, &approve.clone(), Some(data.txid.clone())).await
     {
       Ok(p) => {
@@ -82,11 +98,11 @@ impl PerformCrud for PiRegisterWithFee {
       },
     };
 
-    let login_response = match create_external_account(context, &ext_account.account.clone(), &ext_account.clone(), &data.info.clone()).await
+    let login_response = match create_external_account(context, &_pi_username.clone(), &ext_account.clone(), &data.info.clone(), true).await
     {
       Ok(c) => c,
       Err(_e) => {
-        println!("PiRegisterWithFee: create_external_account: {} {} {}", data.paymentid.clone(), &ext_account.account.clone(), &data.info.username.clone());
+        println!("PiRegisterWithFee: create_external_account error: {} {} {}", &_pi_username.clone(), &data.info.username.clone(), data.paymentid.clone());
         return Err(LemmyError::from_message("registration_disabled"));
         //None
       },

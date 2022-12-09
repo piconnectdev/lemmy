@@ -1,4 +1,4 @@
-use crate::websocket::{
+use crate::{websocket::{
   chat_server::{ChatServer, SessionInfo},
   messages::{
     CaptchaItem,
@@ -21,9 +21,11 @@ use crate::websocket::{
     StandardMessage,
     TokenItem,
     CheckToken,
+    PiTokenItem,
+    CheckPiToken,
   },
   OperationType,
-};
+}, pipayment::PiUserDto};
 use actix::{Actor, Context, Handler, ResponseFuture};
 use lemmy_db_schema::utils::naive_now;
 use lemmy_utils::ConnectionId;
@@ -325,5 +327,29 @@ impl Handler<CheckToken> for ChatServer {
     self.tokens.retain(|x| x.uuid != msg.uuid);
 
     check
+  }
+}
+
+impl Handler<PiTokenItem> for ChatServer {
+  type Result = ();
+
+  fn handle(&mut self, msg: PiTokenItem, _: &mut Context<Self>) {
+    self.piTokens.push(msg);
+  }
+}
+
+impl Handler<CheckPiToken> for ChatServer {
+  type Result = Option<PiUserDto>;
+
+  fn handle(&mut self, msg: CheckPiToken, _: &mut Context<Self>) -> Self::Result {
+    // Remove all the ones that are past the expire time
+    self.piTokens.retain(|x| x.expires.gt(&naive_now()));
+
+    let mut iter = self.piTokens.iter();
+    //let dto = self.piTokens.iter().any(|r| r.uuid == msg.uuid,r);
+    match iter.find(|&x| x.uuid == msg.uuid){
+      Some(dto) => Some(dto.answer.clone()),
+      None => None,
+    }
   }
 }

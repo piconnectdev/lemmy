@@ -32,7 +32,6 @@ impl PerformCrud for PiAgreeRegister {
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
   ) -> Result<PiAgreeResponse, LemmyError> {
-    let settings = SETTINGS.to_owned();
     let data: &PiAgreeRegister = self;
 
     let site_view = SiteView::read_local(context.pool()).await?;
@@ -43,10 +42,10 @@ impl PerformCrud for PiAgreeRegister {
     }
 
     if local_site.site_setup {
-      if !settings.pi_enabled {
+      if !context.settings().pi_enabled {
         return Err(LemmyError::from_message("registration_disabled"));
       }
-      if !settings.pinetwork.pi_allow_all {
+      if !context.settings().pinetwork.pi_allow_all {
         return Err(LemmyError::from_message("registration_disabled"));
       }
     }
@@ -57,58 +56,30 @@ impl PerformCrud for PiAgreeRegister {
 
     password_length_check(&data.info.password)?;
 
-    // Check if there are admins. False if admins exist
-    // let no_admins = blocking(context.pool(), move |conn| {
-    //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
-    // })
-    // .await??;
-    //let no_admins = PersonViewSafe::admins(context.pool()).await.map(|a| a.is_empty()).unwrap();
-
-    // If its not the admin, check the captcha
-    // if local_site.site_setup && local_site.captcha_enabled {
-    //   let check = context
-    //     .chat_server()
-    //     .send(CheckCaptcha {
-    //       uuid: data
-    //         .info
-    //         .captcha_uuid
-    //         .to_owned()
-    //         .unwrap_or_else(|| "".to_string()),
-    //       answer: data
-    //         .info
-    //         .captcha_answer
-    //         .to_owned()
-    //         .unwrap_or_else(|| "".to_string()),
-    //     })
-    //     .await?;
-    //   if !check {
-    //     return Err(LemmyError::from_message("captcha_incorrect").into());
-    //   }
-    // }
-
-    // check_slurs(&data.info.username, &context.settings().slur_regex())?;
-
-    // if !is_valid_actor_name(
-    //   &data.info.username,
-    //   context.settings().actor_name_max_length,
-    // ) {
-    //   println!("Invalid username {}", &data.info.username);
-    //   return Err(LemmyError::from_message("agree:invalid_username"));
-    // }
-    //check_slurs_opt(&data.paymentid.unwrap(), &context.settings().slur_regex())?;
-    //check_slurs_opt(&data.info.username, &context.settings().slur_regex())?;
-
-    // Hide Pi user name, not store pi_uid
-    // let mut sha256 = Sha256::new();
-    // sha256.update(settings.pi_seed());
-    // sha256.update(data.pi_username.to_owned());
-    // let _pi_alias: String = format!("{:X}", sha256.finalize());
-    // let _pi_alias2 = _pi_alias.clone();
-    let _pi_alias = data.ea.account.to_owned();
-
+    let _pi_token = data.ea.token.clone();
+    let mut _pi_username = data.ea.account.to_owned();
+    let mut _pi_uid = None;
     let _payment_id = data.paymentid.to_owned();
-    let _pi_uid = data.ea.extra.clone();
+
     let _new_user = data.info.username.to_owned();
+
+    // First, valid user token
+    let user_dto = match pi_me(context, &_pi_token.clone()).await {
+      Ok(dto) => {
+        _pi_username = dto.username.clone();
+        _pi_uid = Some(dto.uid.clone());
+        Some(dto)
+      }
+      Err(_e) => {
+        // Pi Server error
+        let err_type = format!(
+          "Pi Network Server Error: User not found: {}, error: {}",
+          &data.ea.account,
+          _e.to_string()
+        );
+        return Err(LemmyError::from_message(&err_type));
+      }
+    };
 
     let mut approved = false;
     let mut completed = false;
@@ -140,7 +111,7 @@ impl PerformCrud for PiAgreeRegister {
       });
     }
 
-    let other_person = match Person::find_by_extra_name(context.pool(), &_pi_alias).await
+    let other_person = match Person::find_by_extra_name(context.pool(), &_pi_username.clone()).await
     {
       Ok(c) => Some(c),
       Err(_e) => None,
@@ -172,7 +143,7 @@ impl PerformCrud for PiAgreeRegister {
           None => {
             // Not allow change username ???
             let err_type = format!("Your account already exist: {}", pi.name);
-            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_alias.clone());
+            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -185,7 +156,7 @@ impl PerformCrud for PiAgreeRegister {
               "User {} is exist, create same user name is not allow!",
               &data.info.username
             );
-            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_alias.clone());
+            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -248,7 +219,7 @@ impl PerformCrud for PiAgreeRegister {
     let mut payment_form = PiPaymentInsertForm::builder()
       .person_id( None)
       .ref_id( refid)
-      .testnet( settings.pinetwork.pi_testnet)
+      .testnet( context.settings().pinetwork.pi_testnet)
       .finished( false)
       .updated( None)
       //.pi_uid( data.pi_uid)

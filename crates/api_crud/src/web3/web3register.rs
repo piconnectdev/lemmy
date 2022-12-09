@@ -101,7 +101,7 @@ impl PerformCrud for Web3Register {
       }  
     }
 
-    let login_response = match create_external_account(context, &ext_account.account.clone(), &ext_account, &data.info.clone()).await
+    let login_response = match create_external_account(context, &ext_account.account.clone(), &ext_account, &data.info.clone(), false).await
     {
       Ok(c) => c,
       Err(_e) => {

@@ -4,12 +4,9 @@ use lemmy_api_common::{
   person::{LoginResponse, Register},
   utils::{honeypot_check, password_length_check, local_site_to_slur_regex, send_new_applicant_email_to_admins,send_verification_email},
   utils::{
-    generate_followers_url,
     generate_inbox_url,
     generate_local_apub_endpoint,
     generate_shared_inbox_url,
-    get_local_user_view_from_jwt,
-    is_admin,
     EndpointType,
   },
   context::LemmyContext,
@@ -28,24 +25,21 @@ use lemmy_db_schema::{
   traits::{Crud}, aggregates::structs::PersonAggregates,
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
-use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   error::LemmyError,
-  settings::SETTINGS,
   utils::{check_slurs, eth_verify, is_valid_actor_name},
   ConnectionId,
 };
 
 
-pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, ea: &ExternalAccount, info: &Register) -> Result<LoginResponse, LemmyError> 
+pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, ea: &ExternalAccount, info: &Register, kyced: bool) -> Result<LoginResponse, LemmyError> 
 {
   let site_view = SiteView::read_local(context.pool()).await?;
   let local_site = site_view.local_site;
 
-  let settings = SETTINGS.to_owned();
   // no email verification, or applications if the site is not setup yet
   let (mut email_verification, mut require_application) = (false, false);
 
@@ -70,17 +64,6 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     return Err(LemmyError::from_message("passwords_dont_match"));
   }
 
-  // Check if there are admins. False if admins exist
-  // let no_admins = blocking(context.pool(), move |conn| {
-  //   PersonViewSafe::admins(conn).map(|a| a.is_empty())
-  // })
-  // .await??;
-  //let no_admins = PersonViewSafe::admins(conn).map(|a| a.is_empty()).await;
-  // let no_admins = PersonViewSafe::admins(context.pool()).await.map(|a| a.is_empty()).unwrap();
-  // If its not the admin, check the captcha
-  // If the site is set up, check the captcha
-  //if !no_admins && settings.captcha.enabled {
-
   if local_site.site_setup && local_site.captcha_enabled {
     let check = context
       .chat_server()
@@ -102,33 +85,57 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     }
   }
 
-  let slur_regex = local_site_to_slur_regex(&local_site);
-  check_slurs(&info.username, &slur_regex)?;
-  //check_slurs_opt(&info.answer, &slur_regex)?;
+  let _alias = name.clone();
+  let mut _new_user = info.username.to_owned();
+  let _new_password = info.password.to_owned();
+  let mut _person_id: PersonId;
+  let mut _exist = false;
 
+  let other_person = match Person::find_by_extra_name(context.pool(), &_alias.clone()).await
+  {
+    Ok(c) => {
+      _person_id = c.id.clone();
+      _new_user = c.name.clone();
+      _exist = true;
+      let mut ret = Some(c);
+      if kyced {
+        match Person::update_kyced(context.pool(), _person_id).await
+        {
+          Ok(p) => { 
+            ret = Some(p);            
+          },
+          Err(_e) => {            
+          },
+        };
+      }
+      ret      
+    },
+    Err(_e) => None,
+  };
+
+  if !_exist {
+    let slur_regex = local_site_to_slur_regex(&local_site);
+    check_slurs(&_new_user.clone(), &slur_regex)?;
+    //check_slurs_opt(&info.answer, &slur_regex)?;
+  }
+  
   let actor_keypair = generate_actor_keypair()?;
-  if !is_valid_actor_name(&info.username, local_site.actor_name_max_length as usize) {
-    println!(
-      "Invalid username {} {}",
-      name.to_owned(),
-      &info.username
-    );
-
-    return Err(LemmyError::from_message("register:invalid_username"));
+  if !_exist {
+    if !is_valid_actor_name(&_new_user.clone(), local_site.actor_name_max_length as usize) {
+      println!(
+        "Invalid username {} {}",
+        name.to_owned(),
+        &_new_user.clone()
+      );
+      return Err(LemmyError::from_message("register:invalid_username"));
+    }
   }
 
   let actor_id = generate_local_apub_endpoint(
     EndpointType::Person,
-    &info.username,
-    &settings.get_protocol_and_hostname(),
+    &_new_user.clone(),
+    &context.settings().get_protocol_and_hostname(),
   )?;
-
-  let _alias = name.clone();
-  let _new_user = info.username.to_owned();
-  let _new_password = info.password.to_owned();
-
-  //let person_id: PersonId;
-  let mut _exist = false;
 
   let person = match Person::find_by_name(context.pool(), &_new_user.clone()).await
   {
@@ -136,29 +143,20 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     Err(_e) => None,
   };
 
-  let other_person = match Person::find_by_extra_name(context.pool(), &_alias.clone()).await
-  {
-    Ok(c) => {
-      //person_id = c.id.clone();
-      Some(c)
-    },
-    Err(_e) => None,
-  };
-
   let mut change_password = false;
   match other_person {
     Some(ref op) => {
       //person_id = op.id.clone();
-      _exist = true;
-      change_password = true;
+      //_exist = true;
+      //change_password = true;
       match person {
         Some(other) => {
           if op.external_id != other.external_id {
             let err_type = format!(
-              "Web3Register: User {} is exist and belong to other Web3 Account ",
-              &info.username
+              "External user {} is exist and belong to other account ",
+              &_new_user.clone()
             );
-            println!("{} {} {}", name.clone(), err_type, &_alias.clone());
+            println!("{} {} {}", name.clone(), &_new_user.clone(), err_type);
             return Err(LemmyError::from_message(&err_type).into());
           } else {
             // Same name and account: change password ???
@@ -167,10 +165,8 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
         }
         None => {
           change_password = true;
-          // Not allow change username
-          let err_type = format!("Web3Register: You already have user name {}, change password", op.name);
-          println!("{} {} {}", name.clone(), err_type, &_alias.clone());
-          let _result = false;
+          let err_type = format!("External user: You already have user name {}, change password", op.name);
+          println!("{} {} {}", name.clone(), &_new_user.clone(), err_type);
         }
       };
     }
@@ -179,9 +175,9 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
         Some(_other) => {
           let err_type = format!(
             "User {} is exist and belong to other user",
-            &info.username.clone()
+            &_new_user.clone()
           );
-          println!("{} {} {}", _alias.clone(), err_type, &info.username.clone());
+          println!("{} {} {}", _alias.clone(), err_type, &_new_user.clone());
           return Err(LemmyError::from_message(&err_type).into());
         }
         None => {
@@ -204,9 +200,9 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
       Ok(lcu) => lcu,
       Err(_e) => {
         let err_type = format!(
-          "Web3Register: Update local user not found {} {} {}",
-          &info.username,
-          &ea.account.clone(),
+          "External: Update local user not found {} {} {}",
+          &_new_user.clone(),
+          &name.clone(),
           _e.to_string()
         );
         return Err(LemmyError::from_message(&err_type).into());
@@ -220,8 +216,8 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
       Ok(chp) => chp,
       Err(_e) => {
         let err_type = format!(
-          "Web3Register: Update local user password error {} {} {}",
-          &info.username,
+          "External: Update local user password error {} {} {}",
+          &_new_user.clone(),
           &name.clone(),
           _e.to_string()
         );
@@ -245,7 +241,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
   // We have to create both a person, and local_user
   // Register the new person
   let person_form = PersonInsertForm::builder()
-    .name(info.username.clone())
+    .name(_new_user.clone())
     .actor_id(Some(actor_id.clone()))
     .private_key(Some(actor_keypair.private_key))
     .public_key(actor_keypair.public_key)
@@ -255,6 +251,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     .admin(Some(!local_site.site_setup))
     .instance_id(site_view.site.instance_id)
     .external_id(Some(_alias.clone().to_owned()))
+    .verified(kyced)
     .build();
 
 
@@ -263,8 +260,8 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     Ok(p) => p,
     Err(_e) => {
       let err_type = format!(
-        "Web3Register: user_already_exists: {} {}, exists{},  err:{}",
-        &info.username,
+        "External: user_already_exists: {} {}, exists{},  err:{}",
+        &_new_user.clone(),
         _alias.clone(),
         _exist,
         _e.to_string()

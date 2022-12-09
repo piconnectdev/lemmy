@@ -56,6 +56,12 @@ impl PerformCrud for CreateCommunity {
         "only_admins_can_create_communities",
       ));
     }
+    
+    if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
+      return Err(LemmyError::from_message(
+        "only_admins_can_create_communities",
+      ));
+    }
 
     // Check to make sure the icon and banners are urls
     let icon = diesel_option_overwrite_to_url_create(&data.icon)?;

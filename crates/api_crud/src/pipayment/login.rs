@@ -34,10 +34,8 @@ use lemmy_db_views::structs::{LocalUserView, SiteView};
 use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
-  apub::generate_actor_keypair,
   claims::Claims,
   error::LemmyError,
-  settings::SETTINGS,
   utils::{check_slurs, is_valid_actor_name},
   ConnectionId,
 };
@@ -57,7 +55,6 @@ impl PerformCrud for PiLogin {
     // Call login from client after Pi.authenticate
 
     let data: &PiLogin = &self;
-    let settings = SETTINGS.to_owned();
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
@@ -65,7 +62,7 @@ impl PerformCrud for PiLogin {
       //return Err(LemmyError::from_message("registration_closed"));
     }
 
-    if !settings.pinetwork.pi_free_login {
+    if !context.settings().pinetwork.pi_free_login {
       //return Err(LemmyError::from_message("registration_closed"));
     }
     // Hide Pi user name, not store pi_uid
@@ -81,7 +78,7 @@ impl PerformCrud for PiLogin {
     );
 
     // First, valid user token
-    let user_dto = match pi_me(context.client(), &_pi_token.clone()).await {
+    let user_dto = match pi_me(context, &_pi_token.clone()).await {
       Ok(dto) => {
         _pi_username = dto.username.clone();
         _pi_uid = Some(dto.uid.clone());

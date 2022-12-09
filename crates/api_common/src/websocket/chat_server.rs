@@ -3,13 +3,13 @@ use crate::{
   context::LemmyContext,
   post::PostResponse,
   websocket::{
-    messages::{CaptchaItem, StandardMessage, WsMessage, TokenItem},
+    messages::{CaptchaItem, StandardMessage, WsMessage, TokenItem, PiTokenItem},
     serialize_websocket_message,
     OperationType,
     UserOperation,
     UserOperationApub,
     UserOperationCrud,
-  },
+  }, pipayment::PiUserDto,
 };
 use actix::prelude::*;
 use anyhow::Context as acontext;
@@ -94,6 +94,9 @@ pub struct ChatServer {
   /// A list of the current tokens
   pub(super) tokens: Vec<TokenItem>,
 
+    /// A list of the current tokens
+  pub(super) piTokens: Vec<PiTokenItem>,
+
   message_handler: MessageHandlerType,
   message_handler_crud: MessageHandlerCrudType,
   message_handler_apub: MessageHandlerApubType,
@@ -134,6 +137,7 @@ impl ChatServer {
       pool,
       captchas: Vec::new(),
       tokens: Vec::new(),
+      piTokens: Vec::new(),
       message_handler,
       message_handler_crud,
       message_handler_apub,

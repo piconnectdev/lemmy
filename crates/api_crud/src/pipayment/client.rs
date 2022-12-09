@@ -1,3 +1,5 @@
+use chrono::Duration;
+
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
 use lemmy_db_schema::{
@@ -7,7 +9,7 @@ use lemmy_db_schema::{
   utils::naive_now,
 };
 use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS, REQWEST_TIMEOUT};
-use lemmy_api_common::{context::LemmyContext};
+use lemmy_api_common::{context::LemmyContext, websocket::messages::{CheckPiToken,PiTokenItem}};
 use reqwest_middleware::{ ClientWithMiddleware};
 
 use sha2::{Digest, Sha256};
@@ -99,10 +101,23 @@ pub async fn pi_complete(
   Ok(res)
 }
 
-pub async fn pi_me(client: &ClientWithMiddleware, key: &str) -> Result<PiUserDto, LemmyError> {
+pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto, LemmyError> {
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/me", settings.pi_api_host());
-
+  let client = context.client();
+   match context.chat_server().send(CheckPiToken {
+          uuid: key.to_string().clone(),answer: "".to_string(),
+        })
+        .await?
+        {
+          Some(pu) => {
+            println!("Found PiUserDto in cache {}", pu.username.clone());
+            return Ok(pu)
+          },
+          None => {
+          }
+        }
+      
   let response = retry(|| {
     client
       .get(&fetch_url)
@@ -116,6 +131,15 @@ pub async fn pi_me(client: &ClientWithMiddleware, key: &str) -> Result<PiUserDto
     .json::<PiUserDto>()
     .await
     .map_err(|e| LemmyError::from_error_message(e, "Fetch /me error"))?;
+    
+  let token_item = PiTokenItem {
+    answer: res.clone(),
+    uuid: key.to_string(),
+    expires: naive_now() + Duration::days(5), // expires in 5 days
+  };
+  // Stores the PiTokenItem item on the queue
+  context.chat_server().do_send(token_item);
+
   Ok(res)
 }
 

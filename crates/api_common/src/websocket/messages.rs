@@ -1,4 +1,4 @@
-use crate::{comment::CommentResponse, post::PostResponse, websocket::UserOperation};
+use crate::{comment::CommentResponse, post::PostResponse, websocket::UserOperation, pipayment::PiUserDto};
 use actix::{prelude::*, Recipient};
 use lemmy_db_schema::newtypes::{CommunityId, LocalUserId, PostId};
 use lemmy_utils::{ConnectionId, IpAddr};
@@ -160,6 +160,21 @@ pub struct TokenItem {
 #[derive(Message)]
 #[rtype(bool)]
 pub struct CheckToken {
+  pub uuid: String,
+  pub answer: String,
+}
+
+#[derive(Message, Debug)]
+#[rtype(result = "()")]
+pub struct PiTokenItem {
+  pub uuid: String,
+  pub answer: PiUserDto,
+  pub expires: chrono::NaiveDateTime,
+}
+
+#[derive(Message)]
+#[rtype(result = "Option<PiUserDto>")]
+pub struct CheckPiToken {
   pub uuid: String,
   pub answer: String,
 }

@@ -6,21 +6,21 @@ use lemmy_db_views_actor::person_view::*;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_api_common::{context::LemmyContext};
 
-#[async_trait::async_trait(?Send)]
-impl PerformCrud for PiKey {
-  type Response = PiKeyResponse;
+// #[async_trait::async_trait(?Send)]
+// impl PerformCrud for PiKey {
+//   type Response = PiKeyResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<PiKeyResponse, LemmyError> {
-    let data: &PiKey = self;
+//   async fn perform(
+//     &self,
+//     context: &Data<LemmyContext>,
+//     _websocket_id: Option<ConnectionId>,
+//   ) -> Result<PiKeyResponse, LemmyError> {
+//     let data: &PiKey = self;
 
-    let res = PiKeyResponse {
-      success: true,
-      id: None,
-    };
-    Ok(res)
-  }
-}
+//     let res = PiKeyResponse {
+//       success: true,
+//       id: None,
+//     };
+//     Ok(res)
+//   }
+// }

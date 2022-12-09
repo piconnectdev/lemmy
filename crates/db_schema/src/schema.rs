@@ -327,7 +327,7 @@ table! {
         instance_id -> Uuid,	
         external_id -> Nullable<Text>,
         //private_seeds -> Nullable<Text>,
-        //verified -> Bool,
+        verified -> Bool,
         pi_address -> Nullable<Text>,
         web3_address -> Nullable<Text>,
         pol_address -> Nullable<Text>,

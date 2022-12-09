@@ -14,7 +14,7 @@ use crate::{
     updated,
     external_id,
     //private_seeds,
-    // verified,
+    verified,
     // pi_address,
     // web3_address,
     // pol_address,
@@ -61,6 +61,7 @@ mod safe_type {
       shared_inbox_url,
       updated,
       external_id,
+      verified,
       pi_address,
       web3_address,
       pol_address,
@@ -96,6 +97,7 @@ mod safe_type {
     ban_expires,
     instance_id,
     external_id,
+    verified,
     pi_address,
     web3_address,
     pol_address,
@@ -131,6 +133,7 @@ mod safe_type {
         ban_expires,
         instance_id,
         external_id,
+        verified,
         pi_address,
         web3_address,
         pol_address,
@@ -233,6 +236,17 @@ impl Person {
       .await
   }
 
+  pub async fn update_kyced(
+    pool: &DbPool,
+    person_id: PersonId,
+  ) -> Result<Self, Error> {
+    use crate::schema::person::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person.find(person_id))
+      .set(verified.eq(true))
+      .get_result::<Self>(conn)
+      .await
+  }
 
 
 }
@@ -443,6 +457,7 @@ mod tests {
       ban_expires: None,
       instance_id: inserted_instance.id,
       external_id: None,
+      verified: false,
       pi_address: None,
       web3_address: None,
       pol_address: None,
