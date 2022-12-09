@@ -6,7 +6,7 @@ use lemmy_db_schema::{
   newtypes::{CommentId, *},
   source::{comment::*, pipayment::*, post::*, person::*},
   traits::{Crud, Signable } ,
-  utils::naive_now,
+  utils::naive_now, schema::pipayment::user_cancelled,
 };
 use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS, REQWEST_TIMEOUT};
 use lemmy_api_common::{context::LemmyContext, websocket::messages::{CheckPiToken,PiTokenItem}};
@@ -178,6 +178,7 @@ pub async fn pi_payment_update(
   let mut completed = false;
   let mut finished = false;
   let mut cancelled = false;
+  let mut usercancelled = false;
   let mut txid: String = "".to_string();
   let mut txlink: String = "".to_string();
   let mut dto: Option<PiPaymentDto> = None;
@@ -208,13 +209,14 @@ pub async fn pi_payment_update(
     }
   }
   if fetch_pi_server && !finished {
-    println!("pi_payment_update, load payment from server: {} - {} ", _pi_user_alias.clone(), _payment_id.clone());
-    let dto_read = match pi_payment(context.client(), &_payment_id.clone()).await {
+    dto = match pi_payment(context.client(), &_payment_id.clone()).await {
       Ok(c) => {
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
-        c
+        usercancelled = c.status.user_cancelled;
+        println!("pi_payment_update, load payment from server: {} - {} {} {} {} {}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled);
+        Some(c)
       }
       Err(_e) => {
         // Pi Server error
@@ -239,15 +241,17 @@ pub async fn pi_payment_update(
       Err(_e) => None,
     };
   } else if !completed {
-    println!("pi_payment_update, pi_complete: {} - {} ", _pi_user_alias.clone(), _payment_id.clone());
-    dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
-      Ok(c) => {
-        completed = true;
-        println!("pi_payment_update, pi_complete with dto: {} - {} {}", _pi_user_alias.clone(), _payment_id.clone(), c.amount);
-        Some(c)
-      }
-      Err(_e) => None,
-    };
+    if tx.is_some() {
+      println!("pi_payment_update, pi_complete: {} - {}, tx: {}", _pi_user_alias.clone(), _payment_id.clone(), tx.clone().unwrap());
+      dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
+        Ok(c) => {
+          completed = true;
+          println!("pi_payment_update, pi_complete with dto: {} - {} {}", _pi_user_alias.clone(), _payment_id.clone(), c.amount);
+          Some(c)
+        }
+        Err(_e) => None,
+      };
+    }
   }
 
   if !exist || !approved {
@@ -341,6 +345,7 @@ pub async fn pi_payment_update(
         .approved(approved)
         .completed(completed)
         .cancelled(cancelled)
+        .user_cancelled(usercancelled)
         .build();
     payment_form.updated = Some(naive_now());
     match _payment_dto.transaction {
@@ -352,11 +357,10 @@ pub async fn pi_payment_update(
       }
       None => {}
     }
-    
+    payment_form.finished = true;
     //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
     // TODO: UUID check
-    if completed {
-      payment_form.finished = true;
+    if completed {      
       if _payment_dto.memo.clone() == "page" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
