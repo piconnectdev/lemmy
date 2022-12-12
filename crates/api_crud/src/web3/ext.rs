@@ -9,8 +9,7 @@ use lemmy_api_common::{
     generate_shared_inbox_url,
     EndpointType,
   },
-  context::LemmyContext,
-  websocket::messages::{CheckCaptcha, CheckToken},
+  context::LemmyContext,  
   web3::*,
 };
 
@@ -66,20 +65,10 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
 
   if local_site.site_setup && local_site.captcha_enabled {
     let check = context
-      .chat_server()
-      .send(CheckCaptcha {
-        uuid:
-          info
-          .captcha_uuid
-          .to_owned()
-          .unwrap_or_else(|| "".to_string()),
-        answer:
-          info
-          .captcha_answer
-          .to_owned()
-          .unwrap_or_else(|| "".to_string()),
-      })
-      .await?;
+      .chat_server().check_captcha(
+        info.captcha_uuid.to_owned().unwrap_or_else(|| "".to_string()),
+        info.captcha_answer.to_owned().unwrap_or_else(|| "".to_string())
+      )?;
     if !check {
       return Err(LemmyError::from_message("captcha_incorrect").into());
     }
@@ -251,7 +240,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     .admin(Some(!local_site.site_setup))
     .instance_id(site_view.site.instance_id)
     .external_id(Some(_alias.clone().to_owned()))
-    .verified(kyced)
+    //.verified(kyced)
     .build();
 
 

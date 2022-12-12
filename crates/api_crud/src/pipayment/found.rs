@@ -82,9 +82,9 @@ impl PerformCrud for PiPaymentFound {
     let mut exist = false;
     let mut payment_id: PiPaymentId;
     let payment;
-    let mut comment: String = "".to_string();
+    let mut notes: String = "".to_string();
     let mut memo: String;
-    let mut ref_id: Option<Uuid> = None;
+    let mut object_id: Option<Uuid> = None;
     let mut updated: Option<chrono::NaiveDateTime> = None;
 
     let mut dto_source: i32 = 0;
@@ -113,8 +113,8 @@ impl PerformCrud for PiPaymentFound {
       Ok(c) => {
         exist = true;
         payment_id = c.id;
-        comment = c.comment.clone().unwrap_or_default();
-        ref_id = c.ref_id;
+        notes = c.comment.clone().unwrap_or_default();
+        object_id = c.ref_id;
 
         approved = c.approved;
         completed = c.completed;
@@ -258,38 +258,41 @@ impl PerformCrud for PiPaymentFound {
       dto_source,
       data.paymentid.clone(),
       memo.clone(),
-      comment
+      notes
     );
 
 
     if !exist {
       let mut payment_form = PiPaymentInsertForm::builder()
-      .person_id( None)
-      .ref_id( ref_id.clone())
-      .testnet( settings.pinetwork.pi_testnet)
-      .finished( finished)
-      .updated( updated)
-      .pi_uid( _pi_uid)         //data.pi_uid
-      .pi_username( _pi_username) //data.pi_username.clone(), Hide user name
-      .comment( Some(_comment))     //"".to_string(),
-
-      .identifier( data.paymentid.clone())
-      .user_uid( _payment_dto.user_uid.clone()) //"".to_string(), //_payment_dto.user_uid,
-      .amount( _payment_dto.amount)
-      .memo( memo)
-      .to_address( _payment_dto.to_address)
-      .created_at( create_at)
-      .approved( _payment_dto.status.developer_approved)
-      .verified( _payment_dto.status.transaction_verified)
-      .completed( _payment_dto.status.developer_completed)
-      .cancelled( _payment_dto.status.cancelled)
-      .user_cancelled( _payment_dto.status.user_cancelled)
-      .tx_link( "".to_string())
-      .tx_id( "".to_string())
-      .tx_verified( false)
-      .metadata( _payment_dto.metadata)
-      .extras( None)
-      .build();
+        //.domain(approve.domain.clone())
+        .person_id( None)
+        //.obj_cat(None)     //"".to_string(),
+        //.obj_id( object_id.clone())
+        //.notes( Some(_comment)) 
+        .comment( Some(_comment))
+        .ref_id( object_id.clone())
+        .testnet( settings.pinetwork.pi_testnet)
+        .finished( finished)
+        .updated( updated)
+        .pi_uid( _pi_uid)         //data.pi_uid
+        .pi_username( _pi_username) //data.pi_username.clone(), Hide user name
+        .identifier( data.paymentid.clone())
+        .user_uid( _payment_dto.user_uid.clone()) //"".to_string(), //_payment_dto.user_uid,
+        .amount( _payment_dto.amount)
+        .memo( memo)
+        .to_address( _payment_dto.to_address)
+        .created_at( create_at)
+        .approved( _payment_dto.status.developer_approved)
+        .verified( _payment_dto.status.transaction_verified)
+        .completed( _payment_dto.status.developer_completed)
+        .cancelled( _payment_dto.status.cancelled)
+        .user_cancelled( _payment_dto.status.user_cancelled)
+        .tx_link( "".to_string())
+        .tx_id( "".to_string())
+        .tx_verified( false)
+        .metadata( _payment_dto.metadata)
+        .extras( None)
+        .build();
 
       match _payment_dto.transaction {
         Some(tx) => {

@@ -5,14 +5,9 @@ use lemmy_api_common::{context::LemmyContext};
 use lemmy_api_common::{
   pipayment::*,
 };
-use lemmy_db_schema::{
-  source::{*
-  },
-};
 use lemmy_db_views::structs::SiteView;
 use lemmy_utils::{
   error::LemmyError,
-  settings::SETTINGS,
   ConnectionId,
 };
 use crate::web3::ext::*;
