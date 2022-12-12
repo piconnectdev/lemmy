@@ -868,6 +868,7 @@ mod tests {
         ban_expires: None,
         instance_id: data.inserted_instance.id,
         external_id: None,
+        verified: false,
         pi_address: None,
         web3_address: None,
         pol_address: None,

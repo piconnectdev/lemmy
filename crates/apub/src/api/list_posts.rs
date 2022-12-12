@@ -14,7 +14,6 @@ use lemmy_api_common::{
   },
 };
 use lemmy_db_schema::{
-  newtypes::CommunityId,
   source::{community::Community, local_site::LocalSite},
   traits::DeleteableOrRemoveable,
 };

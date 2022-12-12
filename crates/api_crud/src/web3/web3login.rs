@@ -6,7 +6,6 @@ use lemmy_api_common::{
   sensitive::Sensitive,
   utils::{password_length_check},
   context::LemmyContext,
-  websocket::messages::CheckToken,
   web3::*,
 };
 use lemmy_db_schema::{
@@ -111,12 +110,7 @@ impl PerformCrud for Web3Login {
     // If its not the admin, check the token
     if local_site.site_setup {
       let check = context
-        .chat_server()
-        .send(CheckToken {
-          uuid: data.token.clone(),
-          answer: "".to_string(),
-        })
-        .await?;
+        .chat_server().check_token(data.token.clone(), "".to_string())?;
       if !check {
         return Err(LemmyError::from_message("token_incorrect"));
       }

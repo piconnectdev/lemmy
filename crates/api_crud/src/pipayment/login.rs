@@ -72,8 +72,8 @@ impl PerformCrud for PiLogin {
 
     println!(
       "PiLogin is processing for {} {} {} ",
-      _pi_uid.unwrap(),
       _pi_username.clone(),
+      _pi_uid.unwrap(),
       _pi_token.clone()
     );
 

@@ -778,25 +778,26 @@ table! {
 table! {
     pipayment (id) {
         id -> Uuid,
+        domain -> Nullable<Text>, 
+        instance_id -> Nullable<Uuid>, // WePi user's id
         person_id -> Nullable<Uuid>, // WePi user's id
-        ref_id -> Nullable<Uuid>,    // Captchar id
         testnet -> Bool,
-        finished -> Bool,
         published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        comment -> Nullable<Text>, 
-        //object_type -> Nullable<Text>,  // register - page - note - message - person - instance - group
-        //object_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
-       
-        pi_uid -> Nullable<Uuid>,   // UserDTO - uid
+        object_cat -> Nullable<Text>,  // register - page - note - message - person - instance - group
+        object_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
+        
         pi_username -> Text,        // UserDTO - username
+        pi_uid -> Nullable<Uuid>,   // UserDTO - uid
+        finished -> Bool,
+        updated -> Nullable<Timestamp>,
+        other_id -> Nullable<Uuid>,    // Captchar id
+
         identifier -> Text,         // PaymentDto - identifier
         user_uid -> Text,           // PaymentDto - user_uid
         amount -> Double,
         memo -> Text,
         to_address -> Text,
         created_at -> Nullable<Timestamp>,
-
         approved -> Bool,
         verified -> Bool,
         completed -> Bool,
@@ -807,6 +808,8 @@ table! {
         tx_id -> Text,
         metadata -> Nullable<Jsonb>,
         extras -> Nullable<Jsonb>,
+        notes -> Nullable<Text>, 
+       
     }
 }
 

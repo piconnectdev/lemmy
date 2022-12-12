@@ -8,10 +8,8 @@ use lemmy_api_common::{
   community::{GetCommunity, GetCommunityResponse},
   context::LemmyContext,
   utils::{check_private_instance, get_local_user_view_from_jwt_opt},
-  websocket::messages::GetCommunityUsersOnline,
 };
 use lemmy_db_schema::{
-  newtypes::CommunityId,
   impls::actor_language::default_post_language,
   source::{
     actor_language::CommunityLanguage,
@@ -20,7 +18,6 @@ use lemmy_db_schema::{
     site::Site,
   },
   traits::DeleteableOrRemoveable,
-  traits::ApubActor,
 };
 use lemmy_db_views_actor::structs::{CommunityModeratorView, CommunityView};
 use lemmy_utils::{error::LemmyError, ConnectionId};
@@ -103,9 +100,7 @@ impl PerformApub for GetCommunity {
 
     let online = context
       .chat_server()
-      .send(GetCommunityUsersOnline { community_id })
-      .await
-      .unwrap_or(1);
+      .get_community_users_online(community_id)?;
 
     let site_id =
       Site::instance_actor_id_from_url(community_view.community.actor_id.clone().into());

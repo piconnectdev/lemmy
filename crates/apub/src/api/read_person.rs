@@ -6,14 +6,12 @@ use lemmy_api_common::{
   utils::{check_private_instance, get_local_user_view_from_jwt_opt},
 };
 use lemmy_db_schema::{
-  newtypes::PersonId,
   source::{local_site::LocalSite, person::Person},
   utils::post_to_comment_sort_type,
 };
 use lemmy_db_views::{comment_view::CommentQuery, post_view::PostQuery};
 use lemmy_db_views_actor::structs::{CommunityModeratorView, PersonViewSafe};
 use lemmy_utils::{error::LemmyError, ConnectionId};
-use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformApub for GetPersonDetails {

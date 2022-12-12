@@ -9,7 +9,7 @@ use lemmy_db_schema::{
   utils::naive_now, schema::pipayment::user_cancelled,
 };
 use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS, REQWEST_TIMEOUT};
-use lemmy_api_common::{context::LemmyContext, websocket::messages::{CheckPiToken,PiTokenItem}};
+use lemmy_api_common::{context::LemmyContext, websocket::structs::PiTokenItem};
 use reqwest_middleware::{ ClientWithMiddleware};
 
 use sha2::{Digest, Sha256};
@@ -105,14 +105,11 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/me", settings.pi_api_host());
   let client = context.client();
-   match context.chat_server().send(CheckPiToken {
-          uuid: key.to_string().clone(),answer: "".to_string(),
-        })
-        .await?
+   match context.chat_server().check_pi_token(key.to_string().clone(), "".to_string())?
         {
-          Some(pu) => {
-            println!("Found PiUserDto in cache {}", pu.username.clone());
-            return Ok(pu)
+          Some(p) => {
+            println!("Found PiUserDto in cache {} {}", p.username.clone(), p.uid.clone());
+            return Ok(p)
           },
           None => {
           }
@@ -138,7 +135,7 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
     expires: naive_now() + Duration::days(3), // expires in 5 days
   };
   // Stores the PiTokenItem item on the queue
-  context.chat_server().do_send(token_item);
+  context.chat_server().add_pi_token(token_item);
 
   Ok(res)
 }
@@ -277,36 +274,39 @@ pub async fn pi_payment_update(
 
   completed = _payment_dto.status.developer_completed.clone();
   
-  let refid = approve.object_id.clone();
+  let object_id = approve.object_id.clone();
   if !exist {
     println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
-    .person_id( person_id.clone())
-    .testnet( settings.pinetwork.pi_testnet)
-    .finished( false)
-    .updated( None)
-    .pi_uid( _pi_uid)
-    .pi_username( _pi_user_alias.clone())
-    .comment( Some(comment))
-    .ref_id(refid)
-    
-    .identifier( payment_id.clone())
-    .user_uid( _payment_dto.user_uid)
-    .amount( _payment_dto.amount)
-    .memo( _payment_dto.memo.clone())
-    .to_address( _payment_dto.to_address)
-    .created_at( create_at)
-    .approved( _payment_dto.status.developer_approved)
-    .verified( _payment_dto.status.transaction_verified)
-    .completed( _payment_dto.status.developer_completed)
-    .cancelled( _payment_dto.status.cancelled)
-    .user_cancelled( _payment_dto.status.user_cancelled)
-    .tx_link("".to_string())
-    .tx_id( "".to_string())
-    .tx_verified( false)
-    .metadata( None) //_payment_dto.metadata,
-    .extras( None)
-    .build();
+      .domain(approve.domain.clone())
+      .instance_id(None)
+      .person_id( person_id.clone())
+      .testnet( settings.pinetwork.pi_testnet)
+      .object_cat(Some(comment))
+      .object_id(object_id)
+      .finished( false)
+      .updated( None)
+      .pi_uid( _pi_uid)
+      .pi_username( _pi_user_alias.clone())      
+      .other_id(None)
+      .identifier( payment_id.clone())
+      .user_uid( _payment_dto.user_uid)
+      .amount( _payment_dto.amount)
+      .memo( _payment_dto.memo.clone())
+      .to_address( _payment_dto.to_address)
+      .created_at( create_at)
+      .approved( _payment_dto.status.developer_approved)
+      .verified( _payment_dto.status.transaction_verified)
+      .completed( _payment_dto.status.developer_completed)
+      .cancelled( _payment_dto.status.cancelled)
+      .user_cancelled( _payment_dto.status.user_cancelled)
+      .tx_link("".to_string())
+      .tx_id( "".to_string())
+      .tx_verified( false)
+      .metadata( None) //_payment_dto.metadata,
+      .extras( None)
+      .notes(None)
+      .build();
 
     match _payment_dto.transaction {
       Some(tx) => {
@@ -337,7 +337,7 @@ pub async fn pi_payment_update(
         .user_cancelled(usercancelled)
         .build();
     payment_form.updated = Some(naive_now());
-    if refid.is_none() {
+    if object_id.is_none() {
       payment_form.metadata = _payment_dto.metadata;
     }
     match _payment_dto.transaction {
@@ -356,7 +356,7 @@ pub async fn pi_payment_update(
       if _payment_dto.memo.clone() == "page" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
-        let uuid = refid.clone();
+        let uuid = object_id.clone();
         match uuid {
           Some(u) => {
             let post_id = PostId(u);
@@ -380,7 +380,7 @@ pub async fn pi_payment_update(
       } else if _payment_dto.memo.clone() == "note" {
         let link = Some(payment_form.tx_link.clone());
         let link2 = payment_form.tx_link.clone();
-        let uuid = refid.clone();
+        let uuid = object_id.clone();
         match uuid {
           Some(u) => {
             let comment_id = CommentId(u);

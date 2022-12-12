@@ -1,4 +1,5 @@
 use crate::sensitive::Sensitive;
+use crate::pipayment::PiUserDto;
 use lemmy_db_schema::newtypes::{CommunityId, PostId};
 use serde::{Deserialize, Serialize};
 
@@ -40,4 +41,25 @@ pub struct PostJoin {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PostJoinResponse {
   pub joined: bool,
+}
+
+#[derive(Debug)]
+pub struct CaptchaItem {
+  pub uuid: String,
+  pub answer: String,
+  pub expires: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct TokenItem {
+  pub uuid: String,
+  pub answer: String,
+  pub expires: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct PiTokenItem {
+  pub uuid: String,
+  pub answer: PiUserDto,
+  pub expires: chrono::NaiveDateTime,
 }

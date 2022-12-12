@@ -130,9 +130,10 @@ use lemmy_api_common::{
     PiPaymentFound, 
     PiAgreeResponse, 
     PiApproveResponse,
-    PiRegisterResponse,
     PiTipResponse, 
-    PiPaymentFoundResponse, PiKey, PiKeyResponse,
+    PiPaymentFoundResponse, 
+    PiKey, 
+    PiKeyResponse,
   },
 };
 
