@@ -51,11 +51,11 @@ impl PerformCrud for PiAgreeRegister {
     password_length_check(&data.info.password)?;
 
     let _pi_token = data.ea.token.clone();
-    let mut _pi_username = data.ea.account.to_owned();
+    let mut _pi_username = data.ea.account.clone();
     let mut _pi_uid = None;
-    let _payment_id = data.paymentid.to_owned();
+    let _payment_id = data.paymentid.clone();
 
-    let _new_user = data.info.username.to_owned();
+    let _new_user = data.info.username.clone();
 
     // First, valid user token
     let user_dto = match pi_me(context, &_pi_token.clone()).await {
@@ -160,6 +160,7 @@ impl PerformCrud for PiAgreeRegister {
       }
     }
 
+    println!("PiPaymentAgree: {} {}", _pi_username.clone(), data.paymentid.clone());
     dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
       Ok(c) => Some(c),
       Err(_e) => {
@@ -209,7 +210,7 @@ impl PerformCrud for PiAgreeRegister {
     };
 
     let mut payment_form = PiPaymentInsertForm::builder()
-      //.domain(data.domain.clone())
+      .domain(data.domain.clone())
       //.instance_id(None)
       .person_id( None)
       //.obj_cat(data.ea.comment.clone())

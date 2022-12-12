@@ -59,7 +59,7 @@ impl PerformCrud for CreateCommunity {
     
     if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
       return Err(LemmyError::from_message(
-        "only_admins_can_create_communities",
+        "only_admins_or_verified_users_can_create_communities",
       ));
     }
 

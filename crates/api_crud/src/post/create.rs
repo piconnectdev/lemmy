@@ -12,6 +12,7 @@ use lemmy_api_common::{
     honeypot_check,
     local_site_to_slur_regex,
     mark_post_as_read,
+    is_admin,
     EndpointType,
   },
   websocket::{send::send_post_ws_message, UserOperationCrud},
@@ -50,6 +51,12 @@ impl PerformCrud for CreatePost {
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
     let local_site = LocalSite::read(context.pool()).await?;
+
+    if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
+      return Err(LemmyError::from_message(
+        "only_admins_or_verified_user_can_create_post",
+      ));
+    }
 
     let slur_regex = local_site_to_slur_regex(&local_site);
     check_slurs(&data.name, &slur_regex)?;

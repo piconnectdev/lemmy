@@ -63,6 +63,17 @@ impl PerformCrud for PiPaymentFound {
       auth: data.auth.clone(),
     };
 
+    let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
+    {
+      Ok(c) => {
+        Some(c)
+      }
+      Err(_e) => {
+        return Err(LemmyError::from_message("Not approved payment"));
+      },
+    };
+
+    println!("PiPaymentFound, update: {} {}", _pi_username.clone(), data.paymentid.clone());
     let _payment = match pi_payment_update(context, &approve, None).await {
       Ok(c) => c,
       Err(e) => {
@@ -78,7 +89,7 @@ impl PerformCrud for PiPaymentFound {
     });
 
     //_pi_username = hide_username(&_pi_username.clone());
-    
+    /*
     let mut exist = false;
     let mut payment_id: PiPaymentId;
     let payment;
@@ -361,5 +372,6 @@ impl PerformCrud for PiPaymentFound {
       id: payment.id,
       paymentid: payment.identifier,
     })
+    */
   }
 }

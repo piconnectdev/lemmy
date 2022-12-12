@@ -145,7 +145,6 @@ pub async fn pi_payment_update(
   approve: &PiApprove,
   tx: Option<String>,
 ) -> Result<PiPayment, LemmyError> {
-  let settings = SETTINGS.to_owned();
 
   let pi_username = approve.pi_username.clone();
   let pi_uid = approve.pi_uid.clone();
@@ -278,17 +277,17 @@ pub async fn pi_payment_update(
   if !exist {
     println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
-      //.domain(approve.domain.clone())
+      .domain(approve.domain.clone())
       //.instance_id(None)
       //.obj_cat(Some(comment))
-      //.obj_id(object_id)
+      .obj_id(object_id.clone())
       //.other_id(None)
       //.notes(None)
 
       .ref_id(None)
       .comment(None)
       .person_id( person_id.clone())
-      .testnet( settings.pinetwork.pi_testnet)
+      .testnet( context.settings().pinetwork.pi_testnet)
       
       .finished( false)
       .updated( None)
