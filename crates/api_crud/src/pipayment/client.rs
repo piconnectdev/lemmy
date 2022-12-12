@@ -278,17 +278,23 @@ pub async fn pi_payment_update(
   if !exist {
     println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
-      .domain(approve.domain.clone())
-      .instance_id(None)
+      //.domain(approve.domain.clone())
+      //.instance_id(None)
+      //.obj_cat(Some(comment))
+      //.obj_id(object_id)
+      //.other_id(None)
+      //.notes(None)
+
+      .ref_id(None)
+      .comment(None)
       .person_id( person_id.clone())
       .testnet( settings.pinetwork.pi_testnet)
-      .object_cat(Some(comment))
-      .object_id(object_id)
+      
       .finished( false)
       .updated( None)
       .pi_uid( _pi_uid)
       .pi_username( _pi_user_alias.clone())      
-      .other_id(None)
+      
       .identifier( payment_id.clone())
       .user_uid( _payment_dto.user_uid)
       .amount( _payment_dto.amount)
@@ -305,7 +311,6 @@ pub async fn pi_payment_update(
       .tx_verified( false)
       .metadata( None) //_payment_dto.metadata,
       .extras( None)
-      .notes(None)
       .build();
 
     match _payment_dto.transaction {

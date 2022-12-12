@@ -113,8 +113,8 @@ impl PerformCrud for PiPaymentFound {
       Ok(c) => {
         exist = true;
         payment_id = c.id;
-        notes = c.notes.clone().unwrap_or_default();
-        object_id = c.object_id;
+        notes = c.comment.clone().unwrap_or_default();
+        object_id = c.ref_id;
 
         approved = c.approved;
         completed = c.completed;
@@ -264,16 +264,18 @@ impl PerformCrud for PiPaymentFound {
 
     if !exist {
       let mut payment_form = PiPaymentInsertForm::builder()
-        .domain(approve.domain.clone())
+        //.domain(approve.domain.clone())
         .person_id( None)
-        .object_cat(None)     //"".to_string(),
-        .object_id( object_id.clone())
+        //.obj_cat(None)     //"".to_string(),
+        //.obj_id( object_id.clone())
+        //.notes( Some(_comment)) 
+        .comment( Some(_comment))
+        .ref_id( object_id.clone())
         .testnet( settings.pinetwork.pi_testnet)
         .finished( finished)
         .updated( updated)
         .pi_uid( _pi_uid)         //data.pi_uid
         .pi_username( _pi_username) //data.pi_username.clone(), Hide user name
-        .notes( Some(_comment)) 
         .identifier( data.paymentid.clone())
         .user_uid( _payment_dto.user_uid.clone()) //"".to_string(), //_payment_dto.user_uid,
         .amount( _payment_dto.amount)

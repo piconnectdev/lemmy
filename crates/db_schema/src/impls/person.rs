@@ -429,9 +429,9 @@ mod tests {
 
     let inserted_person = Person::create(pool, &new_person).await.unwrap();
 
-    let (signature, _meta, _content)  = Person::sign_data(&inserted_person.clone()).await;
-    let inserted_person = Person::update_srv_sign(pool, inserted_person.id, signature.clone().unwrap_or_default().as_str())
-      .await.unwrap();
+    //let (signature, _meta, _content)  = Person::sign_data(&inserted_person.clone()).await;
+    //let inserted_person = Person::update_srv_sign(pool, inserted_person.id, signature.clone().unwrap_or_default().as_str())
+    //  .await.unwrap();
 
     let expected_person = Person {
       id: inserted_person.id,
@@ -465,7 +465,7 @@ mod tests {
       cosmos_address: None,
       sui_address: None,
       auth_sign: None, 
-      srv_sign: signature,
+      srv_sign: None,
       tx : None,
     };
         

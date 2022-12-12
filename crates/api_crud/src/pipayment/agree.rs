@@ -209,19 +209,21 @@ impl PerformCrud for PiAgreeRegister {
     };
 
     let mut payment_form = PiPaymentInsertForm::builder()
-      .domain(data.domain.clone())
-      .instance_id(None)
+      //.domain(data.domain.clone())
+      //.instance_id(None)
       .person_id( None)
-      .object_cat(data.ea.comment.clone())
-      .object_id(None)
-      .other_id( refid)
+      //.obj_cat(data.ea.comment.clone())
+      //.obj_id(None)
+      //.other_id( refid)
+      //.notes( None) // Peer address
+      .comment( None) // Peer address
+      .ref_id( refid)
       .testnet( context.settings().pinetwork.pi_testnet)
       .finished( false)
       .updated( None)
       .pi_uid( _pi_uid)
       .pi_username( _pi_username) //data.pi_username.clone(), => Hide user info
-      .notes( None) // Peer address
-
+      
       .identifier( data.paymentid.clone())
       .user_uid( _payment_dto.user_uid)
       .amount( _payment_dto.amount)

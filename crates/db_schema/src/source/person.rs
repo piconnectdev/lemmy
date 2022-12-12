@@ -112,7 +112,7 @@ pub struct PersonInsertForm {
   pub bot_account: Option<bool>,
   pub ban_expires: Option<chrono::NaiveDateTime>,
   pub external_id: Option<String>,
-  //pub verified: bool,
+  pub verified: bool,
   pub pi_address: Option<Option<String>>,
   pub web3_address: Option<Option<String>>,
   pub pol_address: Option<Option<String>>,
