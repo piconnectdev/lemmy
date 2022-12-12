@@ -104,14 +104,14 @@ impl ChatServer {
   }
   
   pub fn add_pi_token(&self, captcha: PiTokenItem) -> Result<(), LemmyError> {
-    self.inner()?.piTokens.push(captcha);
+    self.inner()?.pi_tokens.push(captcha);
     Ok(())
   }
 
   pub fn check_pi_token(&self, uuid: String, answer: String) -> Result<Option<PiUserDto>, LemmyError> {
     let mut inner = self.inner()?;
     // Remove all the ones that are past the expire time
-    inner.piTokens.retain(|x| x.expires.gt(&naive_now()));
+    inner.pi_tokens.retain(|x| x.expires.gt(&naive_now()));
 
     // let check = inner
     //   .tokens
@@ -122,7 +122,7 @@ impl ChatServer {
     // inner.tokens.retain(|x| x.uuid != uuid);
 
     // Ok(check)
-    let mut iter = inner.piTokens.iter();
+    let mut iter = inner.pi_tokens.iter();
     //let dto = self.piTokens.iter().any(|r| r.uuid == msg.uuid,r);
     match iter.find(|&x| x.uuid == uuid){
       Some(dto) => Ok(Some(dto.answer.clone())),

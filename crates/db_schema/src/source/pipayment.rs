@@ -15,7 +15,11 @@ use std::fmt::Debug;
 #[cfg_attr(feature = "full", diesel(table_name = pipayment))]
 pub struct PiPayment {
   pub id: PiPaymentId,
+  pub domain: Option<String>,
+  pub instance_id: Option<PersonId>,
   pub person_id: Option<PersonId>,
+  pub obj_cat: Option<String>,
+  pub obj_id: Option<Uuid>,
   pub ref_id: Option<Uuid>, //Receiptor id
   pub testnet: bool,
   pub finished: bool,
@@ -51,7 +55,11 @@ pub struct PiPayment {
 #[cfg_attr(feature = "full", diesel(table_name = pipayment))]
 pub struct PiPaymentInsertForm {
   // pub id: PiPaymentId,
+  pub domain: Option<String>,
+  pub instance_id: Option<PersonId>,
   pub person_id: Option<PersonId>,
+  pub obj_cat: Option<String>,
+  pub obj_id: Option<Uuid>,
   pub testnet: bool,
   pub finished: bool,
   pub updated: Option<chrono::NaiveDateTime>,

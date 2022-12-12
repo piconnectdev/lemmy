@@ -107,7 +107,11 @@ use serial_test::serial;
     let uid = Uuid::new_v4();
 
     let new_payment = PiPaymentInsertForm::builder()
+      .domain(None)
+      .instance_id(None)
       .person_id(None)
+      .obj_cat(None)
+      .obj_id(Some(uid))
       .ref_id(Some(uid))
       .testnet(settings.pinetwork.pi_testnet)
       .finished(false)
@@ -139,7 +143,11 @@ use serial_test::serial;
 
     let expected_payment = PiPayment::builder()
       .id(inserted_payment.id)
+      .domain(None)
+      .instance_id(None)
       .person_id(None)
+      .obj_cat(None)
+      .obj_id(Some(uid))
       .ref_id(Some(uid))
       .testnet(settings.pinetwork.pi_testnet)
       .published(inserted_payment.published.clone())

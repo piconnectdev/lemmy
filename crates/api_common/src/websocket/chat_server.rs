@@ -49,7 +49,7 @@ pub struct ChatServerInner {
   pub(super) tokens: Vec<TokenItem>,
 
     /// A list of the current tokens
-  pub(super) piTokens: Vec<PiTokenItem>,
+  pub(super) pi_tokens: Vec<PiTokenItem>,
 }
 
 /// `ChatServer` is an actor. It maintains list of connection client session.
@@ -67,7 +67,7 @@ impl ChatServer {
         rng: StdRng::from_entropy(),
         captchas: vec![],
         tokens: vec![],
-        piTokens: vec![],
+        pi_tokens: vec![],
       }),
     }
   }

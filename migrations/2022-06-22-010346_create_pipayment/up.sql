@@ -1,6 +1,10 @@
 create table pipayment (
   id uuid NOT NULL DEFAULT next_uuid() primary key,
-  person_id uuid,  
+  domain text,
+  instance_id uuid,
+  person_id uuid,
+  obj_cat uuid,
+  obj_id uuid,    
   ref_id uuid,  
   testnet bool,
   finished bool default false,
@@ -28,6 +32,13 @@ create table pipayment (
   CONSTRAINT pipayment_identifier_unique UNIQUE (identifier)
 );
 
-create index pipayment_creator on pipayment (person_id);
-create index pipayment_user_name on pipayment (pi_username);
-create index pipayment_user_uid on pipayment (user_uid);
+create index idx_pipayment_domain on pipayment (domain);
+create index idx_pipayment_instance_id on pipayment (instance_id);
+create index idx_pipayment_obj_cat on pipayment (obj_cat);
+create index idx_pipayment_obj_id on pipayment (obj_id);
+create index idx_pipayment_creator on pipayment (person_id);
+create index idx_pipayment_pi_username on pipayment (pi_username);
+create index idx_pipayment_pi_uid on pipayment (pi_uid);
+create index idx_pipayment_user_uid on pipayment (user_uid);
+create index idx_pipayment_identifier on pipayment (identifier);
+create index idx_pipayment_memo on pipayment (memo);

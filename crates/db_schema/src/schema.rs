@@ -778,7 +778,11 @@ table! {
 table! {
     pipayment (id) {
         id -> Uuid,
+        domain -> Nullable<Text>,
+        instance_id -> Nullable<Uuid>, // WePi user's id
         person_id -> Nullable<Uuid>, // WePi user's id
+        obj_cat -> Nullable<Text>,
+        obj_id -> Nullable<Uuid>,    // Captchar id
         ref_id -> Nullable<Uuid>,    // Captchar id
         testnet -> Bool,
         finished -> Bool,
