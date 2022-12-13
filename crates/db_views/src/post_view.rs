@@ -331,17 +331,16 @@ impl<'a> PostQuery<'a> {
         }
       }
     }
-
-    if let Some(community_id) = self.community_id {
+    if self.community_id.is_none() && self.community_actor_id.is_none() {
+      query = query.then_order_by(post_aggregates::featured_local.desc());
+    } else if let Some(community_id) = self.community_id {
       query = query
         .filter(post::community_id.eq(community_id))
-        .then_order_by(post_aggregates::stickied.desc());
-    }
-
-    if let Some(community_actor_id) = self.community_actor_id {
+        .then_order_by(post_aggregates::featured_community.desc());
+    } else if let Some(community_actor_id) = self.community_actor_id {
       query = query
         .filter(community::actor_id.eq(community_actor_id))
-        .then_order_by(post_aggregates::stickied.desc());
+        .then_order_by(post_aggregates::featured_community.desc());
     }
 
     if let Some(url_search) = self.url_search {
@@ -867,7 +866,6 @@ mod tests {
         removed: false,
         deleted: false,
         locked: false,
-        stickied: false,
         nsfw: false,
         embed_title: None,
         embed_description: None,
@@ -876,6 +874,8 @@ mod tests {
         ap_id: inserted_post.ap_id.clone(),
         local: true,
         language_id: LanguageId(47),
+        featured_community: false,
+        featured_local: false,
         auth_sign: None,
         srv_sign: None,
         tx: None,
@@ -942,10 +942,11 @@ mod tests {
         score: 0,
         upvotes: 0,
         downvotes: 0,
-        stickied: false,
         published: agg.published,
         newest_comment_time_necro: inserted_post.published,
         newest_comment_time: inserted_post.published,
+        featured_community: false,
+        featured_local: false,
       },
       subscribed: SubscribedType::NotSubscribed,
       read: false,

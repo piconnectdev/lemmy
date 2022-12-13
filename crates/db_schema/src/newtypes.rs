@@ -303,9 +303,9 @@ impl fmt::Display for ModLockPostId {
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
-pub struct ModStickyPostId(pub Uuid);
+pub struct ModFeaturePostId(pub Uuid);
 
-impl fmt::Display for ModStickyPostId {
+impl fmt::Display for ModFeaturePostId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
   }
