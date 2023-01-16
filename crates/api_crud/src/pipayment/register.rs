@@ -5,6 +5,7 @@ use lemmy_api_common::{
   person::LoginResponse,
   pipayment::*,
 };
+use lemmy_db_schema::source::local_site::RegistrationMode;
 use lemmy_db_views::structs::{SiteView};
 
 use lemmy_utils::{
@@ -30,7 +31,7 @@ impl PerformCrud for PiRegister {
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
-    if !local_site.open_registration {
+    if local_site.registration_mode == RegistrationMode::Closed {
       return Err(LemmyError::from_message("registration_closed"));
     }
 

@@ -25,7 +25,7 @@ use lemmy_db_schema::{
     local_user::{LocalUser, LocalUserInsertForm},
     person::*,
     pipayment::*,
-    site::*,
+    site::*, local_site::RegistrationMode,
   },
   traits::{ApubActor, Crud, Followable},
   utils::naive_now,
@@ -58,7 +58,7 @@ impl PerformCrud for PiLogin {
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
-    if !local_site.open_registration {
+    if local_site.registration_mode == RegistrationMode::Closed {
       //return Err(LemmyError::from_message("registration_closed"));
     }
 

@@ -5,7 +5,7 @@ use lemmy_api_common::{
   context::LemmyContext,
   web3::*,
 };
-use lemmy_db_schema::{ *
+use lemmy_db_schema::{ *, source::local_site::RegistrationMode
   //newtypes::PersonId,
   //source::{
     //local_user::{LocalUser, LocalUserInsertForm},
@@ -49,8 +49,9 @@ impl PerformCrud for Web3Register {
     println!(
       "Web3Registration is processing for xxx"
     );
-
-    if !local_site.open_registration {
+    let require_registration_application =
+      local_site.registration_mode == RegistrationMode::RequireApplication;
+    if local_site.registration_mode == RegistrationMode::Closed  {
       println!(
         "Web3Registration is processing for xxx registration_closed"
       );

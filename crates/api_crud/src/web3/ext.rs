@@ -16,7 +16,7 @@ use lemmy_api_common::{
 use lemmy_db_schema::{
   newtypes::PersonId,
   source::{
-    local_site::LocalSite,
+    local_site::{LocalSite, RegistrationMode},
     local_user::{LocalUser, LocalUserInsertForm},
     person::*, registration_application::RegistrationApplicationInsertForm,
     registration_application::RegistrationApplication
@@ -43,7 +43,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
   let (mut email_verification, mut require_application) = (false, false);
 
   email_verification = local_site.require_email_verification;
-  require_application = local_site.require_application;
+  require_application = (local_site.registration_mode == RegistrationMode::RequireApplication);
 
   password_length_check(&info.password)?;
   honeypot_check(&info.honeypot)?;
@@ -240,7 +240,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     .admin(Some(!local_site.site_setup))
     .instance_id(site_view.site.instance_id)
     .external_id(Some(_alias.clone().to_owned()))
-    //.verified(kyced)
+    .verified(kyced)
     .build();
 
 
@@ -284,7 +284,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     }
   };
 
-  if local_site.site_setup && local_site.require_application {
+  if local_site.site_setup && require_application {
     // Create the registration application
     let form = RegistrationApplicationInsertForm {
       local_user_id: inserted_local_user.id,
@@ -309,7 +309,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
 
   // Log the user in directly if the site is not setup, or email verification and application aren't required
   if !local_site.site_setup
-    || (!local_site.require_application && !local_site.require_email_verification)
+    || (!require_application && !local_site.require_email_verification)
   {
     login_response.jwt = Some(
       Claims::jwt(
@@ -338,7 +338,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
       login_response.verify_email_sent = true;
     }
 
-    if local_site.require_application {
+    if require_application {
       login_response.registration_created = true;
     }
   }
