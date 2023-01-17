@@ -25,7 +25,7 @@ use lemmy_db_schema::{
     local_site::LocalSite,
     post::{Post, PostInsertForm, PostLike, PostLikeForm, PostUpdateForm},
   },
-  traits::{Crud, Likeable, Signable},
+  traits::{Crud, Likeable, Signable}, newtypes::CommunityId,
 };
 use lemmy_db_views_actor::structs::CommunityView;
 use lemmy_utils::{
@@ -36,6 +36,7 @@ use lemmy_utils::{
 use tracing::{warn, Instrument};
 use url::Url;
 use webmention::{Webmention, WebmentionError};
+use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for CreatePost {
@@ -53,9 +54,12 @@ impl PerformCrud for CreatePost {
     let local_site = LocalSite::read(context.pool()).await?;
 
     if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
-      return Err(LemmyError::from_message(
-        "only_admins_or_verified_user_can_create_post",
-      ));
+      let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+      if data.community_id != CommunityId(uuid) {
+        return Err(LemmyError::from_message(
+          "only_admins_or_verified_user_can_create_post",
+        ));
+      }
     }
 
     let slur_regex = local_site_to_slur_regex(&local_site);
