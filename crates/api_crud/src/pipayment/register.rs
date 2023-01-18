@@ -40,7 +40,6 @@ impl PerformCrud for PiRegister {
         return Err(LemmyError::from_message("registration_disabled"));
       }
       if !context.settings().pinetwork.pi_allow_all {
-        println!("Disable free register {} {}", ext_account.account.clone(),  ext_account.token.clone());
         return Err(LemmyError::from_message("registration_disabled"));
       }
     }

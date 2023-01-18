@@ -156,7 +156,7 @@ impl PerformCrud for Web3Login {
             username.clone(),
             _e.to_string()
           );
-          println!("{} {}", _address.clone(), err_type);
+          //println!("{} {}", _address.clone(), err_type);
           return Err(LemmyError::from_error_message(_e, &err_type));
         }
       };
@@ -200,7 +200,6 @@ impl PerformCrud for Web3Login {
         &_new_user.to_string().clone(),
         &_address.clone()
       );
-      println!("{}", err_type);
       //return LemmyError::from_error_message(e, &err_type)?;
       return Err(LemmyError::from_message(&err_type).into());
 

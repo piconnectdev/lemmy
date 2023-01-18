@@ -274,7 +274,7 @@ pub async fn pi_payment_update(
   
   let object_id = approve.object_id.clone();
   if !exist {
-    println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
+    //println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
       .domain(approve.domain.clone())
       //.instance_id(None)
@@ -366,11 +366,6 @@ pub async fn pi_payment_update(
             let updated_post = match Post::update_tx(context.pool(), post_id, &link.unwrap_or("".to_string())) .await
             {
               Ok(p) => {
-                println!(
-                  "Post: Success update blockchain link, id:{} link:{}",
-                  comment.clone(),
-                  link2.clone()
-                );
                 Some(p)
               }
               Err(_e) => None,
@@ -390,11 +385,6 @@ pub async fn pi_payment_update(
             let updated_comment = match Comment::update_tx(context.pool(), comment_id, &link.unwrap_or("".to_string())).await
             {
               Ok(c) => {
-                println!(
-                  "Comment: Success update blockchain link, id:{} link:{}",
-                  c.id,
-                  link2.clone()
-                );
                 Some(c)
               }
               Err(_e) => None,

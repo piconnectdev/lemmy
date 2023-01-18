@@ -178,7 +178,6 @@ impl PerformCrud for PiLogin {
             username.clone(),
             _e.to_string()
           );
-          println!("{} {}", _pi_uid.unwrap().clone(), err_type);
           return Err(LemmyError::from_error_message(_e, &err_type));
 
         }

@@ -73,7 +73,6 @@ impl PerformCrud for PiPaymentFound {
       },
     };
 
-    println!("PiPaymentFound, update: {} {}", _pi_username.clone(), data.paymentid.clone());
     let _payment = match pi_payment_update(context, &approve, None).await {
       Ok(c) => c,
       Err(e) => {
@@ -82,6 +81,7 @@ impl PerformCrud for PiPaymentFound {
       }
     };
 
+    println!("PiPaymentFoundResponse, update: {} {}", _pi_username.clone(), data.paymentid.clone());
     let payment = _payment.clone();
     return Ok(PiPaymentFoundResponse {
       id: payment.id,
