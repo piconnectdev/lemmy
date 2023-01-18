@@ -112,10 +112,13 @@ impl PerformCrud for CreateComment {
       .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
 
-    let (signature, _meta, _content)  = Comment::sign_data(&inserted_comment.clone()).await;
-    let inserted_comment = Comment::update_srv_sign(context.pool(), inserted_comment.id.clone(), signature.clone().unwrap_or_default().as_str())
-      .await
-      .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content)  = Comment::sign_data(&inserted_comment.clone()).await;
+      let inserted_comment = Comment::update_srv_sign(context.pool(), inserted_comment.id.clone(), signature.clone().unwrap_or_default().as_str())
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_comment"))?;
+    }
+    
     // Necessary to update the ap_id
     let inserted_comment_id = inserted_comment.id;
     let protocol_and_hostname = context.settings().get_protocol_and_hostname();

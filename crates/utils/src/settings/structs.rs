@@ -59,6 +59,10 @@ pub struct Settings {
   #[default(false)]
   pub pi_enabled: bool,
 
+  /// Whether the site is open for web3 registration.
+  #[default(false)]
+  pub sign_enabled: bool,
+
   #[default(None)]
   pub secret_key: Option<String>,
 }

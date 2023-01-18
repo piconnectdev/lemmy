@@ -77,9 +77,12 @@ impl PerformCrud for EditCommunity {
       .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
 
-    let (signature, _meta, _content)  = Community::sign_data(&updated_community.clone()).await;
-    let updated_community = Community::update_srv_sign(context.pool(), updated_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-    .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;  
+    if context.settings().sign_enabled {      
+      let (signature, _meta, _content)  = Community::sign_data(&updated_community.clone()).await;
+      let updated_community = Community::update_srv_sign(context.pool(), updated_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;  
+    }
+
     let op = UserOperationCrud::EditCommunity;
     send_community_ws_message(data.community_id, op, websocket_id, None, context).await
   }

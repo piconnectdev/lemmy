@@ -114,9 +114,11 @@ impl PerformCrud for CreateCommunity {
       .await
       .map_err(|e| LemmyError::from_error_message(e, "community_already_exists"))?;
 
-    let (signature, _meta, _content)  = Community::sign_data(&inserted_community.clone()).await;
-    Community::update_srv_sign(context.pool(), inserted_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-    .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content)  = Community::sign_data(&inserted_community.clone()).await;
+      Community::update_srv_sign(context.pool(), inserted_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
+    }
 
     // The community creator becomes a moderator
     let community_moderator_form = CommunityModeratorForm {

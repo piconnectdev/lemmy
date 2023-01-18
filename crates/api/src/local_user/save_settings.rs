@@ -115,11 +115,12 @@ impl Perform for SaveUserSettings {
       .await
       .map_err(|e| LemmyError::from_error_message(e, "user_already_exists"))?;
 
-    let (signature, _meta, _content) = Person::sign_data(&person.clone()).await;
-    let person = Person::update_srv_sign(context.pool(), person_id.clone(), signature.clone().unwrap_or_default().as_str())
-        .await
-        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_srv_sign"))?;
-
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content) = Person::sign_data(&person.clone()).await;
+      let person = Person::update_srv_sign(context.pool(), person_id.clone(), signature.clone().unwrap_or_default().as_str())
+          .await
+          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_srv_sign"))?;
+    }
     if let Some(discussion_languages) = data.discussion_languages.clone() {
       LocalUserLanguage::update(context.pool(), discussion_languages, local_user_id).await?;
     }

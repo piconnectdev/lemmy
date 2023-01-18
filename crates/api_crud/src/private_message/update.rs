@@ -52,10 +52,12 @@ impl PerformCrud for EditPrivateMessage {
     .await
     .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
 
-    let (signature, _meta, _content)  = PrivateMessage::sign_data(&updated_private_message.clone()).await;
-    let updated_private_message = PrivateMessage::update_srv_sign(context.pool(), updated_private_message.id.clone(), signature.clone().unwrap_or_default().as_str())
-      .await
-      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content)  = PrivateMessage::sign_data(&updated_private_message.clone()).await;
+      let updated_private_message = PrivateMessage::update_srv_sign(context.pool(), updated_private_message.id.clone(), signature.clone().unwrap_or_default().as_str())
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
+    }
 
     let op = UserOperationCrud::EditPrivateMessage;
     send_pm_ws_message(data.private_message_id, op, websocket_id, context).await

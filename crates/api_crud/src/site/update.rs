@@ -98,10 +98,12 @@ impl PerformCrud for EditSite {
       // Diesel will throw an error for empty update forms
       .ok();
 
-    let (signature, _meta, _content)  = Site::sign_data(&updated_site.clone().unwrap()).await;
-    let updated_site = Site::update_srv_sign(context.pool(), updated_site.clone().unwrap().id.clone(), signature.clone().unwrap_or_default().as_str())
-      .await
-      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_srv_sign"))?;
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content)  = Site::sign_data(&updated_site.clone().unwrap()).await;
+      let updated_site = Site::update_srv_sign(context.pool(), updated_site.clone().unwrap().id.clone(), signature.clone().unwrap_or_default().as_str())
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_srv_sign"))?;
+    }
 
     let local_site_form = LocalSiteUpdateForm::builder()
       .enable_downvotes(data.enable_downvotes)

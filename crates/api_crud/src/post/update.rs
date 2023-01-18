@@ -120,10 +120,13 @@ impl PerformCrud for EditPost {
 
       return Err(LemmyError::from_error_message(e, err_type));
     }
-    let updated_post = res.unwrap();
-    let (signature, _meta, _content)  = Post::sign_data(&updated_post.clone()).await;
-    let updated_post = Post::update_srv_sign(context.pool(), updated_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
+    if context.settings().sign_enabled {
+      let updated_post = res.unwrap();
+      let (signature, _meta, _content)  = Post::sign_data(&updated_post.clone()).await;
+      let updated_post = Post::update_srv_sign(context.pool(), updated_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
+          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
+    }
+    
     send_post_ws_message(
       data.post_id,
       UserOperationCrud::EditPost,

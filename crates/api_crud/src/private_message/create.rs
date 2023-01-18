@@ -63,10 +63,12 @@ impl PerformCrud for CreatePrivateMessage {
         }
       };
 
-    let (signature, _meta, _content)  = PrivateMessage::sign_data(&inserted_private_message.clone()).await;
-    let inserted_private_message = PrivateMessage::update_srv_sign(context.pool(), inserted_private_message.id.clone(), signature.clone().unwrap_or_default().as_str())
-      .await
-      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content)  = PrivateMessage::sign_data(&inserted_private_message.clone()).await;
+      let inserted_private_message = PrivateMessage::update_srv_sign(context.pool(), inserted_private_message.id.clone(), signature.clone().unwrap_or_default().as_str())
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
+    }
 
     let inserted_private_message_id = inserted_private_message.id;
     let protocol_and_hostname = context.settings().get_protocol_and_hostname();

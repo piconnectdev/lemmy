@@ -102,11 +102,13 @@ impl PerformCrud for EditComment {
     let updated_comment = Comment::update(context.pool(), comment_id, &form)
       .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
-
-    let (signature, _meta, _content)  = Comment::sign_data(&updated_comment.clone()).await;
-    let updated_comment = Comment::update_srv_sign(context.pool(), updated_comment.id.clone(), signature.clone().unwrap_or_default().as_str())
-        .await
-        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
+    
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content)  = Comment::sign_data(&updated_comment.clone()).await;
+      let updated_comment = Comment::update_srv_sign(context.pool(), updated_comment.id.clone(), signature.clone().unwrap_or_default().as_str())
+          .await
+          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
+    }
 
     // Do the mentions / recipients
     let updated_comment_content = updated_comment.content.clone();

@@ -134,11 +134,11 @@ impl PerformCrud for CreatePost {
         return Err(LemmyError::from_error_message(e, err_type));
       }
     };
-
-    let (signature, _meta, _content)  = Post::sign_data(&inserted_post.clone()).await;
-    let inserted_post = Post::update_srv_sign(context.pool(), inserted_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
-      
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content)  = Post::sign_data(&inserted_post.clone()).await;
+      let inserted_post = Post::update_srv_sign(context.pool(), inserted_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
+          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
+    }
     let inserted_post_id = inserted_post.id;
     let protocol_and_hostname = context.settings().get_protocol_and_hostname();
     let apub_id = generate_local_apub_endpoint(
