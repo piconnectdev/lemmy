@@ -28,3 +28,21 @@ DROP VIEW comment_alias_1;
 create view comment_alias_1 as select * from comment;
 
 
+SELECT create_hypertable('community', 'published', chunk_time_interval => INTERVAL '30 day');
+SELECT create_hypertable('community_follower', 'published', chunk_time_interval => INTERVAL '30 day');
+SELECT create_hypertable('community_block', 'published', chunk_time_interval => INTERVAL '30 day');
+
+SELECT create_hypertable('person', 'published', chunk_time_interval => INTERVAL '30 day');
+SELECT create_hypertable('person_follower', 'published', chunk_time_interval => INTERVAL '30 day');
+SELECT create_hypertable('person_block', 'published', chunk_time_interval => INTERVAL '30 day');
+SELECT create_hypertable('person_mention', 'published', chunk_time_interval => INTERVAL '30 day');
+
+SELECT create_hypertable('post', 'published', chunk_time_interval => INTERVAL '1 day');
+SELECT create_hypertable('post_like', 'published', chunk_time_interval => INTERVAL '7 day');
+SELECT create_hypertable('post_report', 'published', chunk_time_interval => INTERVAL '30 day');
+
+SELECT create_hypertable('comment', 'published', chunk_time_interval => INTERVAL '1 day');
+SELECT create_hypertable('comment_reply', 'published', chunk_time_interval => INTERVAL '7 day');
+SELECT create_hypertable('comment_report', 'published', chunk_time_interval => INTERVAL '30 day');
+
+SELECT create_hypertable('pipayment', 'published', chunk_time_interval => INTERVAL '1 week');

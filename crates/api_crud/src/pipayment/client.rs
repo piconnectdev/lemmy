@@ -108,7 +108,6 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
    match context.chat_server().check_pi_token(key.to_string().clone(), "".to_string())?
         {
           Some(p) => {
-            println!("Found PiUserDto in cache {} {}", p.username.clone(), p.uid.clone());
             return Ok(p)
           },
           None => {

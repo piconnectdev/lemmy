@@ -161,7 +161,6 @@ impl PerformCrud for PiLogin {
       None => {
         if !_change_passwd {
           let err_type = format!("Hi {}, you must register before login (use Pi Browser).", &username.clone());
-          println!("{} {}", err_type, _pi_uid.unwrap());
           return Err(LemmyError::from_message(&err_type));
         }
       }
@@ -225,11 +224,8 @@ impl PerformCrud for PiLogin {
         &_new_user.to_string().clone(),
         &_pi_uid.unwrap().clone()
       );
-      println!("{}", err_type);
       //return LemmyError::from_error_message(e, &err_type)?;
       return Err(LemmyError::from_message(&err_type).into());
     }
-
-    
   }
 }

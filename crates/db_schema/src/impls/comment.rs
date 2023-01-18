@@ -435,14 +435,15 @@ mod tests {
 
     let parent_comment_id = inserted_child_comment.parent_comment_id();
     let expected_comment_parent_id = inserted_comment.parent_comment_id();
-    if expected_comment_parent_id.is_some() {
-      println!("expected_comment_parent_id 0.{}", expected_comment_parent_id.unwrap());
-    } else {
-      println!("expected_comment_parent_id is nil");
-    }
-    if parent_comment_id.is_some() {
-      println!("parent_comment_id {}", parent_comment_id.unwrap());
-    }
+
+    // if expected_comment_parent_id.is_some() {
+    //   println!("expected_comment_parent_id 0.{}", expected_comment_parent_id.unwrap());
+    // } else {
+    //   println!("expected_comment_parent_id is nil");
+    // }
+    // if parent_comment_id.is_some() {
+    //   println!("parent_comment_id {}", parent_comment_id.unwrap());
+    // }
     
     // Comment Like
     let comment_like_form = CommentLikeForm {

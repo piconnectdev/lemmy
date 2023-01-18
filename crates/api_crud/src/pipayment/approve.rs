@@ -43,7 +43,6 @@ impl PerformCrud for PiApprove {
       }
     };
 
-    println!("PiPaymentApprove: {} {}", _pi_username.clone(), data.paymentid.clone());
     let _payment = match pi_payment_update(context, &data, None).await {
       Ok(c) => c,
       Err(e) => {
@@ -51,6 +50,7 @@ impl PerformCrud for PiApprove {
         return Err(LemmyError::from_message(&err_type));
       }
     };
+    println!("PiApproveResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(PiApproveResponse {
       success: true,
       id: _payment.id,

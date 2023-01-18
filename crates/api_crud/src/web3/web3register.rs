@@ -46,15 +46,10 @@ impl PerformCrud for Web3Register {
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
-    println!(
-      "Web3Registration is processing for xxx"
-    );
     let require_registration_application =
       local_site.registration_mode == RegistrationMode::RequireApplication;
     if local_site.registration_mode == RegistrationMode::Closed  {
-      println!(
-        "Web3Registration is processing for xxx registration_closed"
-      );
+      //println!("Web3Registration is processing for xxx registration_closed");
       return Err(LemmyError::from_message("registration_closed"));
     }
     
@@ -91,7 +86,7 @@ impl PerformCrud for Web3Register {
         _signature.clone()
       );
       if !eth_verify(_address.clone(), text.clone(), _signature) {
-        return Err(LemmyError::from_message("registration_closed"));
+        return Err(LemmyError::from_message("captcha_incorrect"));
       }  
     }
 

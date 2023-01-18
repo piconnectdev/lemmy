@@ -43,7 +43,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
   let (mut email_verification, mut require_application) = (false, false);
 
   email_verification = local_site.require_email_verification;
-  require_application = (local_site.registration_mode == RegistrationMode::RequireApplication);
+  require_application = local_site.registration_mode == RegistrationMode::RequireApplication;
 
   password_length_check(&info.password)?;
   honeypot_check(&info.honeypot)?;
@@ -145,7 +145,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
               "External user {} is exist and belong to other account ",
               &_new_user.clone()
             );
-            println!("{} {} {}", name.clone(), &_new_user.clone(), err_type);
+            //println!("{} {} {}", name.clone(), &_new_user.clone(), err_type);
             return Err(LemmyError::from_message(&err_type).into());
           } else {
             // Same name and account: change password ???
@@ -155,7 +155,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
         None => {
           change_password = true;
           let err_type = format!("External user: You already have user name {}, change password", op.name);
-          println!("{} {} {}", name.clone(), &_new_user.clone(), err_type);
+          //println!("{} {} {}", name.clone(), &_new_user.clone(), err_type);
         }
       };
     }
@@ -166,7 +166,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
             "User {} is exist and belong to other user",
             &_new_user.clone()
           );
-          println!("{} {} {}", _alias.clone(), err_type, &_new_user.clone());
+          //println!("{} {} {}", _alias.clone(), err_type, &_new_user.clone());
           return Err(LemmyError::from_message(&err_type).into());
         }
         None => {

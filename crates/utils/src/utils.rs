@@ -246,7 +246,7 @@ pub fn eth_sign_message(message: String) -> Option<String> {
 
   let key = SECRETKEY.clone();
   let message_hash = eth_message(message.clone());
-  println!("\r\nSign to ETH-msg-hash {} of {} \r\n", hex::encode(message_hash), message.clone());
+  //println!("\r\nSign to ETH-msg-hash {} of {} \r\n", hex::encode(message_hash), message.clone());
   let signature = key.sign(&message_hash).unwrap();
   let sig = format!(
     "0x{}{}{:02X?}",
@@ -304,7 +304,7 @@ mod tests {
     //let key = SECRETKEY.clone();
     let key = SecretKey::from_raw(&secret).unwrap();
     let message_hash = eth_message(message.clone());
-    println!("\r\nSign to ETH-msg-hash {} of {} \r\n", hex::encode(message_hash), message.clone());
+    //println!("\r\nSign to ETH-msg-hash {} of {} \r\n", hex::encode(message_hash), message.clone());
     let signature = key.sign(&message_hash).unwrap();
     let sig = format!(
       "0x{}{}{:02X?}",
@@ -313,12 +313,12 @@ mod tests {
       signature.v + 27
     );
     let add = format!("0x{}", hex::encode(key.public().address()));
-    println!("signature: {} {}", add, sig);
+    //println!("signature: {} {}", add, sig);
     eth_verify(add, message.clone(), sig);
     
     //let updated: Option<chrono::NaiveDateTime>
-    let updated: Option<chrono::NaiveDateTime> = None;//chrono::prelude::Utc::now().naive_utc();
-    println!("NaiveDateTime: {:?}", updated);
+    //let updated: Option<chrono::NaiveDateTime> = None;//chrono::prelude::Utc::now().naive_utc();
+    //println!("NaiveDateTime: {:?}", updated);
 
   }
 }

@@ -124,7 +124,6 @@ impl PerformCrud for PiAgreeRegister {
                 "User {} is exist and belong to other Pi Network account",
                 &data.info.username
               );
-              //println!("{} {} {}", data.pi_username.clone(), err_type, &_pi_alias2);
               result_string = err_type.clone();
               result = false
             } else {
@@ -135,7 +134,7 @@ impl PerformCrud for PiAgreeRegister {
           None => {
             // Not allow change username ???
             let err_type = format!("Your account already exist: {}", pi.name);
-            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
+            //println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -148,7 +147,7 @@ impl PerformCrud for PiAgreeRegister {
               "User {} is exist, create same user name is not allow!",
               &data.info.username
             );
-            println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
+            //println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -160,7 +159,6 @@ impl PerformCrud for PiAgreeRegister {
       }
     }
 
-    println!("PiPaymentAgree: {} {}", _pi_username.clone(), data.paymentid.clone());
     dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
       Ok(c) => Some(c),
       Err(_e) => {
@@ -223,7 +221,7 @@ impl PerformCrud for PiAgreeRegister {
       .finished( false)
       .updated( None)
       .pi_uid( _pi_uid)
-      .pi_username( _pi_username) //data.pi_username.clone(), => Hide user info
+      .pi_username( _pi_username.clone()) //data.pi_username.clone(), => Hide user info
       
       .identifier( data.paymentid.clone())
       .user_uid( _payment_dto.user_uid)
@@ -269,6 +267,7 @@ impl PerformCrud for PiAgreeRegister {
         return Err(LemmyError::from_message(&err_type));
       }
     };
+    println!("PiAgreeResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(PiAgreeResponse {
       success: result,
       id: Some(pid),
