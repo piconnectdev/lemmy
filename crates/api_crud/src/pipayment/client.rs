@@ -221,7 +221,10 @@ pub async fn pi_payment_update(
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
         usercancelled = c.status.user_cancelled;
-        println!("pi_payment_update, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled);
+        if c.transaction.is_some() {
+          txid = c.transaction.clone().unwrap().txid;
+        }
+        println!("pi_payment_update, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{} {}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled, txid.clone());
         Some(c)
       }
       Err(_e) => {
@@ -265,25 +268,26 @@ pub async fn pi_payment_update(
     };
   } else if !completed {
     if tx.is_some() {
-      println!("pi_payment_update, pi_complete: {}, tx: {}", _payment_id.clone(), tx.clone().unwrap());
-      dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
-        Ok(c) => {
-          completed = true;
-          println!("pi_payment_update, pi_complete with dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
-          Some(c)
-        }
-        Err(_e) => {
-          let err_str = format!(
-            "Pi Server: complete payment error {}, paymentid {} error: {}",
-            _pi_user_alias.clone(),
-            _payment_id.clone(),
-            _e.to_string()
-          );
-          println!("pi_payment_update, {}", err_str.clone());
-          return Err(LemmyError::from_message(&err_str));
-        },
-      };
+      txid = tx.unwrap();
     }
+    println!("pi_payment_update, pi_complete: {}, tx: {}", _payment_id.clone(), txid.clone());
+    dto = match pi_complete(context.client(), &payment_id, &txid).await {
+      Ok(c) => {
+        completed = true;
+        println!("pi_payment_update, pi_complete with dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
+        Some(c)
+      }
+      Err(_e) => {
+        let err_str = format!(
+          "Pi Server: complete payment error {}, paymentid {} error: {}",
+          _pi_user_alias.clone(),
+          _payment_id.clone(),
+          _e.to_string()
+        );
+        println!("pi_payment_update, {}", err_str.clone());
+        return Err(LemmyError::from_message(&err_str));
+      },
+    };
   }
 
   if !exist || !approved {
