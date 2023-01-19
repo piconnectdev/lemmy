@@ -4,6 +4,7 @@ use actix_web::web::Data;
 use lemmy_api_common::{context::LemmyContext};
 use lemmy_api_common::pipayment::*;
 
+use lemmy_db_schema::source::pipayment::PiPayment;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 
 #[async_trait::async_trait(?Send)]
@@ -55,7 +56,17 @@ impl PerformCrud for PiTip {
       auth: data.auth.clone(),
     };
 
-    let _payment = match pi_payment_update(context, &approve, _tx).await {
+    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
+    {
+      Ok(c) => {
+        Some(c)
+      }
+      Err(_e) => {
+        return Err(LemmyError::from_message("Not approved payment"));
+      },
+    };
+
+    let _payment = match pi_payment_update(context, &approve, _payment, _tx).await {
       Ok(c) => c,
       Err(e) => {
         let err_type = e.to_string();

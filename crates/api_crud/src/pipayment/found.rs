@@ -63,7 +63,7 @@ impl PerformCrud for PiPaymentFound {
       auth: data.auth.clone(),
     };
 
-    let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
+    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {
       Ok(c) => {
         Some(c)
@@ -73,7 +73,7 @@ impl PerformCrud for PiPaymentFound {
       },
     };
 
-    let _payment = match pi_payment_update(context, &approve, None).await {
+    let _payment = match pi_payment_update(context, &approve, _payment, None).await {
       Ok(c) => c,
       Err(e) => {
         let err_type = e.to_string();

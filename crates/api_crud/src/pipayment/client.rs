@@ -142,6 +142,7 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
 pub async fn pi_payment_update(
   context: &Data<LemmyContext>,
   approve: &PiApprove,
+  pipayment: Option<PiPayment>,
   tx: Option<String>,
 ) -> Result<PiPayment, LemmyError> {
 
@@ -180,28 +181,39 @@ pub async fn pi_payment_update(
 
   let mut pid;
   let mut pmt;
-  let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id.clone().to_owned()).await
-  {
-    Ok(c) => {
-      exist = true;
-      approved = c.approved;
-      completed = c.completed;
-      cancelled = c.cancelled;
-      txid = c.tx_id.clone();
-      txlink = c.tx_link.clone();
-      pid = c.id;
-      Some(c)
-    }
-    Err(_e) => None,
-  };
-  if _payment.is_some() {
+  // let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id.clone().to_owned()).await
+  // {
+  //   Ok(c) => {
+  //     exist = true;
+  //     approved = c.approved;
+  //     completed = c.completed;
+  //     cancelled = c.cancelled;
+  //     txid = c.tx_id.clone();
+  //     txlink = c.tx_link.clone();
+  //     pid = c.id;
+  //     Some(c)
+  //   }
+  //   Err(_e) => None,
+  // };
+  if pipayment.is_some() {
+    let c = pipayment.clone().unwrap();
+    exist = true;
+    approved = c.approved;
+    completed = c.completed;
+    cancelled = c.cancelled;
+    txid = c.tx_id.clone();
+    txlink = c.tx_link.clone();
+    pid = c.id;
     if cancelled || completed {
       finished = true;
       fetch_pi_server = false;
     } else {
       fetch_pi_server = true;
     }
+  } else {
+    fetch_pi_server = true;
   }
+
   if fetch_pi_server && !finished {
     dto = match pi_payment(context.client(), &_payment_id.clone()).await {
       Ok(c) => {
@@ -209,29 +221,47 @@ pub async fn pi_payment_update(
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
         usercancelled = c.status.user_cancelled;
-        println!("pi_payment_update, load payment from server: {} - {} {} {} {} {}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled);
+        println!("pi_payment_update, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled);
         Some(c)
       }
       Err(_e) => {
         // Pi Server error
-        let err_type = format!(
+        let err_str = format!(
           "Pi Server: error while check payment: user {}, paymentid {} error: {}",
           _pi_user_alias.clone(),
           _payment_id.clone(),
           _e.to_string()
         );
-        return Err(LemmyError::from_message(&err_type));
+        println!("pi_payment_update, load payment from server error: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled);
+        return Err(LemmyError::from_message(&err_str));
       }
     };
   }
 
   if !approved {
+    if pipayment.is_some() {
+      let err_str = format!(
+        "The payment: user {}, paymentid {} was approved",
+        _pi_user_alias.clone(),
+        _payment_id.clone()
+      );
+      return Err(LemmyError::from_message(&err_str));
+    } 
     dto = match pi_approve(context.client(), &payment_id).await {
       Ok(c) => { 
         println!("pi_payment_update, pi_approve with dto: {} {}", _payment_id.clone(), c.amount);
         Some(c)
       },
-      Err(_e) => None,
+      Err(_e) => {
+        let err_str = format!(
+          "Pi Server: approve payment error {}, paymentid {} error: {}",
+          _pi_user_alias.clone(),
+          _payment_id.clone(),
+          _e.to_string()
+        );
+        println!("pi_payment_update, {}", err_str.clone());
+        return Err(LemmyError::from_message(&err_str));
+      },
     };
   } else if !completed {
     if tx.is_some() {
@@ -239,10 +269,19 @@ pub async fn pi_payment_update(
       dto = match pi_complete(context.client(), &payment_id, &tx.unwrap()).await {
         Ok(c) => {
           completed = true;
-          println!("pi_payment_update, pi_complete with dto: {} {}", _payment_id.clone(), c.amount);
+          println!("pi_payment_update, pi_complete with dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
           Some(c)
         }
-        Err(_e) => None,
+        Err(_e) => {
+          let err_str = format!(
+            "Pi Server: complete payment error {}, paymentid {} error: {}",
+            _pi_user_alias.clone(),
+            _payment_id.clone(),
+            _e.to_string()
+          );
+          println!("pi_payment_update, {}", err_str.clone());
+          return Err(LemmyError::from_message(&err_str));
+        },
       };
     }
   }
@@ -257,7 +296,14 @@ pub async fn pi_payment_update(
 
   if dto.is_some() {
     if completed && person.is_some() && !verified {
-      Person::update_kyced(context.pool(), person.unwrap().id).await;
+      match Person::update_kyced(context.pool(), person.unwrap().id).await {
+        Ok(p) =>{
+          println!("pi_payment_update, verify user {}", _pi_user_alias.clone());
+        }
+        Err(e) => {
+          println!("pi_payment_update, verify user err {}", e.to_string());          
+        }
+      }
     }
     _payment_dto = dto.unwrap();
   }
@@ -320,18 +366,20 @@ pub async fn pi_payment_update(
       }
       None => {}
     }
-    _payment = match PiPayment::create(context.pool(), &payment_form).await
+    let payment = match PiPayment::create(context.pool(), &payment_form).await
     {
       Ok(payment) => {
         pid = payment.id;
+        println!("pi_payment_update, create local clone success: {} - {}", _pi_user_alias.clone(), _payment_id.clone());
         Some(payment)
       }
       Err(_e) => {
-        let err_type = _e.to_string();
-        return Err(LemmyError::from_message(&err_type));
+        let err_str = _e.to_string();
+        println!("pi_payment_update, create local clone error: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), err_str.clone());
+        return Err(LemmyError::from_message(&err_str));
       }
     };
-    pmt = _payment.unwrap();
+    pmt = payment.unwrap();
   } else {
     let mut payment_form = PiPaymentUpdateForm::builder()
         .approved(approved)
@@ -395,20 +443,21 @@ pub async fn pi_payment_update(
         };
       }
     }
-    pmt = _payment.unwrap();
-    pid = pmt.id;
-    match PiPayment::update(context.pool(), pid, &payment_form).await
+    //pmt = _payment.unwrap();
+    pid = pipayment.unwrap().id;
+    let payment = match PiPayment::update(context.pool(), pid, &payment_form).await
     {
-      Ok(payment) => {
-        return Ok(payment)
+      Ok(p) => {
+        println!("pi_payment_update, update local payment success: {} - {}", _pi_user_alias.clone(), _payment_id.clone());
+        Some(p)
       },
       Err(_e) => {
-        let err_type = _e.to_string();
-        //return LemmyError::from_error_message(e, &err_type)?;
-        //    .map_err(|e| LemmyError::from_error_message(e, &e.to_string().clone()))?;
-        return Err(LemmyError::from_message(&err_type));
+        let err_str = _e.to_string();
+        println!("pi_payment_update, update local payment error: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), err_str.clone());
+        return Err(LemmyError::from_message(&err_str));
       }
     };
+    pmt = payment.unwrap();
   }
   return Ok(pmt);
 }

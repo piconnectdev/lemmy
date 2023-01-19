@@ -6,6 +6,7 @@ use lemmy_api_common::{
   pipayment::*,
 };
 use lemmy_db_schema::source::local_site::RegistrationMode;
+use lemmy_db_schema::source::pipayment::PiPayment;
 use lemmy_db_views::structs::SiteView;
 use lemmy_utils::{
   error::LemmyError,
@@ -78,7 +79,17 @@ impl PerformCrud for PiRegisterWithFee {
       auth: None,
     };
 
-    let payment = match pi_payment_update(context, &approve.clone(), Some(data.txid.clone())).await
+    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
+    {
+      Ok(c) => {
+        Some(c)
+      }
+      Err(_e) => {
+        return Err(LemmyError::from_message("Not approved payment"));
+      },
+    };
+
+    let payment = match pi_payment_update(context, &approve.clone(), _payment, Some(data.txid.clone())).await
     {
       Ok(p) => {
         if !p.completed {
