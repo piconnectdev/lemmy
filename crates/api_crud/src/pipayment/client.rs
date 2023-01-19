@@ -252,7 +252,7 @@ pub async fn pi_payment_update(
     } 
     dto = match pi_approve(context.client(), &payment_id).await {
       Ok(c) => { 
-        println!("pi_payment_update, pi_approve with dto: {} {}", _payment_id.clone(), c.amount);
+        println!("pi_payment_update, pi_approve return dto: {} {} {}", _payment_id.clone(), c.amount, c.memo.clone());
         Some(c)
       },
       Err(_e) => {
@@ -274,7 +274,7 @@ pub async fn pi_payment_update(
     dto = match pi_complete(context.client(), &payment_id, &txid).await {
       Ok(c) => {
         completed = true;
-        println!("pi_payment_update, pi_complete with dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
+        println!("pi_payment_update, pi_complete return dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
         Some(c)
       }
       Err(_e) => {
@@ -374,12 +374,12 @@ pub async fn pi_payment_update(
     {
       Ok(payment) => {
         pid = payment.id;
-        println!("pi_payment_update, create local clone success: {} - {}", _pi_user_alias.clone(), _payment_id.clone());
+        println!("pi_payment_update, create payment success: {}", _payment_id.clone());
         Some(payment)
       }
       Err(_e) => {
         let err_str = _e.to_string();
-        println!("pi_payment_update, create local clone error: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), err_str.clone());
+        println!("pi_payment_update, create payment error: {} {} ", _payment_id.clone(), err_str.clone());
         return Err(LemmyError::from_message(&err_str));
       }
     };
@@ -452,12 +452,12 @@ pub async fn pi_payment_update(
     let payment = match PiPayment::update(context.pool(), pid, &payment_form).await
     {
       Ok(p) => {
-        println!("pi_payment_update, update local payment success: {} - {}", _pi_user_alias.clone(), _payment_id.clone());
+        println!("pi_payment_update, update payment success: {} {}", _payment_id.clone(), p.completed);
         Some(p)
       },
       Err(_e) => {
         let err_str = _e.to_string();
-        println!("pi_payment_update, update local payment error: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), err_str.clone());
+        println!("pi_payment_update, update payment error: {} {} ", _payment_id.clone(), err_str.clone());
         return Err(LemmyError::from_message(&err_str));
       }
     };

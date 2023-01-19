@@ -95,12 +95,14 @@ impl PerformCrud for PiAgreeRegister {
     };
 
     if _payment.is_some() {
-      return Ok(PiAgreeResponse {
-        success: true,
-        id: None,
-        paymentid: data.paymentid.to_owned(),
-        extra: None,
-      });
+      if approved || completed {
+        return Ok(PiAgreeResponse {
+          success: true,
+          id: None,
+          paymentid: data.paymentid.to_owned(),
+          extra: None,
+        });
+      }
     }
 
     let other_person = match Person::find_by_extra_name(context.pool(), &_pi_username.clone()).await
@@ -159,6 +161,36 @@ impl PerformCrud for PiAgreeRegister {
       }
     }
 
+    // TODO: UUID check
+    let refid = match &data.info.captcha_uuid {
+      Some(uid) => match Uuid::parse_str(uid) {
+        Ok(uidx) => Some(uidx),
+        Err(_e) => None,
+      },
+      None => None,
+    };
+
+        
+    let approve = PiApprove {
+      domain: data.domain.clone(),
+      pi_token: Some(_pi_token.clone()),
+      pi_username: _pi_username.clone(),
+      pi_uid: _pi_uid.clone(),
+      paymentid: data.paymentid.clone(),
+      object_id: None,
+      comment: Some("agree".to_string()),
+      auth: None,
+    };
+
+    let _payment = match pi_payment_update(context, &approve, None, None).await {
+      Ok(c) => c,
+      Err(e) => {
+        let err_type = e.to_string();
+        return Err(LemmyError::from_message(&err_type));
+      }
+    };
+
+    /* 
     dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
       Ok(c) => Some(c),
       Err(_e) => {
@@ -183,14 +215,6 @@ impl PerformCrud for PiAgreeRegister {
       _payment_dto = dto.unwrap();
     }
 
-    // TODO: UUID check
-    let refid = match &data.info.captcha_uuid {
-      Some(uid) => match Uuid::parse_str(uid) {
-        Ok(uidx) => Some(uidx),
-        Err(_e) => None,
-      },
-      None => None,
-    };
 
     let create_at = match chrono::NaiveDateTime::parse_from_str(
       &_payment_dto.created_at,
@@ -267,10 +291,11 @@ impl PerformCrud for PiAgreeRegister {
         return Err(LemmyError::from_message(&err_type));
       }
     };
+    */
     println!("PiAgreeResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(PiAgreeResponse {
       success: result,
-      id: Some(pid),
+      id: Some(_payment.id),
       paymentid: data.paymentid.to_owned(),
       extra: Some(result_string),
     })

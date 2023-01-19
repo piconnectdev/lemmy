@@ -75,7 +75,7 @@ impl PerformCrud for PiRegisterWithFee {
       paymentid: _payment_id.clone(),
       
       object_id: None,
-      comment: Some("register".to_string()),
+      comment: Some("register_with_fee".to_string()),
       auth: None,
     };
 
@@ -113,6 +113,7 @@ impl PerformCrud for PiRegisterWithFee {
         //None
       },
     };
+    println!("PiRegisterWithFee: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(login_response)
   }
 }

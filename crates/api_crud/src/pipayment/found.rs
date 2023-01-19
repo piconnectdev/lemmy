@@ -51,7 +51,6 @@ impl PerformCrud for PiPaymentFound {
       }
     };
 
-    //let _tx = Some(data.txid.clone());
     let approve = PiApprove {
       domain: data.domain.clone(),
       pi_token: data.pi_token.clone(),
@@ -81,7 +80,7 @@ impl PerformCrud for PiPaymentFound {
       }
     };
 
-    println!("PiPaymentFoundResponse, update: {} {}", _pi_username.clone(), data.paymentid.clone());
+    println!("PiPaymentFoundResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     let payment = _payment.clone();
     return Ok(PiPaymentFoundResponse {
       id: payment.id,

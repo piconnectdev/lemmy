@@ -73,6 +73,7 @@ impl PerformCrud for PiTip {
         return Err(LemmyError::from_message(&err_type));
       }
     };
+    println!("PiTipResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(PiTipResponse {
       id: _payment.id,
       paymentid: _payment_id.to_owned(),
