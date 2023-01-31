@@ -17,7 +17,9 @@ create table pipayment (
   user_uid text,
   amount double precision,
   memo text,
+  from_address text,
   to_address text,
+  direction text,
   created_at timestamp,
   approved bool,
   verified bool,
@@ -27,6 +29,7 @@ create table pipayment (
   tx_verified bool,
   tx_id text,  
   tx_link text,
+  network text,
   metadata jsonb,
   extras jsonb,
   CONSTRAINT pipayment_identifier_unique UNIQUE (identifier)

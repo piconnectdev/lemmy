@@ -784,11 +784,11 @@ table! {
 table! {
     pipayment (id) {
         id -> Uuid,
-        domain -> Nullable<Text>,
-        instance_id -> Nullable<Uuid>, // WePi user's id
+        domain -> Nullable<Text>,      //
+        instance_id -> Nullable<Uuid>, // WePi instance
         person_id -> Nullable<Uuid>, // WePi user's id
-        obj_cat -> Nullable<Text>,
-        obj_id -> Nullable<Uuid>,    // Captchar id
+        obj_cat -> Nullable<Text>,   // register - page - note - message - person - instance - group
+        obj_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
         ref_id -> Nullable<Uuid>,    // Captchar id
         testnet -> Bool,
         finished -> Bool,
@@ -804,7 +804,9 @@ table! {
         user_uid -> Text,           // PaymentDto - user_uid
         amount -> Double,
         memo -> Text,
+        from_address -> Text,
         to_address -> Text,
+        direction -> Text,
         created_at -> Nullable<Timestamp>,
 
         approved -> Bool,
@@ -815,6 +817,7 @@ table! {
         tx_verified -> Bool,
         tx_link -> Text,
         tx_id -> Text,
+        network -> Text,
         metadata -> Nullable<Jsonb>,
         extras -> Nullable<Jsonb>,
     }

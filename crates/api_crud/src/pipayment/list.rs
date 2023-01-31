@@ -17,9 +17,24 @@ impl PerformCrud for GetPiPayments {
   ) -> Result<GetPiPaymentResponse, LemmyError> {
     let data: &GetPiPayments = self;
 
+    // let sort = data.sort;
+    // let page = data.page;
+    // let limit = data.limit;
+    // let unread_only = data.unread_only;
+    // let mut payments = PiPaymentQuery::builder()
+    //   .pool(context.pool())
+    //   .person_id(person_id)
+    //   .page(page)
+    //   .limit(limit)
+    //   .out(false)
+    //   .build()
+    //   .list()
+    //   .await
+    //   .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_payment"))?;
+
     let pmid = data.id.to_owned();
     let res = GetPiPaymentResponse {
-      pid: "".to_string(),
+      pid: "".to_string(), 
     };
     Ok(res)
   }

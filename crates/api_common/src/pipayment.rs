@@ -1,5 +1,5 @@
-use crate::{person::*, web3::ExternalAccount};
-use lemmy_db_schema::newtypes::{PiPaymentId, PiUserId};
+use crate::{person::*, web3::ExternalAccount, sensitive::Sensitive};
+use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId}, source::pipayment::PiPaymentSafe};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -106,6 +106,21 @@ pub struct PiTipResponse {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiWithdraw {
+  pub domain: Option<String>,  
+  pub amount: f64,
+  pub comment: Option<String>,
+  pub auth: Option<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiWithdrawResponse {
+  pub id: PiPaymentId,
+  pub status: String,
+  pub paymentid: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiKey {
   pub domain: Option<String>,  
   pub pi_username: String,
@@ -138,15 +153,26 @@ pub struct PiPaymentTransaction {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct PiPaymentArgs {
+  pub amount: f64,
+  pub memo: String,
+  pub metadata: Option<Value>,
+  pub uid: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentDto {
   pub identifier: String,
   pub user_uid: String,
   pub amount: f64,
   pub memo: String,
+  pub from_address: String,
   pub to_address: String,
+  pub direction: String,
   pub created_at: String,
   pub status: PiPaymentStatus,
   pub transaction: Option<PiPaymentTransaction>,
+  pub network: String,
   pub metadata: Option<Value>,
 }
 
@@ -158,7 +184,7 @@ pub struct TxRequest {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetPiPayment {
   pub id: PiPaymentId,
-  pub auth: String,
+  pub auth: Sensitive<String>,
 }
 
 #[derive(Serialize, Debug, Default)]
@@ -170,14 +196,15 @@ pub struct GetPiPaymentResponse {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetPiPayments {
   pub sort: Option<String>,
+  pub sent: Option<bool>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
-  pub auth: String,
+  pub auth: Sensitive<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetPiPaymentsResponse {
-  pub pipayments: Vec<PiPaymentId>,
+  pub pipayments: Vec<PiPaymentSafe>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

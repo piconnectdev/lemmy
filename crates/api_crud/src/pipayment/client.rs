@@ -49,12 +49,83 @@ pub async fn pi_payment(
   Ok(res)
 }
 
+pub async fn pi_incompleted_server_payments(
+  client: &ClientWithMiddleware, 
+) -> Result<Vec<PiPaymentDto>, LemmyError> {
+  let settings = SETTINGS.to_owned();
+  let fetch_url = format!("{}/payments/incomplete_server_payments", settings.pi_api_host());
+
+  let response = retry(|| {
+    client
+      .get(&fetch_url)
+      .timeout(REQWEST_TIMEOUT)
+      .header("Authorization", format!("Key {}", settings.pi_key()))
+      .header("Content-Type", format!("application/json"))
+      .send()
+  })
+  .await?;
+
+  let res: Vec<PiPaymentDto> = response
+    .json::<Vec<PiPaymentDto>>()
+    .await
+    .map_err(|e| LemmyError::from_error_message(e, ""))?;
+  Ok(res)
+}
+
 pub async fn pi_approve(
   client: &ClientWithMiddleware,
   id: &str,
 ) -> Result<PiPaymentDto, LemmyError> {
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/payments/{}/approve", settings.pi_api_host(), id);
+
+  let response = retry(|| {
+    client
+      .post(&fetch_url)
+      .header("Authorization", format!("Key {}", settings.pi_key()))
+      .header("Content-Type", format!("application/json"))
+      .send()
+  })
+  .await?;
+
+  let res: PiPaymentDto = response
+    .json::<PiPaymentDto>()
+    .await
+    .map_err(|e| LemmyError::from_error_message(e, ""))?;
+  Ok(res)
+}
+
+
+pub async fn pi_create(
+  client: &ClientWithMiddleware,
+  payment: &PiPaymentArgs,
+) -> Result<PiPaymentDto, LemmyError> {
+  let settings = SETTINGS.to_owned();
+  let fetch_url = format!("{}/payments", settings.pi_api_host());
+
+  let response = retry(|| {
+    client
+      .post(&fetch_url)
+      .header("Authorization", format!("Key {}", settings.pi_key()))
+      .header("Content-Type", format!("application/json"))
+      .json(&payment)
+      .send()
+  })
+  .await?;
+
+  let res: PiPaymentDto = response
+    .json::<PiPaymentDto>()
+    .await
+    .map_err(|e| LemmyError::from_error_message(e, "Can not create A2U payment"))?;
+  Ok(res)
+}
+
+pub async fn pi_cancel(
+  client: &ClientWithMiddleware,
+  id: &str,
+) -> Result<PiPaymentDto, LemmyError> {
+  let settings = SETTINGS.to_owned();
+  let fetch_url = format!("{}/payments/{}/cancel", settings.pi_api_host(), id);
 
   let response = retry(|| {
     client
@@ -100,6 +171,7 @@ pub async fn pi_complete(
     .map_err(|e| LemmyError::from_error_message(e, ""))?;
   Ok(res)
 }
+
 
 pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto, LemmyError> {
   let settings = SETTINGS.to_owned();
@@ -347,7 +419,10 @@ pub async fn pi_payment_update(
       .user_uid( _payment_dto.user_uid)
       .amount( _payment_dto.amount)
       .memo( _payment_dto.memo.clone())
+      .from_address( _payment_dto.from_address)
       .to_address( _payment_dto.to_address)
+      .direction( _payment_dto.direction)
+      .network( _payment_dto.network)
       .created_at( create_at)
       .approved( _payment_dto.status.developer_approved)
       .verified( _payment_dto.status.transaction_verified)
