@@ -151,12 +151,14 @@ impl PerformCrud for PiLogin {
     };
 
     let mut external_id = None;
+    let mut external_name = None;
     match person {
       Some(p) => {
         pi_exist = true;
         person_id = p.id;
         username = p.name.clone();
         external_id = p.external_id;
+        external_name = p.external_name;
       }
       None => {
         if !_change_passwd {

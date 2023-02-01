@@ -9,7 +9,9 @@ alter table community add column auth_sign text;
 alter table community add column srv_sign text;
 alter table community add column tx text;
 
+alter table person add column home uuid;
 alter table person add column external_id text DEFAULT NULL, ADD CONSTRAINT person_external_id_key UNIQUE (external_id);
+alter table person add column external_name text DEFAULT NULL, ADD CONSTRAINT person_external_name_key UNIQUE (external_name);
 alter table person add column private_seeds text;
 alter table person add column verified bool DEFAULT false;
 alter table person add column pi_address text;
@@ -24,3 +26,5 @@ alter table person add column extras jsonb;
 alter table person add column auth_sign text;
 alter table person add column srv_sign text;
 alter table person add column tx text;
+
+create index idx_person_home on person (home);

@@ -26,7 +26,7 @@ impl PerformCrud for PiRegister {
     _websocket_id: Option<ConnectionId>,
   ) -> Result<LoginResponse, LemmyError> {
     let data: &PiRegister = &self;
-    let ext_account = data.ea.clone();
+    let mut ext_account = data.ea.clone();
 
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
@@ -52,6 +52,7 @@ impl PerformCrud for PiRegister {
       Ok(dto) => {
         _pi_username = dto.username.clone();
         _pi_uid = Some(dto.uid.clone());
+        ext_account.extra = Some(dto.uid.clone().0.hyphenated().to_string());
         Some(dto)
       }
       Err(_e) => {
@@ -65,6 +66,7 @@ impl PerformCrud for PiRegister {
       }
     };
 
+    //ext_account.extra = _pi_uid.to_string();
     let login_response = match create_external_account(context, &_pi_username.clone(), &ext_account, &data.info, false).await
     {
       Ok(c) => c,

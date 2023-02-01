@@ -327,6 +327,7 @@ table! {
         ban_expires -> Nullable<Timestamp>,
         instance_id -> Uuid,	
         external_id -> Nullable<Text>,
+        external_name -> Nullable<Text>,
         //private_seeds -> Nullable<Text>,
         verified -> Bool,
         pi_address -> Nullable<Text>,

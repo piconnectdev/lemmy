@@ -106,16 +106,31 @@ pub struct PiTipResponse {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct PiWithdraw {
+pub struct GetPiBalances {
   pub domain: Option<String>,  
-  pub amount: f64,
-  pub comment: Option<String>,
   pub auth: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct GetPiBalancesResponse {
+  pub status: String,
+  pub total: f64,
+  pub withdrawed: f64,
+  pub amount: f64,
+  pub pending: f64,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PiWithdraw {
+  pub domain: Option<String>,  
+  pub amount: f64,
+  pub comment: Option<String>,
+  pub auth: String,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiWithdrawResponse {
-  pub id: PiPaymentId,
+  pub id: Option<PiPaymentId>,
   pub status: String,
   pub paymentid: String,
 }
@@ -155,7 +170,7 @@ pub struct PiPaymentTransaction {
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentArgs {
   pub amount: f64,
-  pub memo: String,
+  pub memo: Option<String>,
   pub metadata: Option<Value>,
   pub uid: String,
 }

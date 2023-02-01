@@ -7,15 +7,15 @@ use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_api_common::{context::LemmyContext};
 
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for GetPiPayments {
-  type Response = GetPiPaymentsResponse;
+impl PerformCrud for GetPiBalances {
+  type Response = GetPiBalancesResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<GetPiPaymentsResponse, LemmyError> {
-    let data: &GetPiPayments = self;
+  ) -> Result<GetPiBalancesResponse, LemmyError> {
+    let data: &GetPiBalances = self;
 
     // let sort = data.sort;
     // let page = data.page;
@@ -32,11 +32,13 @@ impl PerformCrud for GetPiPayments {
     //   .await
     //   .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_payment"))?;
 
-    // let pmid = data.id.to_owned();
-    // let res = GetPiPaymentResponse {
-    //   pid: "".to_string(), 
-    // };
-    // Ok(res)
-    return Err(LemmyError::from_message("Not yet implements"));
+    let res = GetPiBalancesResponse {
+      status: "".to_string(), 
+      total: 0.0,
+      amount: 0.0,
+      pending: 0.0,
+      withdrawed: 0.0,
+    };
+    Ok(res)
   }
 }

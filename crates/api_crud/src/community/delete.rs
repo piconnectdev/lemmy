@@ -7,8 +7,8 @@ use lemmy_api_common::{
   websocket::{send::send_community_ws_message, UserOperationCrud},
 };
 use lemmy_db_schema::{
-  source::community::{Community, CommunityUpdateForm},
-  traits::Crud,
+  source::{community::{Community, CommunityUpdateForm}, person::Person},
+  traits::{Crud, ApubActor},
 };
 use lemmy_db_views_actor::structs::CommunityModeratorView;
 use lemmy_utils::{error::LemmyError, ConnectionId};
@@ -29,6 +29,18 @@ impl PerformCrud for DeleteCommunity {
 
     // Fetch the community mods
     let community_id = data.community_id;
+    let community = Community::read(context.pool(), community_id).await?;
+    match Person::read_from_name(context.pool(), &community.name.clone(), true).await
+    {
+      Ok(p) => {
+        return Err(LemmyError::from_message(
+          "only_admins_can_delete_home",
+        ));
+      },
+      Err(e) => {
+      }
+    };
+    
     let community_mods =
       CommunityModeratorView::for_community(context.pool(), community_id).await?;
 

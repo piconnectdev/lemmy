@@ -19,9 +19,9 @@ use lemmy_db_schema::{
     local_site::{LocalSite, RegistrationMode},
     local_user::{LocalUser, LocalUserInsertForm},
     person::*, registration_application::RegistrationApplicationInsertForm,
-    registration_application::RegistrationApplication
+    registration_application::RegistrationApplication, community::Community
   },
-  traits::{Crud}, aggregates::structs::PersonAggregates,
+  traits::{Crud, ApubActor}, aggregates::structs::PersonAggregates,
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 
@@ -75,6 +75,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
   }
 
   let _alias = name.clone();
+  let _alias_id = ea.extra.clone();
   let mut _new_user = info.username.to_owned();
   let _new_password = info.password.to_owned();
   let mut _person_id: PersonId;
@@ -140,7 +141,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
       //change_password = true;
       match person {
         Some(other) => {
-          if op.external_id != other.external_id {
+          if op.external_name != other.external_name {
             let err_type = format!(
               "External user {} is exist and belong to other account ",
               &_new_user.clone()
@@ -227,6 +228,16 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     });
   }
 
+  match Community::read_from_name(context.pool(), &_new_user.clone(), true).await
+  {
+    Ok(comm) => {
+      return Err(LemmyError::from_message(
+        "Cannot create user with community's name is exists",
+      ));
+    }
+    Err(e) => {}
+  };
+
   // We have to create both a person, and local_user
   // Register the new person
   let person_form = PersonInsertForm::builder()
@@ -239,7 +250,8 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     // If its the initial site setup, they are an admin
     .admin(Some(!local_site.site_setup))
     .instance_id(site_view.site.instance_id)
-    .external_id(Some(_alias.clone().to_owned()))
+    .external_id(_alias_id.clone())
+    .external_name(Some(_alias.clone().to_owned()))
     .verified(kyced)
     .build();
 

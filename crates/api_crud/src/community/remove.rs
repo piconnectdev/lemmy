@@ -9,9 +9,9 @@ use lemmy_api_common::{
 use lemmy_db_schema::{
   source::{
     community::{Community, CommunityUpdateForm},
-    moderator::{ModRemoveCommunity, ModRemoveCommunityForm},
+    moderator::{ModRemoveCommunity, ModRemoveCommunityForm}, person::Person,
   },
-  traits::Crud,
+  traits::{Crud, ApubActor},
 };
 use lemmy_utils::{error::LemmyError, utils::naive_from_unix, ConnectionId};
 
@@ -32,8 +32,21 @@ impl PerformCrud for RemoveCommunity {
     // Verify its an admin (only an admin can remove a community)
     is_admin(&local_user_view)?;
 
+    
+
     // Do the remove
     let community_id = data.community_id;
+    let community = Community::read(context.pool(), community_id).await?;
+    match Person::read_from_name(context.pool(), &community.name.clone(), true).await
+    {
+      Ok(p) => {
+        return Err(LemmyError::from_message(
+          "only_admins_can_delete_home",
+        ));
+      },
+      Err(e) => {
+      }
+    };
     let removed = data.removed;
     Community::update(
       context.pool(),

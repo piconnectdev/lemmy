@@ -1,5 +1,7 @@
 pub mod agree;
 pub mod approve;
+pub mod balance;
+pub mod list;
 pub mod client;
 pub mod found;
 pub mod login;
@@ -7,3 +9,4 @@ pub mod read;
 pub mod register;
 pub mod register_with_fee;
 pub mod update;
+pub mod withdraw;

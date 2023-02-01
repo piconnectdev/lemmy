@@ -129,6 +129,9 @@ pub enum UserOperationCrud {
   PiApprove,
   PiTip,
   PiKey,
+  GetPiPayments,
+  GetPiBalances,
+  PiWithdraw,
 }
 
 #[derive(EnumString, Display, Debug, Clone)]

@@ -133,7 +133,7 @@ use lemmy_api_common::{
     PiTipResponse, 
     PiPaymentFoundResponse, 
     PiKey, 
-    PiKeyResponse,
+    PiKeyResponse, PiWithdraw, PiWithdrawResponse, GetPiBalances, GetPiPayments, GetPiPaymentsResponse, GetPiBalancesResponse,
   },
 };
 
@@ -407,3 +407,13 @@ impl SendActivity for PiPaymentFound {
 impl SendActivity for PiKey {
   type Response = PiKeyResponse;
 }
+impl SendActivity for GetPiPayments {
+  type Response = GetPiPaymentsResponse;
+}
+impl SendActivity for GetPiBalances {
+  type Response = GetPiBalancesResponse;
+}
+impl SendActivity for PiWithdraw {
+  type Response = PiWithdrawResponse;
+}
+

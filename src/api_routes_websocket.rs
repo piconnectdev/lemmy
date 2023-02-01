@@ -414,6 +414,15 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::Web3Login => {
       do_websocket_operation_crud::<Web3Login>(context, id, op, data).await
     }
+    UserOperationCrud::GetPiPayments => {
+      do_websocket_operation_crud::<GetPiPayments>(context, id, op, data).await
+    }
+    UserOperationCrud::GetPiBalances => {
+      do_websocket_operation_crud::<GetPiBalances>(context, id, op, data).await
+    }
+    UserOperationCrud::PiWithdraw => {
+      do_websocket_operation_crud::<PiWithdraw>(context, id, op, data).await
+    }
   }
 }
 

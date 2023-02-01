@@ -13,6 +13,7 @@ use crate::{
     person,
     updated,
     external_id,
+    external_name,
     //private_seeds,
     verified,
     // pi_address,
@@ -60,7 +61,8 @@ mod safe_type {
       published,
       shared_inbox_url,
       updated,
-      external_id,
+      //external_id,
+      //external_name,
       verified,
       pi_address,
       web3_address,
@@ -96,7 +98,8 @@ mod safe_type {
     bot_account,
     ban_expires,
     instance_id,
-    external_id,
+    //external_id,
+    //external_name,
     verified,
     pi_address,
     web3_address,
@@ -132,7 +135,8 @@ mod safe_type {
         bot_account,
         ban_expires,
         instance_id,
-        external_id,
+        //external_id,
+        //external_name,
         verified,
         pi_address,
         web3_address,
@@ -231,7 +235,7 @@ impl Person {
     person
       .filter(deleted.eq(false))
       .filter(local.eq(true))
-      .filter(external_id.eq(from_name))
+      .filter(external_name.eq(from_name))
       .first::<Person>(conn)
       .await
   }
@@ -457,6 +461,7 @@ mod tests {
       ban_expires: None,
       instance_id: inserted_instance.id,
       external_id: None,
+      external_name: None,
       verified: false,
       pi_address: None,
       web3_address: None,

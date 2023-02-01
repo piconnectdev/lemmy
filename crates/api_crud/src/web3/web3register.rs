@@ -36,7 +36,7 @@ impl PerformCrud for Web3Register {
   ) -> Result<LoginResponse, LemmyError> {
     let settings = SETTINGS.to_owned();
     let data: &Web3Register = &self;
-    let ext_account = data.ea.clone();
+    let mut ext_account = data.ea.clone();
 
     // no email verification, or applications if the site is not setup yet
     let (mut email_verification, mut require_application) = (false, false);
@@ -49,7 +49,6 @@ impl PerformCrud for Web3Register {
     let require_registration_application =
       local_site.registration_mode == RegistrationMode::RequireApplication;
     if local_site.registration_mode == RegistrationMode::Closed  {
-      //println!("Web3Registration is processing for xxx registration_closed");
       return Err(LemmyError::from_message("registration_closed"));
     }
     
@@ -90,6 +89,7 @@ impl PerformCrud for Web3Register {
       }  
     }
 
+    ext_account.extra = Some(ext_account.account.clone());
     let login_response = match create_external_account(context, &ext_account.account.clone(), &ext_account, &data.info.clone(), false).await
     {
       Ok(c) => c,

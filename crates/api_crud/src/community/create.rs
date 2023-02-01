@@ -26,6 +26,7 @@ use lemmy_db_schema::{
       CommunityModerator,
       CommunityModeratorForm,
     },
+    person::Person,
   },
   traits::{ApubActor, Crud, Followable, Joinable, Signable},
   utils::diesel_option_overwrite_to_url_create,
@@ -54,16 +55,37 @@ impl PerformCrud for CreateCommunity {
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
+   
     if local_site.community_creation_admin_only && is_admin(&local_user_view).is_err() {
       return Err(LemmyError::from_message(
         "only_admins_can_create_communities",
       ));
     }
     
-    if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
-      return Err(LemmyError::from_message(
-        "only_admins_or_verified_users_can_create_communities",
-      ));
+    let mut is_home = false;
+    if local_user_view.person.name.to_lowercase() == data.name.to_lowercase() {
+      is_home = true;
+      // if !local_user_view.person.verified  {
+      //   return Err(LemmyError::from_message(
+      //     "only_admins_or_verified_users_can_create_communities",
+      //   ));
+      // }
+    } else {
+      match Person::read_from_name(context.pool(), &data.name.clone(), true).await
+      {
+        Ok(p) => {
+          return Err(LemmyError::from_message(
+            "only_admins_can_create_communities",
+          ));
+        },
+        Err(e) => {
+        }
+      };
+      if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
+        return Err(LemmyError::from_message(
+          "only_admins_or_verified_users_can_create_communities",
+        ));
+      }
     }
 
     // Check to make sure the icon and banners are urls

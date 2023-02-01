@@ -1,5 +1,5 @@
 create table pipayment (
-  id uuid NOT NULL DEFAULT next_uuid() primary key,
+  id uuid NOT NULL DEFAULT next_uuid(),
   domain text,
   instance_id uuid,
   person_id uuid,
@@ -32,7 +32,8 @@ create table pipayment (
   network text,
   metadata jsonb,
   extras jsonb,
-  CONSTRAINT pipayment_identifier_unique UNIQUE (identifier)
+  primary key(id, published)
+  -- CONSTRAINT pipayment_identifier_unique UNIQUE (identifier)
 );
 
 create index idx_pipayment_domain on pipayment (domain);

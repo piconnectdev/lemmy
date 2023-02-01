@@ -121,7 +121,7 @@ impl PerformCrud for PiAgreeRegister {
       Some(pi) => {
         match person {
           Some(per) => {
-            if pi.external_id != per.external_id {
+            if pi.external_name != per.external_name {
               let err_type = format!(
                 "User {} is exist and belong to other Pi Network account",
                 &data.info.username

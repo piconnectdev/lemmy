@@ -171,6 +171,7 @@ impl ApubObject for ApubPerson {
       matrix_user_id: person.matrix_user_id,
       instance_id: instance.id,
       external_id: None,
+      external_name: None,
       verified: false,
       pi_address: None,
       web3_address: None,
