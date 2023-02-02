@@ -30,6 +30,8 @@ pub struct Community {
   pub hidden: bool,
   pub posting_restricted_to_mods: bool,
   pub instance_id: InstanceId,
+  pub is_home: bool,
+  pub person_id: Option<PersonId>,
   pub srv_sign: Option<String>,
   pub tx : Option<String>,  
 }
@@ -55,6 +57,8 @@ pub struct CommunitySafe {
   pub hidden: bool,
   pub posting_restricted_to_mods: bool,
   pub instance_id: InstanceId,
+  pub is_home: bool,
+  pub person_id: Option<PersonId>,
   pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }
@@ -88,6 +92,8 @@ pub struct CommunityInsertForm {
   pub posting_restricted_to_mods: Option<bool>,
   #[builder(!default)]
   pub instance_id: InstanceId,
+  pub is_home: Option<bool>,
+  pub person_id: Option<PersonId>,
   pub srv_sign: Option<String>,
   pub tx : Option<String>,
 }

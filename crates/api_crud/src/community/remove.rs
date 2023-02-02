@@ -37,16 +37,19 @@ impl PerformCrud for RemoveCommunity {
     // Do the remove
     let community_id = data.community_id;
     let community = Community::read(context.pool(), community_id).await?;
-    match Person::read_from_name(context.pool(), &community.name.clone(), true).await
-    {
-      Ok(p) => {
-        return Err(LemmyError::from_message(
-          "only_admins_can_delete_home",
-        ));
-      },
-      Err(e) => {
-      }
-    };
+    if community.is_home {
+      return Err(LemmyError::from_message("only_admins_can_remove_home"));
+    }
+    // match Person::read_from_name(context.pool(), &community.name.clone(), true).await
+    // {
+    //   Ok(p) => {
+    //     return Err(LemmyError::from_message(
+    //       "only_admins_can_delete_home",
+    //     ));
+    //   },
+    //   Err(e) => {
+    //   }
+    // };
     let removed = data.removed;
     Community::update(
       context.pool(),

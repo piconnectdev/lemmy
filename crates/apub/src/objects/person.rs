@@ -170,6 +170,7 @@ impl ApubObject for ApubPerson {
       shared_inbox_url: person.endpoints.map(|e| e.shared_inbox.into()),
       matrix_user_id: person.matrix_user_id,
       instance_id: instance.id,
+      home: None,
       external_id: None,
       external_name: None,
       verified: false,

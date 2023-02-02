@@ -1,4 +1,4 @@
-use crate::newtypes::{DbUrl, InstanceId, PersonId, PersonFollowerId};
+use crate::newtypes::{DbUrl, InstanceId, PersonId, PersonFollowerId, CommunityId};
 #[cfg(feature = "full")]
 use crate::schema::{person, person_follower};
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,7 @@ pub struct Person {
   pub bot_account: bool,
   pub ban_expires: Option<chrono::NaiveDateTime>,
   pub instance_id: InstanceId,
+  pub home: Option<CommunityId>,
   pub external_id: Option<String>,
   pub external_name: Option<String>,
   pub verified: bool,
@@ -70,6 +71,7 @@ pub struct PersonSafe {
   pub bot_account: bool,
   pub ban_expires: Option<chrono::NaiveDateTime>,
   pub instance_id: InstanceId,
+  pub home: Option<CommunityId>,
   //pub external_id: Option<String>,
   //pub external_name: Option<String>,
   pub verified: bool,
@@ -113,6 +115,7 @@ pub struct PersonInsertForm {
   pub admin: Option<bool>,
   pub bot_account: Option<bool>,
   pub ban_expires: Option<chrono::NaiveDateTime>,
+  pub home: Option<CommunityId>,
   pub external_id: Option<String>,
   pub external_name: Option<String>,
   pub verified: bool,

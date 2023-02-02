@@ -5,6 +5,8 @@ alter table site add column auth_sign text;
 alter table site add column srv_sign text;
 alter table site add column tx text;
 
+alter table community add column is_home bool DEFAULT false;
+alter table community add column person_id uuid;
 alter table community add column auth_sign text;
 alter table community add column srv_sign text;
 alter table community add column tx text;

@@ -45,6 +45,8 @@ mod safe_type {
       removed,
       title,
       updated,
+      is_home,
+      person_id,
     },
     source::community::Community,
     traits::ToSafe,
@@ -67,6 +69,8 @@ mod safe_type {
     hidden,
     posting_restricted_to_mods,
     instance_id,
+    is_home,
+    person_id,
     srv_sign,
     tx,
   );
@@ -91,6 +95,8 @@ mod safe_type {
         hidden,
         posting_restricted_to_mods,
         instance_id,
+        is_home,
+        person_id,
         srv_sign,
         tx,
       )
@@ -493,6 +499,8 @@ mod tests {
       hidden: false,
       posting_restricted_to_mods: false,
       instance_id: inserted_instance.id,
+      is_home: false,
+      person_id: None,
       srv_sign: None,
       tx: None,
     };

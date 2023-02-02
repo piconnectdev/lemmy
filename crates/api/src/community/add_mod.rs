@@ -49,6 +49,11 @@ impl Perform for AddModToCommunity {
         .await
         .map_err(|e| LemmyError::from_error_message(e, "community_moderator_already_exists"))?;
     } else {
+      if community.is_home {
+        if community.person_id.unwrap() == local_user_view.person.id {
+          return Err(LemmyError::from_message("Can not leave your home"));
+        }
+      }  
       CommunityModerator::leave(context.pool(), &community_moderator_form)
         .await
         .map_err(|e| LemmyError::from_error_message(e, "community_moderator_already_exists"))?;

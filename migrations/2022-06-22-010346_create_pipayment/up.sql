@@ -46,3 +46,35 @@ create index idx_pipayment_pi_uid on pipayment (pi_uid);
 create index idx_pipayment_user_uid on pipayment (user_uid);
 create index idx_pipayment_identifier on pipayment (identifier);
 create index idx_pipayment_memo on pipayment (memo);
+
+create table person_balances {
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
+  person_id uuid,
+  published timestamp not null default now(),
+  asset_name text,
+  total_deposit double precision,
+  total_withdraw double precision,
+  amount double precision,
+  pending double precision,
+  extras jsonb,
+};
+
+create index idx_person_balances_person_id on person_balances (person_id);
+
+create table person_withdraw {
+  id uuid NOT NULL DEFAULT next_uuid() primary key,
+  person_id uuid,
+  published timestamp not null default now(),
+  asset_name text,
+  finished bool,
+  current_amount double precision,
+  amount double precision,
+  remain double precision,
+  stat text,
+  txid text;
+  link text;
+  updated timestamp,
+  extras jsonb,
+};
+
+create index idx_person_withdraw_person_id on person_balances (person_id);

@@ -63,8 +63,10 @@ impl PerformCrud for CreateCommunity {
     }
     
     let mut is_home = false;
+    let mut person_id = None;
     if local_user_view.person.name.to_lowercase() == data.name.to_lowercase() {
       is_home = true;
+      person_id = Some(local_user_view.person.id.clone());
       // if !local_user_view.person.verified  {
       //   return Err(LemmyError::from_message(
       //     "only_admins_or_verified_users_can_create_communities",
@@ -130,6 +132,8 @@ impl PerformCrud for CreateCommunity {
       .shared_inbox_url(Some(generate_shared_inbox_url(&community_actor_id)?))
       .posting_restricted_to_mods(data.posting_restricted_to_mods)
       .instance_id(site_view.site.instance_id)
+      .is_home(Some(is_home))
+      .person_id(person_id)
       .build();
 
     let inserted_community = Community::create(context.pool(), &community_form)
@@ -178,10 +182,16 @@ impl PerformCrud for CreateCommunity {
 
     let person_id = local_user_view.person.id;
     let community_view =
-      CommunityView::read(context.pool(), inserted_community.id, Some(person_id)).await?;
+      CommunityView::read(context.pool(), inserted_community.id, Some(person_id.clone())).await?;
     let discussion_languages =
       CommunityLanguage::read(context.pool(), inserted_community.id).await?;
 
+    if is_home {
+      Person::update_home(context.pool(), person_id, inserted_community.id.clone())
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "create home error"))?;
+    }
+  
     Ok(CommunityResponse {
       community_view,
       discussion_languages,

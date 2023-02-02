@@ -8,7 +8,7 @@ use lemmy_api_common::{
 };
 use lemmy_db_schema::{
   source::{
-    community::{CommunityModerator, CommunityModeratorForm},
+    community::{CommunityModerator, CommunityModeratorForm, Community},
     moderator::{ModTransferCommunity, ModTransferCommunityForm},
   },
   traits::{Crud, Joinable},
@@ -49,6 +49,11 @@ impl Perform for TransferCommunity {
       return Err(LemmyError::from_message("not_an_admin"));
     }
 
+    let community = Community::read(context.pool(), community_id).await?;
+    if community.is_home {
+      return Err(LemmyError::from_message("Can not transfer a home"));
+    }
+    
     // You have to re-do the community_moderator table, reordering it.
     // Add the transferee to the top
     let creator_index = community_mods

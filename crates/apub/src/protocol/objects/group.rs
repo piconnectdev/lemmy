@@ -118,6 +118,8 @@ impl Group {
       shared_inbox_url: self.endpoints.map(|e| e.shared_inbox.into()),
       posting_restricted_to_mods: self.posting_restricted_to_mods,
       instance_id,
+      is_home: None,
+      person_id: None,
       srv_sign: None,
       tx: None,
     }

@@ -53,15 +53,6 @@ impl PerformCrud for CreatePost {
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
-    if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
-      let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-      if data.community_id != CommunityId(uuid) {
-        return Err(LemmyError::from_message(
-          "only_admins_or_verified_user_can_create_post",
-        ));
-      }
-    }
-
     let slur_regex = local_site_to_slur_regex(&local_site);
     check_slurs(&data.name, &slur_regex)?;
     check_slurs_opt(&data.body, &slur_regex)?;
@@ -88,6 +79,27 @@ impl PerformCrud for CreatePost {
       .await?;
       if !is_mod {
         return Err(LemmyError::from_message("only_mods_can_post_in_community"));
+      }
+    }
+    if community.is_home {
+      if community.person_id.is_none() {
+        return Err(LemmyError::from_message("only_mods_can_post_in_community"));
+      }
+      if community.person_id.unwrap_or_default() != local_user_view.person.id {
+        if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
+            return Err(LemmyError::from_message(
+              "only_admins_or_verified_user_can_create_post_on_other_home",
+            ));
+        }
+      }
+    } else {
+      if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
+        let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+        if data.community_id != CommunityId(uuid) {
+          return Err(LemmyError::from_message(
+            "only_admins_or_verified_user_can_create_post",
+          ));
+        }
       }
     }
 

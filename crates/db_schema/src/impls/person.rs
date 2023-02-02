@@ -12,6 +12,7 @@ use crate::{
     name,
     person,
     updated,
+    home,
     external_id,
     external_name,
     //private_seeds,
@@ -61,6 +62,7 @@ mod safe_type {
       published,
       shared_inbox_url,
       updated,
+      home,
       //external_id,
       //external_name,
       verified,
@@ -98,6 +100,7 @@ mod safe_type {
     bot_account,
     ban_expires,
     instance_id,
+    home,
     //external_id,
     //external_name,
     verified,
@@ -135,6 +138,7 @@ mod safe_type {
         bot_account,
         ban_expires,
         instance_id,
+        home,
         //external_id,
         //external_name,
         verified,
@@ -252,6 +256,18 @@ impl Person {
       .await
   }
 
+  pub async fn update_home(
+    pool: &DbPool,
+    person_id: PersonId,
+    community_id: CommunityId,
+  ) -> Result<Self, Error> {
+    use crate::schema::person::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person.find(person_id))
+      .set(home.eq(community_id))
+      .get_result::<Self>(conn)
+      .await
+  }
 
 }
 
@@ -460,6 +476,7 @@ mod tests {
       matrix_user_id: None,
       ban_expires: None,
       instance_id: inserted_instance.id,
+      home: None,
       external_id: None,
       external_name: None,
       verified: false,
