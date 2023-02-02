@@ -32,8 +32,8 @@ create table pipayment (
   network text,
   metadata jsonb,
   extras jsonb,
-  primary key(id, published)
-  -- CONSTRAINT pipayment_identifier_unique UNIQUE (identifier)
+  primary key(id, published),
+  CONSTRAINT pipayment_identifier_unique UNIQUE (identifier)
 );
 
 create index idx_pipayment_domain on pipayment (domain);
@@ -47,9 +47,10 @@ create index idx_pipayment_user_uid on pipayment (user_uid);
 create index idx_pipayment_identifier on pipayment (identifier);
 create index idx_pipayment_memo on pipayment (memo);
 
-create table person_balances {
+create table person_balances (
   id uuid NOT NULL DEFAULT next_uuid() primary key,
   person_id uuid,
+  person_name text,
   published timestamp not null default now(),
   asset_name text,
   total_deposit double precision,
@@ -57,24 +58,31 @@ create table person_balances {
   amount double precision,
   pending double precision,
   extras jsonb,
-};
+  UNIQUE (person_id, asset_name)
+);
 
 create index idx_person_balances_person_id on person_balances (person_id);
 
-create table person_withdraw {
+create table person_withdraw (
   id uuid NOT NULL DEFAULT next_uuid() primary key,
   person_id uuid,
+  person_name text,
   published timestamp not null default now(),
   asset_name text,
   finished bool,
   current_amount double precision,
   amount double precision,
   remain double precision,
+  payment_id uuid,
+  identifier text,
   stat text,
-  txid text;
-  link text;
+  txid text,
+  link text,
+  code text,
+  notes text,
   updated timestamp,
-  extras jsonb,
-};
+  extras jsonb
+);
 
-create index idx_person_withdraw_person_id on person_balances (person_id);
+create index idx_person_withdraw_person_id on person_withdraw (person_id);
+create index idx_person_withdraw_code on person_withdraw (code);
