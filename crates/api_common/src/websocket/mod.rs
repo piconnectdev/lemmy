@@ -127,9 +127,11 @@ pub enum UserOperationCrud {
   PiAgreeRegister,
   PiRegisterWithFee,
   PiApprove,
-  PiTip,
+  PiPaymentComplete,
   PiKey,
-  GetPiPayments,
+  CreatePayment,
+  GetPayment,
+  GetPayments,
   GetPiBalances,
   PiWithdraw,
 }

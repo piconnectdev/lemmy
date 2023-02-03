@@ -7,15 +7,15 @@ use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_api_common::{context::LemmyContext};
 
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for GetPiPayments {
-  type Response = GetPiPaymentsResponse;
+impl PerformCrud for GetPayments {
+  type Response = GetPaymentsResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<GetPiPaymentsResponse, LemmyError> {
-    let data: &GetPiPayments = self;
+  ) -> Result<GetPaymentsResponse, LemmyError> {
+    let data: &GetPayments = self;
 
     // let sort = data.sort;
     // let page = data.page;

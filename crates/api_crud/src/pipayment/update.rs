@@ -8,14 +8,14 @@ use lemmy_db_schema::source::pipayment::PiPayment;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for PiTip {
-  type Response = PiTipResponse;
+impl PerformCrud for PiPaymentComplete {
+  type Response = PiPaymentCompleteResponse;
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     websocket_id: Option<ConnectionId>,
-  ) -> Result<PiTipResponse, LemmyError> {
-    let data: &PiTip = self;
+  ) -> Result<PiPaymentCompleteResponse, LemmyError> {
+    let data: &PiPaymentComplete = self;
     if data.pi_token.is_none() {
       return Err(LemmyError::from_message("Pi token is missing!"));
     }
@@ -73,8 +73,8 @@ impl PerformCrud for PiTip {
         return Err(LemmyError::from_message(&err_type));
       }
     };
-    println!("PiTipResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
-    Ok(PiTipResponse {
+    println!("PiPaymentCompleteResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
+    Ok(PiPaymentCompleteResponse {
       id: _payment.id,
       paymentid: _payment_id.to_owned(),
     })

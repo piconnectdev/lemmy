@@ -4,19 +4,19 @@ use lemmy_api_common::pipayment::*;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_api_common::{context::LemmyContext};
 #[async_trait::async_trait(?Send)]
-impl PerformCrud for GetPiPayment {
-  type Response = GetPiPaymentResponse;
+impl PerformCrud for GetPayment {
+  type Response = GetPaymentResponse;
 
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
     _websocket_id: Option<ConnectionId>,
-  ) -> Result<GetPiPaymentResponse, LemmyError> {
-    let data: &GetPiPayment = self;
+  ) -> Result<GetPaymentResponse, LemmyError> {
+    let data: &GetPayment = self;
 
     let pmid = data.id.to_owned();
-    let res = GetPiPaymentResponse {
-      pid: "".to_string(),
+    let res = GetPaymentResponse {
+      payment: None,
     };
     Ok(res)
   }

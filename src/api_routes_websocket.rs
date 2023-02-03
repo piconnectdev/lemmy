@@ -399,8 +399,8 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::PiApprove => {
       do_websocket_operation_crud::<PiApprove>(context, id, op, data).await
     }
-    UserOperationCrud::PiTip => {
-      do_websocket_operation_crud::<PiTip>(context, id, op, data).await
+    UserOperationCrud::PiPaymentComplete => {
+      do_websocket_operation_crud::<PiPaymentComplete>(context, id, op, data).await
     }
     UserOperationCrud::PiPaymentFound => {
       do_websocket_operation_crud::<PiPaymentFound>(context, id, op, data).await
@@ -414,8 +414,14 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::Web3Login => {
       do_websocket_operation_crud::<Web3Login>(context, id, op, data).await
     }
-    UserOperationCrud::GetPiPayments => {
-      do_websocket_operation_crud::<GetPiPayments>(context, id, op, data).await
+    UserOperationCrud::CreatePayment => {
+      do_websocket_operation_crud::<CreatePayment>(context, id, op, data).await
+    }
+    UserOperationCrud::GetPayment => {
+      do_websocket_operation_crud::<GetPayment>(context, id, op, data).await
+    }
+    UserOperationCrud::GetPayments => {
+      do_websocket_operation_crud::<GetPayments>(context, id, op, data).await
     }
     UserOperationCrud::GetPiBalances => {
       do_websocket_operation_crud::<GetPiBalances>(context, id, op, data).await

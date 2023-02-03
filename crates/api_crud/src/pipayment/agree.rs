@@ -33,6 +33,8 @@ impl PerformCrud for PiAgreeRegister {
 
     if local_site.registration_mode == RegistrationMode::Closed {
       return Err(LemmyError::from_message("registration_closed"));
+    } else {
+      return Err(LemmyError::from_message("registration_disabled"));
     }
 
     if local_site.site_setup {

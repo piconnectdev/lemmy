@@ -126,14 +126,23 @@ use lemmy_api_common::{
     PiAgreeRegister,
     PiRegisterWithFee,
     PiApprove,
-    PiTip,
+    PiPaymentComplete,
     PiPaymentFound, 
     PiAgreeResponse, 
     PiApproveResponse,
-    PiTipResponse, 
+    PiPaymentCompleteResponse, 
     PiPaymentFoundResponse, 
     PiKey, 
-    PiKeyResponse, PiWithdraw, PiWithdrawResponse, GetPiBalances, GetPiPayments, GetPiPaymentsResponse, GetPiBalancesResponse,
+    PiKeyResponse, 
+    PiWithdraw, 
+    PiWithdrawResponse, 
+    GetPiBalances,
+    GetPiBalancesResponse, 
+    GetPayment, 
+    GetPaymentResponse, 
+    GetPayments, 
+    GetPaymentsResponse, 
+
   },
 };
 
@@ -398,8 +407,8 @@ impl SendActivity for PiRegisterWithFee {
 impl SendActivity for PiApprove {
   type Response = PiApproveResponse;
 }
-impl SendActivity for PiTip {
-  type Response = PiTipResponse;
+impl SendActivity for PiPaymentComplete {
+  type Response = PiPaymentCompleteResponse;
 }
 impl SendActivity for PiPaymentFound {
   type Response = PiPaymentFoundResponse;
@@ -407,8 +416,11 @@ impl SendActivity for PiPaymentFound {
 impl SendActivity for PiKey {
   type Response = PiKeyResponse;
 }
-impl SendActivity for GetPiPayments {
-  type Response = GetPiPaymentsResponse;
+impl SendActivity for GetPayment {
+  type Response = GetPaymentResponse;
+}
+impl SendActivity for GetPayments {
+  type Response = GetPaymentsResponse;
 }
 impl SendActivity for GetPiBalances {
   type Response = GetPiBalancesResponse;

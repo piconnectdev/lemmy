@@ -94,7 +94,7 @@ impl PerformCrud for CreatePost {
       }
     } else {
       if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
-        let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+        let uuid = uuid::Uuid::parse_str("01861067-a289-0a21-087b-7b18db40b300").unwrap();
         if data.community_id != CommunityId(uuid) {
           return Err(LemmyError::from_message(
             "only_admins_or_verified_user_can_create_post",

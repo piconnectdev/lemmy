@@ -218,7 +218,7 @@ impl<'a> CommunityQuery<'a> {
         query = query.filter(community::nsfw.eq(false));
       }
     }
-    query = query.filter(community::is_home.eq(false));
+    // query = query.filter(community::is_home.eq(false));
 
     let (limit, offset) = limit_and_offset(self.page, self.limit)?;
     let res = query

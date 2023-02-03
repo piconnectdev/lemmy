@@ -371,8 +371,15 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
             web::post().to(route_post_crud::<PiRegisterWithFee>),
           )
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
-          .route("/complete", web::post().to(route_post_crud::<PiTip>))
+          .route("/complete", web::post().to(route_post_crud::<PiPaymentComplete>))
           .route("/key", web::post().to(route_post_crud::<PiKey>)),
+          //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
+      ).service(
+        web::scope("/payment")
+          .wrap(rate_limit.message())
+          .route("", web::get().to(route_post_crud::<GetPayment>))
+          .route("", web::post().to(route_post_crud::<CreatePayment>))
+          .route("/list", web::post().to(route_post_crud::<GetPayments>)),
           //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
       ),
   );
