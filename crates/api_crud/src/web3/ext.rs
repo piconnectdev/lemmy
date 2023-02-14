@@ -19,7 +19,7 @@ use lemmy_db_schema::{
     local_site::{LocalSite, RegistrationMode},
     local_user::{LocalUser, LocalUserInsertForm},
     person::*, registration_application::RegistrationApplicationInsertForm,
-    registration_application::RegistrationApplication, community::Community, person_balance::PersonBalanceInsertForm
+    registration_application::RegistrationApplication, community::Community, person_balance::{PersonBalanceInsertForm, PersonBalance}
   },
   traits::{Crud, ApubActor}, aggregates::structs::PersonAggregates,
 };
@@ -270,6 +270,25 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
       return Err(LemmyError::from_message(&err_type).into());
     }
   };
+
+  // Create the balance 
+  let balance_form = PersonBalanceInsertForm::builder()
+    .person_id(inserted_person.id.clone())
+    .asset(Some("PI".to_string()))
+    .deposited(0.0)
+    .rewarded(0.0)
+    .amount(0.0)
+    .withdrawed(0.0)
+    .pending(0.0)
+    .build();
+
+  let inserted_balance = match PersonBalance::create(context.pool(), &balance_form).await {
+    Ok(lu) => Some(lu),
+    Err(e) => {
+      None
+    }
+  };
+    
   // Create the local user
   let local_user_form = LocalUserInsertForm::builder()
     .person_id(inserted_person.id)
@@ -295,16 +314,6 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
       return Err(LemmyError::from_error_message(e, err_type));
     }
   };
-
-    // Create the balance 
-  let balance_form = PersonBalanceInsertForm::builder()
-    .person_id(inserted_person.id)
-    .build();
-
-  // let inserted_balance = match PersonBalance::create(context.pool(), &balance_form).await {
-  //   Ok(lu) => lu,
-  //   Err(e) => {
-  // };
 
   if local_site.site_setup && require_application {
     // Create the registration application

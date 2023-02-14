@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use typed_builder::TypedBuilder;
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TypedBuilder)]
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", diesel(table_name = person_balance))]
 pub struct PersonBalance {
@@ -18,6 +19,7 @@ pub struct PersonBalance {
   pub withdrawed: f64,
   pub amount: f64,
   pub pending: f64,
+  pub updated: Option<chrono::NaiveDateTime>,
   pub extras: Option<Value>,
 }
 
@@ -34,6 +36,7 @@ pub struct PersonBalanceSafe {
   pub withdrawed: f64,
   pub amount: f64,
   pub pending: f64,
+  pub updated: Option<chrono::NaiveDateTime>,
   pub extras: Option<Value>,
 }
 
@@ -51,6 +54,8 @@ pub struct PersonBalanceInsertForm {
   pub pending: f64,
 }
 
+#[derive(Debug, Clone, TypedBuilder)]
+#[builder(field_defaults(default))]
 #[cfg_attr(feature = "full", derive(AsChangeset))]
 #[cfg_attr(feature = "full", diesel(table_name = person_balance))]
 pub struct PersonBalanceUpdateForm {

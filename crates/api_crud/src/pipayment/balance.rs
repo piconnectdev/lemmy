@@ -1,10 +1,10 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
-use lemmy_db_views_actor::community_moderator_view::*;
-use lemmy_db_views_actor::person_view::*;
+use lemmy_db_schema::source::person_balance::PersonBalance;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_api_common::{context::LemmyContext};
+use lemmy_api_common::utils::get_local_user_view_from_jwt;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for GetPiBalances {
@@ -17,6 +17,11 @@ impl PerformCrud for GetPiBalances {
   ) -> Result<GetPiBalancesResponse, LemmyError> {
     let data: &GetPiBalances = self;
 
+  let local_user_view =
+    get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+  let person_id = local_user_view.person.id;
+
+  let balance =  PersonBalance::find_by_asset(context.pool(), person_id, "PI").await?;
     // let sort = data.sort;
     // let page = data.page;
     // let limit = data.limit;
@@ -33,15 +38,16 @@ impl PerformCrud for GetPiBalances {
     //   .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_payment"))?;
 
     let res = GetPiBalancesResponse {
-      id: None,
+      id: Some(balance.id),
       status: Some("".to_string()), 
-      asset: Some("PI".to_string()),
-      deposited: 0.0,
-      rewarded: 0.0,
-      amount: 0.0,
-      pending: 0.0,
-      withdrawed: 0.0,
+      asset: balance.asset,
+      deposited: balance.deposited,
+      rewarded: balance.rewarded,
+      amount: balance.amount,
+      pending: balance.pending,
+      withdrawed: balance.withdrawed,
     };
+
     Ok(res)
   }
 }

@@ -65,6 +65,7 @@ create table person_balance (
   withdrawed double precision,
   amount double precision,
   pending double precision,
+  updated timestamp,
   extras jsonb,
   UNIQUE (person_id, asset)
 );

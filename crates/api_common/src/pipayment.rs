@@ -246,7 +246,7 @@ pub struct GetPaymentResponse {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GetPayments {
   pub sort: Option<String>,
-  pub sent: Option<bool>,
+  pub a2u: Option<bool>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub auth: Sensitive<String>,

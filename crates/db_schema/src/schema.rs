@@ -835,12 +835,13 @@ table! {
         id -> Uuid,
         person_id -> Uuid,
         published -> Timestamp,
-        asset -> Text,
+        asset -> Nullable<Text>,
         deposited -> Double,
         rewarded -> Double,
         withdrawed -> Double,
         amount -> Double,
         pending -> Double,
+        updated -> Nullable<Timestamp>,
         extras -> Nullable<Jsonb>,
     }
 }

@@ -18,6 +18,7 @@ pub mod password_reset_request;
 pub mod person;
 pub mod person_block;
 pub mod person_mention;
+pub mod person_balance;
 pub mod post;
 pub mod post_report;
 pub mod private_message;
