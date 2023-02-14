@@ -132,6 +132,7 @@ pub enum UserOperationCrud {
   CreatePayment,
   GetPayment,
   GetPayments,
+  SendPayment,
   GetPiBalances,
   PiWithdraw,
 }

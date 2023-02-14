@@ -19,7 +19,7 @@ use lemmy_db_schema::{
     local_site::{LocalSite, RegistrationMode},
     local_user::{LocalUser, LocalUserInsertForm},
     person::*, registration_application::RegistrationApplicationInsertForm,
-    registration_application::RegistrationApplication, community::Community
+    registration_application::RegistrationApplication, community::Community, person_balance::PersonBalanceInsertForm
   },
   traits::{Crud, ApubActor}, aggregates::structs::PersonAggregates,
 };
@@ -295,6 +295,16 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
       return Err(LemmyError::from_error_message(e, err_type));
     }
   };
+
+    // Create the balance 
+  let balance_form = PersonBalanceInsertForm::builder()
+    .person_id(inserted_person.id)
+    .build();
+
+  // let inserted_balance = match PersonBalance::create(context.pool(), &balance_form).await {
+  //   Ok(lu) => lu,
+  //   Err(e) => {
+  // };
 
   if local_site.site_setup && require_application {
     // Create the registration application

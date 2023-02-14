@@ -394,7 +394,7 @@ pub async fn pi_payment_update(
 
   completed = _payment_dto.status.developer_completed.clone();
   
-  let object_id = approve.object_id.clone();
+  let object_id = approve.obj_id.clone();
   if !exist {
     //println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
@@ -540,3 +540,69 @@ pub async fn pi_payment_update(
   }
   return Ok(pmt);
 }
+
+/*
+pub async fn pi_dopayment(
+  context: &Data<LemmyContext>,
+) -> Result<PiPayment, LemmyError> {
+
+  let local_user_view =
+  get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+let local_site = LocalSite::read(context.pool()).await?;
+
+// Make sure user is an admin
+is_admin(&local_user_view)?;
+
+    let _pays = match pi_incompleted_server_payments(context.client()).await
+    {
+      Ok(pays) => {
+        if !pays.is_empty() {
+          let mut pay_iter = pays.iter();
+          for pay in pay_iter {
+            if pay.transaction.is_some() {
+              println!("Got completed: {}", pay.identifier);
+              // match pi_complete(context.client(), pay.identifier).await
+              // {
+              // }
+            } else {
+              println!("Got completed: {}", pay.status.developer_approved);
+              // match pi_cancel(context.client(), pay.identifier).await
+              // {
+
+              // };
+            }
+          }
+        }
+      },
+      Err(_e) => {
+        return Err(LemmyError::from_message("Server busy!"));
+      }
+    };
+    /// TODO: Check user balances > amount 
+    let args = PiPaymentArgs {
+      amount: 0.01,
+      //amount: data.amount,
+      //pub memo: String,
+      //pub metadata: Option<Value>,
+      uid: person.external_id.clone().unwrap(),
+      memo: data.comment.clone(),
+      metadata: None,
+    };
+
+    // let payment = match pi_create(context.client(), &args).await
+    // {
+    //   Ok(c) => {
+    //     _payment_id = c.identifier.clone();
+    //     Some(c)
+    //   }
+    //   Err(_e) => {
+    //     return Err(LemmyError::from_message("Not approved payment"));
+    //   },
+    // };
+    // TODO: Submit transaction
+    // TODO: Completed transaction
+    //println!("PiWithdrawResponse: {} {}", person_id.clone(), paymentid.clone());
+
+}
+
+ */

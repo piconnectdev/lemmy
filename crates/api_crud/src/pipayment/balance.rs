@@ -33,8 +33,11 @@ impl PerformCrud for GetPiBalances {
     //   .map_err(|e| LemmyError::from_error_message(e, "couldnt_get_payment"))?;
 
     let res = GetPiBalancesResponse {
-      status: "".to_string(), 
-      total: 0.0,
+      id: None,
+      status: Some("".to_string()), 
+      asset: Some("PI".to_string()),
+      deposited: 0.0,
+      rewarded: 0.0,
       amount: 0.0,
       pending: 0.0,
       withdrawed: 0.0,

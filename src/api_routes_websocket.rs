@@ -429,6 +429,9 @@ pub async fn match_websocket_operation_crud(
     UserOperationCrud::PiWithdraw => {
       do_websocket_operation_crud::<PiWithdraw>(context, id, op, data).await
     }
+    UserOperationCrud::SendPayment => {
+      do_websocket_operation_crud::<SendPayment>(context, id, op, data).await
+    }
   }
 }
 

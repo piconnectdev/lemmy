@@ -1,5 +1,5 @@
 use crate::{person::*, web3::ExternalAccount, sensitive::Sensitive};
-use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId}, source::pipayment::PiPaymentSafe};
+use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId, PersonBalanceId}, source::pipayment::PiPaymentSafe, source::person_balance::PersonBalanceSafe};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -79,7 +79,9 @@ pub struct PiApprove {
   pub pi_username: String,
   pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
-  pub object_id: Option<Uuid>,
+  pub obj_cat: Option<String>,
+  pub obj_id: Option<Uuid>,
+  pub ref_id: Option<Uuid>,
   pub paymentid: String,
   pub comment: Option<String>,
   pub auth: Option<String>,
@@ -100,7 +102,7 @@ pub struct PiPaymentComplete {
   pub pi_token: Option<String>,
   pub paymentid: String,
   pub txid: String,
-  pub object_id: Option<Uuid>,
+  pub obj_id: Option<Uuid>,
   pub comment: Option<String>,
   pub auth: Option<String>,
 }
@@ -175,14 +177,18 @@ pub struct TxRequest {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GetPiBalances {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
+  pub asset: Option<String>,
   pub auth: Sensitive<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GetPiBalancesResponse {
-  pub status: String,
-  pub total: f64,
+  pub id: Option<PersonBalanceId>,
+  pub asset: Option<String>,
+  pub status: Option<String>,
+  pub deposited: f64,
+  pub rewarded: f64,
   pub withdrawed: f64,
   pub amount: f64,
   pub pending: f64,
@@ -193,14 +199,11 @@ pub struct CreatePayment {
   pub domain: Option<String>,
   pub obj_cat: Option<String>,
   pub obj_id: Option<Uuid>,
-  pub comment: Option<String>,
+  pub ref_id: Option<Uuid>,
   pub network: Option<String>,
   pub asset: Option<String>,
   pub amount: Option<f64>,
-  pub inout: bool,
-  pub memo: Option<String>,
-  pub pi_token: Option<String>,
-  pub pipaymentid: Option<String>,
+  pub comment: Option<String>,
   pub auth: Sensitive<String>,
 }
 
@@ -208,11 +211,13 @@ pub struct CreatePayment {
 pub struct CreatePaymentResponse {
   pub success: bool,
   pub id: PiPaymentId,
+  pub pipayid: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiWithdraw {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
+  pub asset: Option<String>,
   pub amount: f64,
   pub comment: Option<String>,
   pub auth: Sensitive<String>,
@@ -221,8 +226,8 @@ pub struct PiWithdraw {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiWithdrawResponse {
   pub id: Option<PiPaymentId>,
-  pub status: String,
-  pub paymentid: String,
+  pub status: Option<String>,
+  pub pipayid: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -253,3 +258,14 @@ pub struct GetPaymentsResponse {
 }
 
 
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct SendPayment {
+  pub payment_id: Option<String>,
+  pub auth: Sensitive<String>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct SendPaymentResponse {
+  pub success: bool,
+  pub payment: Option<PiPaymentSafe>,
+}

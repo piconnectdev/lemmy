@@ -5,9 +5,9 @@ use lemmy_api_common::utils::get_local_user_view_from_jwt;
 use lemmy_api_common::{context::LemmyContext};
 use lemmy_api_common::pipayment::*;
 
-use lemmy_db_schema::newtypes::PersonId;
+use lemmy_db_schema::newtypes::{PersonId, PiUserId};
 use lemmy_db_schema::source::person::Person;
-use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentSafe};
+use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentSafe, PiPaymentInsertForm};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_db_schema::traits::Crud;
 use uuid::Uuid;
@@ -31,65 +31,67 @@ impl PerformCrud for PiWithdraw {
     }
     let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());
     let puid = match uuid {
-      Ok(u) => Some(PersonId(u)),
+      Ok(u) => Some(PiUserId(u)),
       Err(_e) => {
         return Err(LemmyError::from_message("User not found!"));
       }
     };
 
-    let _pays = match pi_incompleted_server_payments(context.client()).await
-    {
-      Ok(pays) => {
-        if !pays.is_empty() {
-          let mut pay_iter = pays.iter();
-          for pay in pay_iter {
-            if pay.transaction.is_some() {
-              println!("Got completed: {}", pay.identifier);
-              // match pi_complete(context.client(), pay.identifier).await
-              // {
-              // }
-            } else {
-              println!("Got completed: {}", pay.status.developer_approved);
-              // match pi_cancel(context.client(), pay.identifier).await
-              // {
-
-              // };
-            }
-          }
+    let mut payment_form = PiPaymentInsertForm::builder()
+      .domain(data.domain.clone())
+      //.instance_id(None)
+      .person_id( Some(person_id.clone()))
+      .obj_cat(Some("withdraw".to_string()))
+      .obj_id(None)
+      .a2u(true)
+      .asset(data.asset.clone())
+      .ref_id(None)
+      .comment(None)
+      .testnet(context.settings().pinetwork.pi_testnet)
+      
+      .finished( false)
+      .updated( None)
+      .pi_uid(puid)
+      .pi_username( person.external_name.clone().unwrap_or_default() )
+      
+      .identifier( "".to_string())
+      .user_uid( person.external_id.clone().unwrap_or_default())
+      .amount( data.amount)
+      .memo( "".to_string())
+      .from_address( "".to_string())
+      .to_address( "".to_string())
+      .direction( "".to_string())
+      .network( "".to_string())
+      .created_at( None)
+      .approved( false)
+      .verified( false)
+      .completed( false)
+      .cancelled( false)
+      .user_cancelled( false)
+      .tx_link("".to_string())
+      .tx_id( "".to_string())
+      .tx_verified( false)
+      .metadata( None) //_payment_dto.metadata,
+      .extras( None)
+      .build();
+      let payment = match PiPayment::create(context.pool(), &payment_form).await
+      {
+        Ok(payment) => {
+          println!("CreatePayment, create payment success: {}", payment.id.clone());
+          payment
         }
-      },
-      Err(_e) => {
-        return Err(LemmyError::from_message("Server busy!"));
-      }
-    };
-    /// TODO: Check user balances > amount 
-    let args = PiPaymentArgs {
-      amount: 0.01,
-      //amount: data.amount,
-      //pub memo: String,
-      //pub metadata: Option<Value>,
-      uid: person.external_id.clone().unwrap(),
-      memo: data.comment.clone(),
-      metadata: None,
-    };
+        Err(_e) => {
+          let err_str = _e.to_string();
+          println!("CreatePayment, create payment error: {}", err_str.clone());
+          return Err(LemmyError::from_message(&err_str));
+        }
+      };
+      
 
-    // let payment = match pi_create(context.client(), &args).await
-    // {
-    //   Ok(c) => {
-    //     _payment_id = c.identifier.clone();
-    //     Some(c)
-    //   }
-    //   Err(_e) => {
-    //     return Err(LemmyError::from_message("Not approved payment"));
-    //   },
-    // };
-    // TODO: Submit transaction
-    // TODO: Completed transaction
-    //println!("PiWithdrawResponse: {} {}", person_id.clone(), paymentid.clone());
     Ok(PiWithdrawResponse {
-      status: "".to_string(),
-      id: None,
-      paymentid: "".to_string(),
+      status: Some("PENDING".to_string()),
+      id: Some(payment.id),
+      pipayid: None,
     })
   }
 }

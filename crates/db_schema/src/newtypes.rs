@@ -622,6 +622,15 @@ impl fmt::Display for PersonFollowerId {
   }
 }
 
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct PersonBalanceId(pub Uuid);
+impl fmt::Display for PersonBalanceId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
 
 #[repr(transparent)]
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]

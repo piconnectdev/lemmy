@@ -4,17 +4,19 @@ create table pipayment (
   instance_id uuid,
   person_id uuid,
   obj_cat text,
-  obj_id uuid,    
-  ref_id uuid,
-  inout bool default false,  
-  step int,
+  obj_id uuid,
+  a2u bool default false,
+  asset text,  
+  fee double precision,
+  step int default 0,
   testnet bool,
   finished bool default false,
   published timestamp not null default now(),
   updated timestamp,
-  asset text,
-  fee double precision,
+  ref_id uuid,
   comment text,  
+  stat text,
+
   pi_uid uuid, 
   pi_username text,
   identifier text,
@@ -51,21 +53,23 @@ create index idx_pipayment_user_uid on pipayment (user_uid);
 create index idx_pipayment_identifier on pipayment (identifier);
 create index idx_pipayment_memo on pipayment (memo);
 
-create table person_balances (
+create table person_balance (
   id uuid NOT NULL DEFAULT next_uuid() primary key,
   person_id uuid,
   person_name text,
   published timestamp not null default now(),
-  asset_name text,
-  total_deposit double precision,
-  total_withdraw double precision,
+  asset text,
+  stat text default 'active',
+  deposited double precision,
+  rewarded double precision,
+  withdrawed double precision,
   amount double precision,
   pending double precision,
   extras jsonb,
-  UNIQUE (person_id, asset_name)
+  UNIQUE (person_id, asset)
 );
 
-create index idx_person_balances_person_id on person_balances (person_id);
+-- create index idx_person_balance_person_id on person_balance (person_id);
 
 create table person_withdraw (
   id uuid NOT NULL DEFAULT next_uuid() primary key,

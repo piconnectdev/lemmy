@@ -142,7 +142,10 @@ use lemmy_api_common::{
     GetPaymentResponse, 
     GetPayments, 
     GetPaymentsResponse, 
-
+    CreatePayment, 
+    CreatePaymentResponse, 
+    SendPayment, 
+    SendPaymentResponse, 
   },
 };
 
@@ -416,6 +419,9 @@ impl SendActivity for PiPaymentFound {
 impl SendActivity for PiKey {
   type Response = PiKeyResponse;
 }
+impl SendActivity for CreatePayment {
+  type Response = CreatePaymentResponse;
+}
 impl SendActivity for GetPayment {
   type Response = GetPaymentResponse;
 }
@@ -427,5 +433,8 @@ impl SendActivity for GetPiBalances {
 }
 impl SendActivity for PiWithdraw {
   type Response = PiWithdrawResponse;
+}
+impl SendActivity for SendPayment {
+  type Response = SendPaymentResponse;
 }
 

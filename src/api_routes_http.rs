@@ -379,7 +379,10 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .wrap(rate_limit.message())
           .route("", web::get().to(route_post_crud::<GetPayment>))
           .route("", web::post().to(route_post_crud::<CreatePayment>))
-          .route("/list", web::post().to(route_post_crud::<GetPayments>)),
+          .route("/list", web::post().to(route_post_crud::<GetPayments>))
+          .route("/send", web::post().to(route_post_crud::<SendPayment>))
+          .route("/balance", web::post().to(route_post_crud::<GetPiBalances>))
+          .route("/withdraw", web::post().to(route_post_crud::<PiWithdraw>)),
           //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
       ),
   );

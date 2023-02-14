@@ -791,16 +791,19 @@ table! {
         domain -> Nullable<Text>,      //
         instance_id -> Nullable<Uuid>, // WePi instance
         person_id -> Nullable<Uuid>, // WePi user's id
-        obj_cat -> Nullable<Text>,   // register - page - note - message - person - instance - group
+        obj_cat -> Nullable<Text>,   // register - page - note - message - person - instance - group, withdraw, deposit ...
         obj_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
-        ref_id -> Nullable<Uuid>,    // Captchar id
-        testnet -> Bool,
+        a2u -> Bool,
+        asset -> Nullable<Text>, 
+        fee -> Double,
+        step -> Int4,
+        testnet -> Bool, 
         finished -> Bool,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
+        ref_id -> Nullable<Uuid>,
         comment -> Nullable<Text>, 
-        //object_type -> Nullable<Text>,  // register - page - note - message - person - instance - group
-        //object_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
+        stat -> Nullable<Text>, 
        
         pi_uid -> Nullable<Uuid>,   // UserDTO - uid
         pi_username -> Text,        // UserDTO - username
@@ -823,6 +826,21 @@ table! {
         tx_id -> Text,
         network -> Text,
         metadata -> Nullable<Jsonb>,
+        extras -> Nullable<Jsonb>,
+    }
+}
+
+table! {
+    person_balance (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        published -> Timestamp,
+        asset -> Text,
+        deposited -> Double,
+        rewarded -> Double,
+        withdrawed -> Double,
+        amount -> Double,
+        pending -> Double,
         extras -> Nullable<Jsonb>,
     }
 }
@@ -945,6 +963,7 @@ joinable!(federation_blocklist -> instance (instance_id));
 joinable!(local_site -> site (site_id));
 joinable!(local_site_rate_limit -> local_site (local_site_id));
 joinable!(tagline -> local_site (local_site_id));
+joinable!(person_balance -> person (person_id));
 
 allow_tables_to_appear_in_same_query!(
   activity,
@@ -1007,4 +1026,5 @@ allow_tables_to_appear_in_same_query!(
   local_site_rate_limit,
   person_follower,
   pipayment,
+  person_balance,
 );

@@ -11,3 +11,4 @@ pub mod register;
 pub mod register_with_fee;
 pub mod update;
 pub mod withdraw;
+pub mod send;
