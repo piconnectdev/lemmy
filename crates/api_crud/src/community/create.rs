@@ -62,9 +62,10 @@ impl PerformCrud for CreateCommunity {
       ));
     }
     
+    let community_name = data.name.to_lowercase();
     let mut is_home = false;
     let mut person_id = None;
-    if local_user_view.person.name.to_lowercase() == data.name.to_lowercase() {
+    if local_user_view.person.name.to_lowercase() == community_name {
       is_home = true;
       person_id = Some(local_user_view.person.id.clone());
       // if !local_user_view.person.verified  {
@@ -73,7 +74,7 @@ impl PerformCrud for CreateCommunity {
       //   ));
       // }
     } else {
-      match Person::read_from_name(context.pool(), &data.name.clone(), true).await
+      match Person::read_from_name(context.pool(), &community_name.clone(), true).await
       {
         Ok(p) => {
           return Err(LemmyError::from_message(
@@ -95,18 +96,18 @@ impl PerformCrud for CreateCommunity {
     let banner = diesel_option_overwrite_to_url_create(&data.banner)?;
 
     let slur_regex = local_site_to_slur_regex(&local_site);
-    check_slurs(&data.name, &slur_regex)?;
+    check_slurs(&community_name, &slur_regex)?;
     check_slurs(&data.title, &slur_regex)?;
     check_slurs_opt(&data.description, &slur_regex)?;
 
-    if !is_valid_actor_name(&data.name, local_site.actor_name_max_length as usize) {
+    if !is_valid_actor_name(&community_name, local_site.actor_name_max_length as usize) {
       return Err(LemmyError::from_message("invalid_community_name"));
     }
 
     // Double check for duplicate community actor_ids
     let community_actor_id = generate_local_apub_endpoint(
       EndpointType::Community,
-      &data.name,
+      &community_name,
       &context.settings().get_protocol_and_hostname(),
     )?;
     let community_dupe = Community::read_from_apub_id(context.pool(), &community_actor_id).await?;
@@ -118,7 +119,7 @@ impl PerformCrud for CreateCommunity {
     let keypair = generate_actor_keypair()?;
 
     let community_form = CommunityInsertForm::builder()
-      .name(data.name.clone())
+      .name(community_name.clone())
       .title(data.title.clone())
       .description(data.description.clone())
       .icon(icon)

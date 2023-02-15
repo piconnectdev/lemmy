@@ -35,13 +35,13 @@ pub struct PiPayment {
   pub pi_uid: Option<PiUserId>,
   pub pi_username: String,
 
-  pub identifier: String,
-  pub user_uid: String,
+  pub identifier: Option<String>,
+  pub user_uid: Option<String>,
   pub amount: f64,
-  pub memo: String, // account, tip, page, note, withdraw
-  pub from_address: String,
-  pub to_address: String,
-  pub direction: String,
+  pub memo: Option<String>, // account, tip, page, note, withdraw
+  pub from_address: Option<String>,
+  pub to_address: Option<String>,
+  pub direction: Option<String>,
   pub created_at: Option<chrono::NaiveDateTime>,
 
   pub approved: bool,
@@ -50,9 +50,9 @@ pub struct PiPayment {
   pub cancelled: bool,
   pub user_cancelled: bool,
   pub tx_verified: bool,
-  pub tx_link: String,
-  pub tx_id: String,
-  pub network: String,
+  pub tx_link: Option<String>,
+  pub tx_id: Option<String>,
+  pub network: Option<String>,
   pub metadata: Option<Value>,
   pub extras: Option<Value>,
 }
@@ -81,13 +81,13 @@ pub struct PiPaymentSafe {
   //pub pi_uid: Option<PiUserId>,
   //pub pi_username: String,
 
-  pub identifier: String,
-  pub user_uid: String,
+  pub identifier: Option<String>,
+  pub user_uid: Option<String>,
   pub amount: f64,
-  pub memo: String, // wepi:account, wepi:tip, wepi:post, wepi:comment
-  pub from_address: String,
-  pub to_address: String,
-  pub direction: String,
+  pub memo: Option<String>,
+  pub from_address: Option<String>,
+  pub to_address: Option<String>,
+  pub direction: Option<String>,
   pub created_at: Option<chrono::NaiveDateTime>,
 
   pub approved: bool,
@@ -96,9 +96,9 @@ pub struct PiPaymentSafe {
   pub cancelled: bool,
   pub user_cancelled: bool,
   pub tx_verified: bool,
-  pub tx_link: String,
-  pub tx_id: String,
-  pub network: String,
+  pub tx_link: Option<String>,
+  pub tx_id: Option<String>,
+  pub network: Option<String>,
   pub metadata: Option<Value>,
   pub extras: Option<Value>,
 }
@@ -126,13 +126,13 @@ pub struct PiPaymentInsertForm {
 
   pub pi_uid: Option<PiUserId>,
   pub pi_username: String,
-  pub identifier: String,
-  pub user_uid: String,
+  pub identifier: Option<String>,
+  pub user_uid: Option<String>,
   pub amount: f64,
-  pub memo: String,
-  pub from_address: String,
-  pub to_address: String,
-  pub direction: String,
+  pub memo: Option<String>,
+  pub from_address: Option<String>,
+  pub to_address: Option<String>,
+  pub direction: Option<String>,
   pub created_at: Option<chrono::NaiveDateTime>,
 
   pub approved: bool,
@@ -141,9 +141,9 @@ pub struct PiPaymentInsertForm {
   pub cancelled: bool,
   pub user_cancelled: bool,
   pub tx_verified: bool,
-  pub tx_link: String,
-  pub tx_id: String,
-  pub network: String,
+  pub tx_link: Option<String>,
+  pub tx_id: Option<String>,
+  pub network: Option<String>,
   pub metadata: Option<Value>,
   pub extras: Option<Value>,
 }
@@ -153,8 +153,8 @@ pub struct PiPaymentInsertForm {
 #[cfg_attr(feature = "full", derive(AsChangeset))]
 #[cfg_attr(feature = "full", diesel(table_name = pipayment))]
 pub struct PiPaymentUpdateForm {
-  // pub id: PiPaymentId,
-  pub person_id: Option<PersonId>,
+  //pub id: PiPaymentId,
+  //pub person_id: Option<PersonId>,
   //pub step: i32,
   //pub testnet: bool,
   pub finished: bool,
@@ -179,11 +179,49 @@ pub struct PiPaymentUpdateForm {
   pub cancelled: bool,
   pub user_cancelled: bool,
   pub tx_verified: bool,
-  pub tx_link: String,
-  pub tx_id: String,
+  pub tx_link: Option<String>,
+  pub tx_id: Option<String>,
   //pub network: Option<String>,
   pub metadata: Option<Value>,
   pub extras: Option<Value>,
+}
+
+#[derive(Debug, Clone, TypedBuilder)]
+#[builder(field_defaults(default))]
+#[cfg_attr(feature = "full", derive(AsChangeset))]
+#[cfg_attr(feature = "full", diesel(table_name = pipayment))]
+pub struct PiPaymentUpdatePending {
+  //pub id: PiPaymentId,
+  //pub person_id: Option<PersonId>,
+  pub step: i32,
+  //pub testnet: bool,
+  //pub finished: bool,
+  pub updated: Option<chrono::NaiveDateTime>,
+  //pub comment: Option<String>,
+  //pub ref_id: Option<Uuid>,
+
+  //pub pi_uid: Option<PiUserId>,
+  //pub pi_username: String,
+  pub identifier: Option<String>,
+  //pub user_uid: Option<String>,
+  //pub amount: f64,
+  //pub memo: Option<String>,
+  pub from_address: Option<String>,
+  pub to_address: Option<String>,
+  pub direction: Option<String>,
+  pub created_at: Option<chrono::NaiveDateTime>,
+
+  pub approved: bool,
+  pub verified: bool,
+  pub completed: bool,
+  pub cancelled: bool,
+  pub user_cancelled: bool,
+  pub tx_verified: bool,
+  pub tx_link: Option<String>,
+  pub tx_id: Option<String>,
+  pub network: Option<String>,
+  //pub metadata: Option<Value>,
+  //pub extras: Option<Value>,
 }
 
 

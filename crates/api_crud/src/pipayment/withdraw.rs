@@ -26,9 +26,17 @@ impl PerformCrud for PiWithdraw {
     let person_id = local_user_view.person.id;
     let mut _payment_id: String;
     let person = Person::read(context.pool(), person_id).await?;
-    if !person.verified {
-      return Err(LemmyError::from_message("User not verified!"));
-    }
+    match PiPayment::find_withdraw_pending(context.pool(), &person_id.clone()).await
+    {
+      Ok(pays) => {
+        if pays.len() > 0 {
+          return Err(LemmyError::from_message("Error: has pending withdraw!"));
+        }
+      },
+      Err(_e) => {
+      }
+    };
+    
     let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());
     let puid = match uuid {
       Ok(u) => Some(PiUserId(u)),
@@ -36,40 +44,80 @@ impl PerformCrud for PiWithdraw {
         return Err(LemmyError::from_message("User not found!"));
       }
     };
+    if !person.verified {
+      return Err(LemmyError::from_message("User not verified!"));
+    }
+    /*
+      .domain(None)
+      .instance_id(None)
+      .person_id(None)
+      .obj_cat(None)
+      .obj_id(Some(uid))
+      .a2u(false)
+      .asset(None)
+      .fee(0.00)
+      .step(0)
+      .ref_id(Some(uid))
+      .testnet(settings.pinetwork.pi_testnet)
+      .finished(false)
+      .updated(None)
+      .pi_uid(Some(PiUserId(uid.clone())))
+      .pi_username(Some("wepi".into()))
+      .comment(None)
 
+      .identifier(Some(uid.hyphenated().to_string()))
+      .user_uid(Some(uid.hyphenated().to_string()))
+      .amount(0.001)
+      .memo(None)
+      .to_address(None)
+      .from_address(None)
+      .direction(None)
+      .network(None)
+      .created_at(Some(naive_now()))
+      .approved(true)
+      .verified(true)
+      .completed(false)
+      .cancelled(false)
+      .user_cancelled(false)
+      .tx_link(None)
+      .tx_id(None)
+      .tx_verified( false)
+      .metadata(None)
+      .extras(None)
+    */
     let mut payment_form = PiPaymentInsertForm::builder()
       .domain(data.domain.clone())
-      //.instance_id(None)
+      .instance_id(None)
       .person_id( Some(person_id.clone()))
       .obj_cat(Some("withdraw".to_string()))
       .obj_id(None)
       .a2u(true)
       .asset(data.asset.clone())
       .ref_id(None)
-      .comment(None)
+      .comment(data.comment.clone())
       .testnet(context.settings().pinetwork.pi_testnet)
       
-      .finished( false)
+      .finished(false)
       .updated( None)
       .pi_uid(puid)
-      .pi_username( person.external_name.clone().unwrap_or_default() )
+      .pi_username(person.external_name.clone().unwrap_or_default() )
       
-      .identifier( "".to_string())
-      .user_uid( person.external_id.clone().unwrap_or_default())
-      .amount( data.amount)
-      .memo( "".to_string())
-      .from_address( "".to_string())
-      .to_address( "".to_string())
-      .direction( "".to_string())
-      .network( "".to_string())
-      .created_at( None)
-      .approved( false)
-      .verified( false)
-      .completed( false)
-      .cancelled( false)
-      .user_cancelled( false)
-      .tx_link("".to_string())
-      .tx_id( "".to_string())
+      .identifier(None)
+      .user_uid(person.external_id.clone())
+      .amount(data.amount)
+      .memo(None)
+      .from_address(None)
+      .to_address(None)
+      .direction(None)
+      .network(None)
+      .created_at(None)
+      .approved(false)
+      .verified(false)
+      .completed(false)
+      .cancelled(false)
+      .user_cancelled(false)
+      .tx_link(None)
+      .tx_id(None)
       .tx_verified( false)
       .metadata( None) //_payment_dto.metadata,
       .extras( None)

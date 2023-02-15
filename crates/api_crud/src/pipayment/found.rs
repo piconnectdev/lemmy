@@ -86,7 +86,7 @@ impl PerformCrud for PiPaymentFound {
     let payment = _payment.clone();
     return Ok(PiPaymentFoundResponse {
       id: payment.id,
-      paymentid: payment.identifier,
+      paymentid: payment.identifier.unwrap_or_default(),
     });
 
     

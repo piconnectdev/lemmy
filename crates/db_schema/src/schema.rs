@@ -807,13 +807,13 @@ table! {
        
         pi_uid -> Nullable<Uuid>,   // UserDTO - uid
         pi_username -> Text,        // UserDTO - username
-        identifier -> Text,         // PaymentDto - identifier
-        user_uid -> Text,           // PaymentDto - user_uid
+        identifier -> Nullable<Text>,         // PaymentDto - identifier
+        user_uid -> Nullable<Text>,           // PaymentDto - user_uid
         amount -> Double,
-        memo -> Text,
-        from_address -> Text,
-        to_address -> Text,
-        direction -> Text,
+        memo -> Nullable<Text>,
+        from_address -> Nullable<Text>,
+        to_address -> Nullable<Text>,
+        direction -> Nullable<Text>,
         created_at -> Nullable<Timestamp>,
 
         approved -> Bool,
@@ -822,9 +822,9 @@ table! {
         cancelled -> Bool,
         user_cancelled -> Bool,
         tx_verified -> Bool,
-        tx_link -> Text,
-        tx_id -> Text,
-        network -> Text,
+        tx_link -> Nullable<Text>,
+        tx_id -> Nullable<Text>,
+        network -> Nullable<Text>,
         metadata -> Nullable<Jsonb>,
         extras -> Nullable<Jsonb>,
     }
@@ -839,6 +839,7 @@ table! {
         deposited -> Double,
         rewarded -> Double,
         withdrawed -> Double,
+        spent -> Double,
         amount -> Double,
         pending -> Double,
         updated -> Nullable<Timestamp>,

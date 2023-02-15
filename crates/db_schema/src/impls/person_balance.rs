@@ -99,8 +99,9 @@ mod tests {
       .asset(Some("PI".to_string()))
       .deposited(0.0)
       .rewarded(0.0)
-      .amount(0.0)
       .withdrawed(0.0)
+      .spent(0.0)
+      .amount(0.0)
       .pending(0.0)
       .build();
 
@@ -116,8 +117,9 @@ mod tests {
       .updated(None)
       .deposited(0.0)
       .rewarded(0.0)
-      .amount(0.0)
       .withdrawed(0.0)
+      .spent(0.0)
+      .amount(0.0)
       .pending(0.0)
       .extras(None)      
       .build();
@@ -129,8 +131,9 @@ mod tests {
     let person_balance_update_form = PersonBalanceUpdateForm::builder()
       .deposited(0.0)
       .rewarded(0.0)
-      .amount(0.0)
       .withdrawed(0.0)
+      .spent(0.0)
+      .amount(0.0)
       .pending(0.0)
       .build();
 

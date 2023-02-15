@@ -34,7 +34,7 @@ use lemmy_utils::{
 };
 
 
-pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, ea: &ExternalAccount, info: &Register, kyced: bool) -> Result<LoginResponse, LemmyError> 
+pub async fn create_external_account(context: &Data<LemmyContext>, ext_name: &str, ea: &ExternalAccount, info: &Register, kyced: bool) -> Result<LoginResponse, LemmyError> 
 {
   let site_view = SiteView::read_local(context.pool()).await?;
   let local_site = site_view.local_site;
@@ -74,9 +74,9 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     }
   }
 
-  let _alias = name.clone();
+  let _alias = ext_name.clone();
   let _alias_id = ea.extra.clone();
-  let mut _new_user = info.username.to_owned();
+  let mut _new_user = info.username.clone().to_lowercase().to_owned();
   let _new_password = info.password.to_owned();
   let mut _person_id: PersonId;
   let mut _exist = false;
@@ -114,7 +114,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     if !is_valid_actor_name(&_new_user.clone(), local_site.actor_name_max_length as usize) {
       println!(
         "Invalid username {} {}",
-        name.to_owned(),
+        ext_name.to_owned(),
         &_new_user.clone()
       );
       return Err(LemmyError::from_message("register:invalid_username"));
@@ -192,7 +192,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
         let err_type = format!(
           "External: Update local user not found {} {} {}",
           &_new_user.clone(),
-          &name.clone(),
+          &ext_name.clone(),
           _e.to_string()
         );
         return Err(LemmyError::from_message(&err_type).into());
@@ -208,7 +208,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
         let err_type = format!(
           "External: Update local user password error {} {} {}",
           &_new_user.clone(),
-          &name.clone(),
+          &ext_name.clone(),
           _e.to_string()
         );
         return Err(LemmyError::from_message(&err_type).into());
@@ -277,6 +277,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
     .asset(Some("PI".to_string()))
     .deposited(0.0)
     .rewarded(0.0)
+    .spent(0.0)
     .amount(0.0)
     .withdrawed(0.0)
     .pending(0.0)
@@ -328,7 +329,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, name: &str, e
 
   // Email the admins
   if local_site.application_email_admins {
-    send_new_applicant_email_to_admins(&name.clone(), context.pool(), context.settings())
+    send_new_applicant_email_to_admins(&_new_user.clone(), context.pool(), context.settings())
       .await?;
   }
 

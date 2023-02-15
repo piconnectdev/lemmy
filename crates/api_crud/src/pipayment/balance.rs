@@ -46,6 +46,7 @@ impl PerformCrud for GetPiBalances {
       amount: balance.amount,
       pending: balance.pending,
       withdrawed: balance.withdrawed,
+      spent: balance.spent,
     };
 
     Ok(res)

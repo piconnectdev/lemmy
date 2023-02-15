@@ -15,6 +15,8 @@ use reqwest_middleware::{ ClientWithMiddleware};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
+
+
 pub fn hide_username(name: &str) -> String {
   let settings = SETTINGS.to_owned();
   let mut sha256 = Sha256::new();
@@ -65,11 +67,11 @@ pub async fn pi_incompleted_server_payments(
   })
   .await?;
 
-  let res: Vec<PiPaymentDto> = response
-    .json::<Vec<PiPaymentDto>>()
+  let res: IncompleteServerPayments = response
+    .json::<IncompleteServerPayments>()
     .await
     .map_err(|e| LemmyError::from_error_message(e, ""))?;
-  Ok(res)
+  Ok(res.incomplete_server_payments)
 }
 
 pub async fn pi_approve(
@@ -118,6 +120,9 @@ pub async fn pi_create(
     .await
     .map_err(|e| LemmyError::from_error_message(e, "Can not create A2U payment"))?;
   Ok(res)
+  // let content = response.text().await?;
+  // println!("pi_create: {}", content.clone());
+  // return Err(LemmyError::from_message("Can not create A2U payment"));
 }
 
 pub async fn pi_cancel(
@@ -273,8 +278,8 @@ pub async fn pi_payment_update(
     approved = c.approved;
     completed = c.completed;
     cancelled = c.cancelled;
-    txid = c.tx_id.clone();
-    txlink = c.tx_link.clone();
+    txid = c.tx_id.clone().unwrap_or_default();
+    txlink = c.tx_link.clone().unwrap_or_default();
     pid = c.id;
     if cancelled || completed {
       finished = true;
@@ -415,22 +420,22 @@ pub async fn pi_payment_update(
       .pi_uid( _pi_uid)
       .pi_username( _pi_user_alias.clone())      
       
-      .identifier( payment_id.clone())
-      .user_uid( _payment_dto.user_uid)
+      .identifier(Some(payment_id.clone()))
+      .user_uid(Some(_payment_dto.user_uid))
       .amount( _payment_dto.amount)
-      .memo( _payment_dto.memo.clone())
-      .from_address( _payment_dto.from_address)
-      .to_address( _payment_dto.to_address)
-      .direction( _payment_dto.direction)
-      .network( _payment_dto.network)
+      .memo(Some(_payment_dto.memo.clone()))
+      .from_address(Some(_payment_dto.from_address))
+      .to_address(Some(_payment_dto.to_address))
+      .direction(Some(_payment_dto.direction))
+      .network(Some(_payment_dto.network))
       .created_at( create_at)
       .approved( _payment_dto.status.developer_approved)
       .verified( _payment_dto.status.transaction_verified)
       .completed( _payment_dto.status.developer_completed)
       .cancelled( _payment_dto.status.cancelled)
       .user_cancelled( _payment_dto.status.user_cancelled)
-      .tx_link("".to_string())
-      .tx_id( "".to_string())
+      .tx_link(None)
+      .tx_id(None)
       .tx_verified( false)
       .metadata( None) //_payment_dto.metadata,
       .extras( None)
@@ -438,9 +443,9 @@ pub async fn pi_payment_update(
 
     match _payment_dto.transaction {
       Some(tx) => {
-        payment_form.tx_link = tx._link;
+        payment_form.tx_link = Some(tx._link);
         payment_form.tx_verified = tx.verified;
-        payment_form.tx_id = tx.txid;
+        payment_form.tx_id = Some(tx.txid);
         payment_form.finished = true;
       }
       None => {}
@@ -472,9 +477,9 @@ pub async fn pi_payment_update(
     }
     match _payment_dto.transaction {
       Some(tx) => {
-        payment_form.tx_link = tx._link;
+        payment_form.tx_link = Some(tx._link);
         payment_form.tx_verified = tx.verified;
-        payment_form.tx_id = tx.txid;
+        payment_form.tx_id = Some(tx.txid);
         payment_form.finished = true;
       }
       None => {}
@@ -484,7 +489,7 @@ pub async fn pi_payment_update(
     // TODO: UUID check
     if completed {      
       if _payment_dto.memo.clone() == "page" {
-        let link = Some(payment_form.tx_link.clone());
+        let link = payment_form.tx_link.clone();
         let link2 = payment_form.tx_link.clone();
         let uuid = object_id.clone();
         match uuid {
@@ -503,7 +508,7 @@ pub async fn pi_payment_update(
           }
         };
       } else if _payment_dto.memo.clone() == "note" {
-        let link = Some(payment_form.tx_link.clone());
+        let link = payment_form.tx_link.clone();
         let link2 = payment_form.tx_link.clone();
         let uuid = object_id.clone();
         match uuid {

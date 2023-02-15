@@ -63,6 +63,7 @@ create table person_balance (
   deposited double precision,
   rewarded double precision,
   withdrawed double precision,
+  spent double precision,
   amount double precision,
   pending double precision,
   updated timestamp,

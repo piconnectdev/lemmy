@@ -7,7 +7,7 @@ use lemmy_api_common::pipayment::*;
 
 use lemmy_db_schema::newtypes::{PersonId, PiUserId};
 use lemmy_db_schema::source::person::Person;
-use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentSafe};
+use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentSafe, PiPaymentUpdatePending};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_db_schema::traits::Crud;
 use uuid::Uuid;
@@ -48,21 +48,91 @@ impl PerformCrud for SendPayment {
         }
       },
       Err(_e) => {
+        println!("pi_incompleted_server_payments error: {}", _e.to_string());
         return Err(LemmyError::from_message("Server busy!"));
       }
     };
-    /// TODO: Check user balances > amount 
-    // let args = PiPaymentArgs {
-    //   amount: 0.01,
-    //   //amount: data.amount,
-    //   //pub memo: String,
-    //   //pub metadata: Option<Value>,
-    //   uid: person.external_id.clone().unwrap(),
-    //   memo: data.comment.clone(),
-    //   metadata: None,
+
+    let payment = match PiPayment::find_pending(context.pool(), data.id).await
+    {
+      Ok(pay) => {
+        println!("Sending payment found : {}, cat: {}, identifier {}", pay.id.clone(), pay.obj_cat.clone().unwrap_or_default(),  pay.identifier.clone().unwrap_or_default());
+        pay
+      },
+      Err(_e) => {
+        println!("SendPayment error: {}", _e.to_string());
+        return Err(LemmyError::from_message("Payment not found!"));
+      }
+    };
+
+    let person = Person::read(context.pool(), payment.person_id.clone().unwrap_or_default()).await?;
+    // let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());
+    // let puid = match uuid {
+    //   Ok(u) => Some(PiUserId(u)),
+    //   Err(_e) => {
+    //     return Err(LemmyError::from_message("User not found!"));
+    //   }
     // };
-    Ok(SendPaymentResponse {
+    // if !person.verified {
+    //   return Err(LemmyError::from_message("User not verified!"));
+    // }
+
+    if payment.step == 0 {
+      PiPayment::update_step(context.pool(), payment.id.clone(), 1).await?;
+    }
+    if payment.identifier.is_none() {
+      let args = PiPaymentArgs {
+        amount: payment.amount,
+        uid: person.external_id.clone().unwrap(),
+        memo: payment.memo,
+        metadata: payment.metadata,
+      };
+      let dto = match pi_create(context.client(), &args).await
+      {
+        Ok(pay) => {
+          println!("Sending payment, create : from: {}, to: {}, identifier {}", pay.from_address.clone(), pay.to_address.clone(),  pay.identifier.clone());
+          pay
+        },
+        Err(_e) => {
+          println!("SendPayment error: {}", _e.to_string());
+          return Err(LemmyError::from_message("CreatePayment error!"));
+        }
+      };
+      let approved = dto.status.developer_approved;
+      let completed = dto.status.developer_completed;
+      let cancelled = dto.status.cancelled;
+      let usercancelled = dto.status.user_cancelled;
+      
+      let finished = false;
+      
+      let create_at = match chrono::NaiveDateTime::parse_from_str(&dto.created_at, "%Y-%m-%dT%H:%M:%S%.f%Z")
+      {
+          Ok(dt) => Some(dt),
+          Err(_e) => {
+            None
+          }
+      };
+
+      let form = PiPaymentUpdatePending::builder()
+        .identifier(Some(dto.identifier))
+        .step(2)
+        .from_address(Some(dto.from_address))
+        .to_address(Some(dto.to_address))
+        .direction(Some(dto.direction))
+        .created_at(create_at)
+        .network(Some(dto.network))
+        .approved(approved)
+        .completed(completed)
+        .cancelled(cancelled)
+        .user_cancelled(usercancelled)
+        .build();
+        PiPayment::update_pending(context.pool(), payment.id.clone(), &form).await?;
+    }
+    /// TODO: Check user balances > amount 
+    
+    Ok(SendPaymentResponse {      
       success: false,
+      id: Some(payment.id.clone()),
       payment: None,
     })
   }

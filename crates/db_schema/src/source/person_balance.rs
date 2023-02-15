@@ -17,6 +17,7 @@ pub struct PersonBalance {
   pub deposited: f64,
   pub rewarded: f64,
   pub withdrawed: f64,
+  pub spent: f64,
   pub amount: f64,
   pub pending: f64,
   pub updated: Option<chrono::NaiveDateTime>,
@@ -34,6 +35,7 @@ pub struct PersonBalanceSafe {
   pub deposited: f64,
   pub rewarded: f64,
   pub withdrawed: f64,
+  pub spent: f64,
   pub amount: f64,
   pub pending: f64,
   pub updated: Option<chrono::NaiveDateTime>,
@@ -49,8 +51,9 @@ pub struct PersonBalanceInsertForm {
   pub asset: Option<String>,
   pub deposited: f64,
   pub rewarded: f64,
-  pub amount: f64,
   pub withdrawed: f64,
+  pub spent: f64,
+  pub amount: f64,
   pub pending: f64,
 }
 
@@ -62,6 +65,7 @@ pub struct PersonBalanceUpdateForm {
   pub deposited: f64,
   pub rewarded: f64,
   pub withdrawed: f64,
+  pub spent: f64,
   pub amount: f64,
   pub pending: f64,
 }

@@ -153,6 +153,12 @@ pub struct PiPaymentTransaction {
   pub _link: String,
 }
 
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct IncompleteServerPayments
+{
+  pub incomplete_server_payments: Vec<PiPaymentDto>,
+}
+
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentDto {
@@ -190,6 +196,7 @@ pub struct GetPiBalancesResponse {
   pub deposited: f64,
   pub rewarded: f64,
   pub withdrawed: f64,
+  pub spent: f64,
   pub amount: f64,
   pub pending: f64,
 }
@@ -260,12 +267,13 @@ pub struct GetPaymentsResponse {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SendPayment {
-  pub payment_id: Option<String>,
+  pub id: Option<PiPaymentId>, 
   pub auth: Sensitive<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SendPaymentResponse {
   pub success: bool,
+  pub id: Option<PiPaymentId>, 
   pub payment: Option<PiPaymentSafe>,
 }

@@ -3,7 +3,7 @@ use crate::{
   source::pipayment::*, 
   newtypes::{PiPaymentId, PiUserId, PersonId}, 
   traits::{Crud, },
-  utils::{get_conn, DbPool, }
+  utils::{get_conn, naive_now, DbPool, }
 };
 use diesel::{dsl::insert_into, ExpressionMethods, QueryDsl, };
 use diesel_async::RunQueryDsl;
@@ -85,6 +85,66 @@ impl PiPayment {
       .get_results::<Self>(conn)
       .await
   }
+  pub async fn find_withdraw_pending(pool: &DbPool, pid: &PersonId) -> Result<Vec<Self>, Error> {
+    use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    pipayment
+      .filter(person_id.eq(pid))
+      .filter(a2u.eq(true))
+      .filter(finished.eq(false))
+      .filter(step.eq(0))
+      .get_results::<Self>(conn)
+      .await
+  }
+  pub async fn find_pending(pool: &DbPool, pid: Option<PiPaymentId>) -> Result<Self, Error> {
+    use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    if pid.is_some() {
+    pipayment
+      .filter(id.eq(pid.unwrap()))
+      .filter(a2u.eq(true))
+      .filter(finished.eq(false))
+      .first::<Self>(conn)
+      .await
+    } else {
+      pipayment
+      .filter(a2u.eq(true))
+      .filter(finished.eq(false))
+      .filter(step.eq(1))
+      .first::<Self>(conn)
+      .await
+    }
+  }
+
+  pub async fn update_step(
+    pool: &DbPool, 
+    payment_id: PiPaymentId,
+    new_step: i32,
+  ) -> Result<Self, Error> {
+    use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(pipayment.find(payment_id))
+      .set((
+        step.eq(new_step),
+        updated.eq(naive_now()),
+      ))
+      .get_result::<Self>(conn)
+      .await
+  }
+
+  pub async fn update_pending(
+    pool: &DbPool, 
+    payment_id: PiPaymentId,
+    new_payment: &PiPaymentUpdatePending,
+  ) -> Result<Self, Error> {
+    use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(pipayment.find(payment_id))
+      .set(new_payment)
+      .get_result::<Self>(conn)
+      .await
+  }
+
 }
 
 
@@ -122,23 +182,23 @@ use serial_test::serial;
       .updated(None)
       .pi_uid(Some(PiUserId(uid.clone())))
       .pi_username("wepi".into())
-      .comment(Some("wepi.social".into()))
-      .identifier(uid.hyphenated().to_string())
-      .user_uid(uid.hyphenated().to_string())
+      .comment(None)
+      .identifier(Some(uid.hyphenated().to_string()))
+      .user_uid(Some(uid.hyphenated().to_string()))
       .amount(0.001)
-      .memo("wepi.social".into())
-      .to_address( "".into())
-      .from_address( "".into())
-      .direction( "".into())
-      .network( "".into())
+      .memo(None)
+      .to_address(None)
+      .from_address(None)
+      .direction(None)
+      .network(None)
       .created_at(Some(naive_now()))
       .approved(true)
       .verified(true)
       .completed(false)
       .cancelled(false)
       .user_cancelled(false)
-      .tx_link("".into())
-      .tx_id( "".into())
+      .tx_link(None)
+      .tx_id(None)
       .tx_verified( false)
       .metadata(None)
       .extras(None)
@@ -167,23 +227,23 @@ use serial_test::serial;
       .updated(None)
       .pi_uid(Some(PiUserId(uid.clone())))
       .pi_username("wepi".into())
-      .comment(Some("wepi.social".into()))
+      .comment(None)
       .stat(None)
-      .identifier(uid.hyphenated().to_string())
-      .user_uid(uid.hyphenated().to_string())
+      .identifier(Some(uid.hyphenated().to_string()))
+      .user_uid(Some(uid.hyphenated().to_string()))
       .amount(0.001)
-      .memo("wepi.social".into())
-      .to_address( "".into())
-      .from_address( "".into())
-      .direction( "".into())
-      .network( "".into())
+      .memo(None)
+      .to_address(None)
+      .from_address(None)
+      .direction(None)
+      .network(None)
       .approved(true)
       .verified(true)
       .completed(false)
       .cancelled(false)
       .user_cancelled(false)
-      .tx_link("".into())
-      .tx_id("".into())
+      .tx_link(None)
+      .tx_id(None)
       .tx_verified( false)
       .metadata(None)
       .extras(None)
@@ -195,7 +255,7 @@ use serial_test::serial;
         .approved(true)
         .verified(true)
         //.memo("wepi.social".into())
-        .tx_id("".into())
+        .tx_id(None)
         .build();
     let updated_payment = PiPayment::update(pool, inserted_payment.id, &update_payment_form).await.unwrap();
     let num_deleted = PiPayment::delete(pool, inserted_payment.id).await.unwrap();
