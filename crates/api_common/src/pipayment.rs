@@ -1,5 +1,5 @@
 use crate::{person::*, web3::ExternalAccount, sensitive::Sensitive};
-use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId, PersonBalanceId}, source::pipayment::PiPaymentSafe, source::person_balance::PersonBalanceSafe};
+use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId, PersonBalanceId}, source::pipayment::PiPaymentSafe};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -13,8 +13,8 @@ pub struct PiUserDto {
 #[derive(Clone, Deserialize)]
 pub struct PiPaymentFound {
   pub domain: Option<String>,
-  pub pi_username: String,
-  pub pi_uid: Option<PiUserId>,
+  //pub pi_username: String,
+  //pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
   pub paymentid: String,
   pub auth: Option<String>,
@@ -76,8 +76,8 @@ pub struct PiLogin {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
   pub domain: Option<String>,  
-  pub pi_username: String,
-  pub pi_uid: Option<PiUserId>,
+  //pub pi_username: String,
+  //pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
   pub obj_cat: Option<String>,
   pub obj_id: Option<Uuid>,
@@ -97,8 +97,8 @@ pub struct PiApproveResponse {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiPaymentComplete {
   pub domain: Option<String>,  
-  pub pi_username: String,
-  pub pi_uid: Option<PiUserId>,
+  //pub pi_username: String,
+  //pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
   pub paymentid: String,
   pub txid: String,
@@ -116,8 +116,8 @@ pub struct PiPaymentCompleteResponse {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiKey {
   pub domain: Option<String>,  
-  pub pi_username: String,
-  pub pi_uid: Option<PiUserId>,
+  //pub pi_username: String,
+  //pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
   pub pi_key: Option<String>,
   pub auth: Option<String>,

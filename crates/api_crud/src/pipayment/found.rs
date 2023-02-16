@@ -1,9 +1,10 @@
-use crate::pipayment::client::*;
+use crate::pipayment::payment::pi_payment_update;
+use crate::pipayment::{client::*, payment::PiPaymentInfo};
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{pipayment::*, };
 use lemmy_db_schema::{
-  newtypes::{PiPaymentId, PersonId}, source::{pipayment::*, person::*}, traits::Crud,
+  newtypes::*, source::{pipayment::*, person::*}, traits::Crud,
   utils::naive_now,
 };
 
@@ -28,9 +29,8 @@ impl PerformCrud for PiPaymentFound {
     }
     
     let _pi_token = data.pi_token.clone().unwrap();
-    let mut _pi_username = data.pi_username.to_owned();
-    let mut _pi_uid = data.pi_uid.clone();
-
+    let mut _pi_username;
+    let mut _pi_uid = None;
     let _payment_id = data.paymentid.clone();
 
     // First, valid user token
@@ -44,14 +44,14 @@ impl PerformCrud for PiPaymentFound {
         // Pi Server error
         let err_type = format!(
           "Pi Network Server Error: User not found: {}, error: {}",
-          &data.pi_username,
+          &_pi_token,
           _e.to_string()
         );
         return Err(LemmyError::from_message(&err_type));
       }
     };
 
-    let approve = PiApprove {
+    let mut info = PiPaymentInfo {
       domain: data.domain.clone(),
       pi_token: data.pi_token.clone(),
       pi_username: _pi_username.clone(),
@@ -66,15 +66,21 @@ impl PerformCrud for PiPaymentFound {
 
     let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {
-      Ok(c) => {
-        Some(c)
+      Ok(p) => {
+        info.obj_cat = p.obj_cat.clone();
+        info.obj_id = p.obj_id.clone();
+        info.ref_id = p.ref_id.clone();
+        info.comment = p.comment.clone();
+        Some(p)
       }
       Err(_e) => {
-        return Err(LemmyError::from_message("Not approved payment"));
+        // TODO: Check PaymentDTO, then insert
+        println!("PiPaymentFound: NOT FOUND IN LOCAL DATABASE {} {}", _pi_username.clone(), data.paymentid.clone());
+        return Err(LemmyError::from_message("Payment not approved "));
       },
     };
 
-    let _payment = match pi_payment_update(context, &approve, _payment, None).await {
+    let _payment = match pi_payment_update(context, &info, _payment, None).await {
       Ok(c) => c,
       Err(e) => {
         let err_type = e.to_string();

@@ -1,4 +1,5 @@
 use crate::PerformCrud;
+use crate::pipayment::payment::PiPaymentInfo;
 use actix_web::web::Data;
 use lemmy_api_common::person::LoginResponse;
 use lemmy_api_common::{context::LemmyContext};
@@ -14,7 +15,8 @@ use lemmy_utils::{
 };
 use crate::web3::ext::*;
 
-use super::client::{pi_payment_update, pi_me};
+use super::client::{pi_me};
+use super::payment::{pi_payment_update};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegisterWithFee {
@@ -69,7 +71,7 @@ impl PerformCrud for PiRegisterWithFee {
       }
     };
 
-    let approve = PiApprove {
+    let info = PiPaymentInfo {
       domain: data.domain.clone(),
       pi_token: Some(_pi_token.clone()),
       pi_username: _pi_username.clone(),
@@ -92,7 +94,7 @@ impl PerformCrud for PiRegisterWithFee {
       },
     };
 
-    let payment = match pi_payment_update(context, &approve.clone(), _payment, Some(data.txid.clone())).await
+    let payment = match pi_payment_update(context, &info.clone(), _payment, Some(data.txid.clone())).await
     {
       Ok(p) => {
         if !p.completed {

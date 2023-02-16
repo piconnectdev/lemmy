@@ -1,4 +1,5 @@
-use crate::pipayment::client::*;
+use crate::pipayment::payment::{pi_payment_create};
+use crate::pipayment::{client::*, payment::PiPaymentInfo};
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
@@ -173,20 +174,20 @@ impl PerformCrud for PiAgreeRegister {
     };
 
         
-    let approve = PiApprove {
+    let info = PiPaymentInfo {
       domain: data.domain.clone(),
       pi_token: Some(_pi_token.clone()),
       pi_username: _pi_username.clone(),
       pi_uid: _pi_uid.clone(),
       paymentid: data.paymentid.clone(),
-      obj_cat: None,
+      obj_cat: Some("register".to_string()),
       obj_id: None,
       ref_id: None,
-      comment: Some("agree".to_string()),
+      comment: Some("register".to_string()),
       auth: None,
     };
 
-    let _payment = match pi_payment_update(context, &approve, None, None).await {
+    let _payment = match pi_payment_create(context, &info, None, None).await {
       Ok(c) => c,
       Err(e) => {
         let err_type = e.to_string();
@@ -194,108 +195,6 @@ impl PerformCrud for PiAgreeRegister {
       }
     };
 
-    /* 
-    dto = match pi_approve(context.client(), &data.paymentid.clone()).await {
-      Ok(c) => Some(c),
-      Err(_e) => {
-        // Pi Server error
-        let err_type = format!(
-          "Pi Server Error: approve user {}, paymentid {}, error: {}",
-          &data.info.username,
-          &data.paymentid,
-          _e.to_string()
-        );
-        //let err_type = _e.to_string();
-        return Err(LemmyError::from_message(&err_type));
-      }
-    };
-
-    let mut _payment_dto = PiPaymentDto {
-      ..PiPaymentDto::default()
-    };
-    _payment_dto.status.developer_approved = true;
-
-    if dto.is_some() {
-      _payment_dto = dto.unwrap();
-    }
-
-
-    let create_at = match chrono::NaiveDateTime::parse_from_str(
-      &_payment_dto.created_at,
-      "%Y-%m-%dT%H:%M:%S%.f%Z",
-    ) {
-      Ok(dt) => Some(dt),
-      Err(_e) => {
-        let err_type = format!(
-          "Pi Server Error: get payment datetime error: user {}, paymentid {} {}",
-          &data.info.username, &data.paymentid, _payment_dto.created_at
-        );
-        //return Err(LemmyError::from_message((&err_type));
-        None
-      }
-    };
-
-    let mut payment_form = PiPaymentInsertForm::builder()
-      .domain(data.domain.clone())
-      //.instance_id(None)
-      .person_id( None)
-      //.obj_cat(data.ea.comment.clone())
-      //.obj_id(None)
-      //.other_id( refid)
-      //.notes( None) // Peer address
-      .comment( None) // Peer address
-      .ref_id( refid)
-      .testnet( context.settings().pinetwork.pi_testnet)
-      .finished( false)
-      .updated( None)
-      .pi_uid( _pi_uid)
-      .pi_username( _pi_username.clone()) //data.pi_username.clone(), => Hide user info
-      
-      .identifier( data.paymentid.clone())
-      .user_uid( _payment_dto.user_uid)
-      .amount( _payment_dto.amount)
-      .memo( _payment_dto.memo)
-      .to_address( _payment_dto.to_address) // Site's own address
-      .created_at( create_at)
-      .approved( _payment_dto.status.developer_approved)
-      .verified( _payment_dto.status.transaction_verified)
-      .completed( _payment_dto.status.developer_completed)
-      .cancelled( _payment_dto.status.cancelled)
-      .user_cancelled( _payment_dto.status.user_cancelled)
-      .tx_link( "".to_string())
-      .tx_id( "".to_string())
-      .tx_verified( false)
-      .metadata( _payment_dto.metadata)
-      .extras( None)
-      .build();
-
-    match _payment_dto.transaction {
-      Some(tx) => {
-        payment_form.tx_link = tx._link;
-        payment_form.tx_verified = tx.verified;
-        payment_form.tx_id = tx.txid;
-      }
-      None => {}
-    }
-
-    //if !exist {
-    _payment = match PiPayment::create(context.pool(), &payment_form).await
-    {
-      Ok(payment) => {
-        pid = payment.id;
-        Some(payment)
-      }
-      Err(_e) => {
-        let err_type = format!(
-          "Error insert payment for agree: user {}, paymentid {} error: {}",
-          &data.info.username,
-          &data.paymentid,
-          _e.to_string()
-        );
-        return Err(LemmyError::from_message(&err_type));
-      }
-    };
-    */
     println!("PiAgreeResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(PiAgreeResponse {
       success: result,

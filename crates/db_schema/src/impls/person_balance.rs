@@ -1,6 +1,6 @@
 use crate::{
   newtypes::{PersonId, DbUrl, PersonBalanceId},
-  schema::person_balance::dsl::{person_balance },
+  schema::person_balance::{dsl::{person_balance }, person_id, asset, deposited, rewarded, withdrawed, pending, spent, amount},
   source::person_balance::{PersonBalance, PersonBalanceInsertForm, PersonBalanceUpdateForm},
   traits::Crud,
   utils::{get_conn, DbPool},
@@ -62,6 +62,81 @@ impl PersonBalance {
       .filter(person_id.eq(person_balance_id))
       .filter(asset.eq(asset_name))
       .first::<Self>(conn)
+      .await
+  }
+  
+  pub async fn update_deposit(
+    pool: &DbPool,
+    pid: PersonId,
+    amt: f64,
+  ) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person_balance)
+      .filter(person_id.eq(pid))
+      .filter(asset.eq("PI".to_string()))
+      .set((
+        deposited.eq(deposited+amt),
+        amount.eq(amount+amt),
+      ))
+      .get_result::<Self>(conn)
+      .await
+  }
+
+
+  pub async fn update_reward(
+    pool: &DbPool,
+    pid: PersonId,
+    amt: f64,
+  ) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person_balance)
+      .filter(person_id.eq(pid))
+      .filter(asset.eq("PI".to_string()))
+      .set((
+        rewarded.eq(rewarded+amt),
+        amount.eq(amount+amt),
+      ))
+      .get_result::<Self>(conn)
+      .await
+  }
+
+  pub async fn update_withdraw(
+    pool: &DbPool,
+    pid: PersonId,
+    amt: f64,
+    fee: f64,
+  ) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person_balance)
+      .filter(person_id.eq(pid))
+      .filter(asset.eq("PI".to_string()))
+      .filter(amount.gt(amt+fee))
+      .set((
+        withdrawed.eq(withdrawed+amt+fee),
+        amount.eq(amount-(amt+fee)),
+        pending.eq(amt),
+      ))
+      .get_result::<Self>(conn)
+      .await
+  }
+
+  pub async fn update_spent(
+    pool: &DbPool,
+    pid: PersonId,
+    amt: f64,
+    fee: f64,
+  ) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person_balance)
+      .filter(person_id.eq(pid))
+      .filter(asset.eq("PI".to_string()))
+      .filter(amount.gt(amt+fee))
+      .set((
+        spent.eq(spent+amt+fee),
+        amount.eq(amount-(amt+fee)),
+        //pending.eq(amt),
+      ))
+      .get_result::<Self>(conn)
       .await
   }
 }

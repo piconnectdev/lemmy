@@ -1,4 +1,4 @@
-use crate::{newtypes::{PersonId, PiPaymentId, PiUserId}};
+use crate::{newtypes::{PersonId, PiPaymentId, PiUserId, InstanceId}};
 #[cfg(feature = "full")]
 use crate::schema::pipayment;
 //use diesel::sql_types::Jsonb;
@@ -16,7 +16,7 @@ use std::fmt::Debug;
 pub struct PiPayment {
   pub id: PiPaymentId,
   pub domain: Option<String>,
-  pub instance_id: Option<PersonId>,
+  pub instance_id: Option<InstanceId>,
   pub person_id: Option<PersonId>,
   pub obj_cat: Option<String>,
   pub obj_id: Option<Uuid>,
@@ -109,7 +109,7 @@ pub struct PiPaymentSafe {
 #[cfg_attr(feature = "full", diesel(table_name = pipayment))]
 pub struct PiPaymentInsertForm {
   pub domain: Option<String>,
-  pub instance_id: Option<PersonId>,
+  pub instance_id: Option<InstanceId>,
   pub person_id: Option<PersonId>,
   pub obj_cat: Option<String>,
   pub obj_id: Option<Uuid>,

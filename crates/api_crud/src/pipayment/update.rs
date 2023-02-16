@@ -1,5 +1,6 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
+use crate::pipayment::payment::{pi_payment_update, PiPaymentInfo};
 use actix_web::web::Data;
 use lemmy_api_common::{context::LemmyContext};
 use lemmy_api_common::pipayment::*;
@@ -21,8 +22,8 @@ impl PerformCrud for PiPaymentComplete {
     }
     
     let _pi_token = data.pi_token.clone().unwrap();
-    let mut _pi_username = data.pi_username.to_owned();
-    let mut _pi_uid = data.pi_uid.clone();
+    let mut _pi_username;
+    let mut _pi_uid = None;
 
     let _payment_id = data.paymentid.clone();
 
@@ -35,17 +36,13 @@ impl PerformCrud for PiPaymentComplete {
       }
       Err(_e) => {
         // Pi Server error
-        let err_type = format!(
-          "Pi Network Server Error: User not found: {}, error: {}",
-          &data.pi_username,
-          _e.to_string()
-        );
-        return Err(LemmyError::from_message(&err_type));
+        let err_str = format!("Pi Network Server Error: User not found: {}, error: {}", &_pi_token, _e.to_string());
+        return Err(LemmyError::from_message(&err_str));
       }
     };
 
     let _tx = Some(data.txid.clone());
-    let approve = PiApprove {
+    let mut info = PiPaymentInfo {
       domain: data.domain.clone(),
       pi_token: data.pi_token.clone(),
       pi_username: _pi_username.clone(),
@@ -60,22 +57,26 @@ impl PerformCrud for PiPaymentComplete {
 
     let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {
-      Ok(c) => {
-        Some(c)
+      Ok(p) => {
+        info.obj_cat = p.obj_cat.clone();
+        info.obj_id = p.obj_id.clone();
+        info.ref_id = p.ref_id.clone();
+        info.comment = p.comment.clone();
+        Some(p)
       }
       Err(_e) => {
-        return Err(LemmyError::from_message("Not approved payment"));
+        return Err(LemmyError::from_message("Completed a payment not approved"));
       },
     };
 
-    let _payment = match pi_payment_update(context, &approve, _payment, _tx).await {
+    let _payment = match pi_payment_update(context, &info, _payment, _tx).await {
       Ok(c) => c,
       Err(e) => {
-        let err_type = e.to_string();
-        return Err(LemmyError::from_message(&err_type));
+        let err_str = e.to_string();
+        return Err(LemmyError::from_message(&err_str));
       }
     };
-    println!("PiPaymentCompleteResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
+    println!("PiPaymentCompleteResponse: {} {}, finished: {}", _pi_username.clone(), data.paymentid.clone(), _payment.finished);
     Ok(PiPaymentCompleteResponse {
       id: _payment.id,
       paymentid: _payment_id.to_owned(),
