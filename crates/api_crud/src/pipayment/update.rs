@@ -55,6 +55,7 @@ impl PerformCrud for PiPaymentComplete {
       auth: data.auth.clone(),
     };
 
+    let mut finished = false;
     let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {
       Ok(p) => {
@@ -62,13 +63,17 @@ impl PerformCrud for PiPaymentComplete {
         info.obj_id = p.obj_id.clone();
         info.ref_id = p.ref_id.clone();
         info.comment = p.comment.clone();
+        finished = p.finished;
+        if p.finished {
+          return Err(LemmyError::from_message("The payment update is finished"));
+        }
         Some(p)
       }
       Err(_e) => {
         return Err(LemmyError::from_message("Completed a payment not approved"));
       },
     };
-
+    println!("PiPaymentComplete update: {} {}, finished: {}", _pi_username.clone(), data.paymentid.clone(), finished);    
     let _payment = match pi_payment_update(context, &info, _payment, _tx).await {
       Ok(c) => c,
       Err(e) => {

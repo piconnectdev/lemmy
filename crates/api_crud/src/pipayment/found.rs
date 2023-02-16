@@ -64,6 +64,7 @@ impl PerformCrud for PiPaymentFound {
       auth: data.auth.clone(),
     };
 
+    let mut finished = false;
     let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
     {
       Ok(p) => {
@@ -71,6 +72,10 @@ impl PerformCrud for PiPaymentFound {
         info.obj_id = p.obj_id.clone();
         info.ref_id = p.ref_id.clone();
         info.comment = p.comment.clone();
+        finished = p.finished;
+        if p.finished {
+          return Err(LemmyError::from_message("The payment found is finished"));
+        }
         Some(p)
       }
       Err(_e) => {
@@ -80,6 +85,7 @@ impl PerformCrud for PiPaymentFound {
       },
     };
 
+    println!("PiPaymentFound update: {} {}, finished: {}", _pi_username.clone(), data.paymentid.clone(), finished);
     let _payment = match pi_payment_update(context, &info, _payment, None).await {
       Ok(c) => c,
       Err(e) => {

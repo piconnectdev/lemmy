@@ -414,15 +414,19 @@ pub async fn pi_payment_update(
   if fetch_pi_server && !finished {
     dto = match pi_payment(context.client(), &_payment_id.clone()).await {
       Ok(c) => {
+        if c.transaction.is_some() {
+          txid = c.transaction.clone().unwrap().txid;
+        }
+        println!("pi_payment_update, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{} {}", _pi_user_alias.clone(), _payment_id.clone(), 
+          c.status.developer_approved, c.status.developer_approved, c.status.cancelled, c.status.user_cancelled, txid.clone());
+        if completed == true && c.status.developer_completed == true {
+            return Err(LemmyError::from_message("Both side is completed, ignore"));
+        }  
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
         usercancelled = c.status.user_cancelled;
         amount = c.amount;
-        if c.transaction.is_some() {
-          txid = c.transaction.clone().unwrap().txid;
-        }
-        println!("pi_payment_update, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{} {}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled, txid.clone());
         Some(c)
       }
       Err(_e) => {
@@ -608,10 +612,12 @@ pub async fn pi_payment_update(
     payment_form.finished = true;
     pid = pipayment.unwrap().id;
     let paytype = info.obj_cat.clone().unwrap_or_default();
+    let mut ref_uuid;
     let payment = match PiPayment::update(context.pool(), pid, &payment_form).await
     {
       Ok(p) => {
         println!("pi_payment_update, update payment success: {} {}, cat: {}", _payment_id.clone(), p.completed, paytype.clone());
+        ref_uuid = p.ref_id.clone();
         Some(p)
       },
       Err(_e) => {
@@ -624,7 +630,7 @@ pub async fn pi_payment_update(
     //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
     // TODO: UUID check
     println!("pi_payment_update, update balance {}", paytype);
-    if completed && tx.clone().is_some() && info.obj_cat.is_some() {      
+    if completed {     
       if paytype == "deposit" {
         match PersonBalance::update_deposit(context.pool(), person_id.clone().unwrap(), amount).await
         {
@@ -633,8 +639,8 @@ pub async fn pi_payment_update(
         };
       } else if paytype == "reward" {
         println!("pi_payment_update, update reward");
-        if info.ref_id.is_some() {
-          let uuid = info.ref_id.clone().unwrap();
+        if ref_uuid.is_some() {
+          let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
           println!("pi_payment_update, update_reward: {} {} ", person_tipped_id.clone(), amount.clone());
           match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
@@ -656,8 +662,8 @@ pub async fn pi_payment_update(
         }
       } else if paytype == "tip:page" {
         println!("pi_payment_update, update tip:page:");
-        if info.ref_id.is_some() {
-          let uuid = info.ref_id.clone().unwrap();
+        if ref_uuid.is_some() {
+          let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
           println!("pi_payment_update, update tip:page: {} {} ", person_tipped_id.clone(), amount.clone());
           match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
@@ -668,8 +674,8 @@ pub async fn pi_payment_update(
         }
       } else if paytype == "tip:note" {
         println!("pi_payment_update, update tip:note:");
-        if info.ref_id.is_some() {
-          let uuid = info.ref_id.clone().unwrap();
+        if ref_uuid.is_some() {
+          let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
           println!("pi_payment_update, update tip:note: {} {} ", person_tipped_id.clone(), amount.clone());
           match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
