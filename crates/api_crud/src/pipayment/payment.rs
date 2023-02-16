@@ -2,7 +2,7 @@ use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
 use lemmy_db_schema::{
   newtypes::{CommentId, *},
-  source::{comment::*, pipayment::*, post::*, person::*, person_balance::PersonBalance},
+  source::{comment::*, pipayment::*, post::*, person::*, person_balance::PersonBalance, community::Community, site::Site},
   traits::{Crud, Signable } ,
   utils::naive_now, 
 };
@@ -607,10 +607,11 @@ pub async fn pi_payment_update(
     }
     payment_form.finished = true;
     pid = pipayment.unwrap().id;
+    let paytype = info.obj_cat.clone().unwrap_or_default();
     let payment = match PiPayment::update(context.pool(), pid, &payment_form).await
     {
       Ok(p) => {
-        println!("pi_payment_update, update payment success: {} {}", _payment_id.clone(), p.completed);
+        println!("pi_payment_update, update payment success: {} {}, cat: {}", _payment_id.clone(), p.completed, paytype.clone());
         Some(p)
       },
       Err(_e) => {
@@ -622,8 +623,8 @@ pub async fn pi_payment_update(
 
     //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
     // TODO: UUID check
-    if completed && tx.clone().is_some() && info.obj_cat.is_some() {
-      let paytype = info.obj_cat.clone().unwrap_or_default();
+    println!("pi_payment_update, update balance {}", paytype);
+    if completed && tx.clone().is_some() && info.obj_cat.is_some() {      
       if paytype == "deposit" {
         match PersonBalance::update_deposit(context.pool(), person_id.clone().unwrap(), amount).await
         {
@@ -631,9 +632,11 @@ pub async fn pi_payment_update(
           Err(_e) => {},
         };
       } else if paytype == "reward" {
+        println!("pi_payment_update, update reward");
         if info.ref_id.is_some() {
           let uuid = info.ref_id.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
+          println!("pi_payment_update, update_reward: {} {} ", person_tipped_id.clone(), amount.clone());
           match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
           {
             Ok(p) =>{},
@@ -652,9 +655,11 @@ pub async fn pi_payment_update(
           // };
         }
       } else if paytype == "tip:page" {
+        println!("pi_payment_update, update tip:page:");
         if info.ref_id.is_some() {
           let uuid = info.ref_id.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
+          println!("pi_payment_update, update tip:page: {} {} ", person_tipped_id.clone(), amount.clone());
           match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
           {
             Ok(p) =>{},
@@ -662,9 +667,11 @@ pub async fn pi_payment_update(
           };
         }
       } else if paytype == "tip:note" {
+        println!("pi_payment_update, update tip:note:");
         if info.ref_id.is_some() {
           let uuid = info.ref_id.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
+          println!("pi_payment_update, update tip:note: {} {} ", person_tipped_id.clone(), amount.clone());
           match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
           {
             Ok(p) =>{},
@@ -678,6 +685,7 @@ pub async fn pi_payment_update(
         match uuid {
           Some(u) => {
             let post_id = PostId(u);
+            println!("pi_payment_update, update post link {} {} ", post_id.clone(), link.clone().unwrap_or("".to_string()).clone());
             let updated_post = match Post::update_tx(context.pool(), post_id, &link.unwrap_or("".to_string())) .await
             {
               Ok(p) => {
@@ -697,6 +705,7 @@ pub async fn pi_payment_update(
         match uuid {
           Some(u) => {
             let comment_id = CommentId(u);
+            println!("pi_payment_update, update comment link {} {} ", comment_id.clone(), link.clone().unwrap_or("".to_string()).clone());
             let updated_comment = match Comment::update_tx(context.pool(), comment_id, &link.unwrap_or("".to_string())).await
             {
               Ok(c) => {
@@ -708,9 +717,65 @@ pub async fn pi_payment_update(
           None => {
           }
         };
-      }
+      } else if paytype == "group" {
+        let link = payment_form.tx_link.clone();
+        let link2 = payment_form.tx_link.clone();
+        let uuid = object_id.clone();
+        match uuid {
+          Some(u) => {
+            let community_id = CommunityId(u);
+            println!("pi_payment_update, update community link {} {} ", community_id.clone(), link.clone().unwrap_or("".to_string()).clone());
+            let updated_comment = match Community::update_tx(context.pool(), community_id, &link.unwrap_or("".to_string())).await
+            {
+              Ok(c) => {
+                Some(c)
+              }
+              Err(_e) => None,
+            };
+          },
+          None => {
+          }
+        };
+      } else if paytype == "person" {
+        let link = payment_form.tx_link.clone();
+        let link2 = payment_form.tx_link.clone();
+        let uuid = object_id.clone();
+        match uuid {
+          Some(u) => {
+            let person_id = PersonId(u);
+            println!("pi_payment_update, update person link {} {} ", person_id.clone(), link.clone().unwrap_or("".to_string()).clone());
+            let updated_comment = match Person::update_tx(context.pool(), person_id, &link.unwrap_or("".to_string())).await
+            {
+              Ok(c) => {
+                Some(c)
+              }
+              Err(_e) => None,
+            };
+          },
+          None => {
+          }
+        };
+      } else if paytype == "site" {
+        let link = payment_form.tx_link.clone();
+        let link2 = payment_form.tx_link.clone();
+        let uuid = object_id.clone();
+        match uuid {
+          Some(u) => {
+            let site_id = SiteId(u);
+            println!("pi_payment_update, update site link {} {} ", site_id.clone(), link.clone().unwrap_or("".to_string()).clone());
+            let updated_comment = match Site::update_tx(context.pool(), site_id, &link.unwrap_or("".to_string())).await
+            {
+              Ok(c) => {
+                Some(c)
+              }
+              Err(_e) => None,
+            };
+          },
+          None => {
+          }
+        };
+      }      
     }
-
     pmt = payment.unwrap();
   }
   return Ok(pmt);
