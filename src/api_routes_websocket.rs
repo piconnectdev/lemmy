@@ -98,7 +98,7 @@ use lemmy_api_common::{
     PurgePerson,
     PurgePost,
     ResolveObject,
-    Search,
+    Search, GetMyUserInfo,
   },
   websocket::{
     serialize_websocket_message,
@@ -431,6 +431,9 @@ pub async fn match_websocket_operation_crud(
     }
     UserOperationCrud::SendPayment => {
       do_websocket_operation_crud::<SendPayment>(context, id, op, data).await
+    }
+    UserOperationCrud::GetMyUserInfo => {
+      do_websocket_operation_crud::<GetMyUserInfo>(context, id, op, data).await
     }
   }
 }

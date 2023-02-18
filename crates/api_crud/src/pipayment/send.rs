@@ -84,9 +84,10 @@ impl PerformCrud for SendPayment {
       let args = PiPaymentArgs {
         amount: payment.amount,
         uid: person.external_id.clone().unwrap(),
-        memo: payment.memo,
-        metadata: payment.metadata,
+        memo: Some("withdraw".to_string()),
+        metadata: None,
       };
+      println!("SendPayment for: {} {}", person.external_id.clone().unwrap(), payment.user_uid.clone().unwrap_or_default());
       let dto = match pi_create(context.client(), &args).await
       {
         Ok(pay) => {

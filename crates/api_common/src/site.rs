@@ -314,3 +314,12 @@ pub struct GetUnreadRegistrationApplicationCount {
 pub struct GetUnreadRegistrationApplicationCountResponse {
   pub registration_applications: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct GetMyUserInfo {
+  pub auth: Option<Sensitive<String>>,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetMyUserInfoResponse {
+  pub my_user: Option<MyUserInfo>,
+}

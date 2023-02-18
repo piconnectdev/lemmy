@@ -1,7 +1,7 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{context::LemmyContext, pipayment::*, utils::get_local_user_view_from_jwt};
+use lemmy_api_common::{context::LemmyContext, pipayment::*, utils::{get_local_user_view_from_jwt, is_admin}};
 use lemmy_db_schema::{source::{pipayment::{PiPayment, PiPaymentInsertForm}, person::Person}, traits::Crud, newtypes::{PersonId, PiUserId}};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use uuid::Uuid;
@@ -19,11 +19,15 @@ impl PerformCrud for CreatePayment {
 
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+
+    is_admin(&local_user_view)?;
+
     let person_id = local_user_view.person.id.clone();
     let person = Person::read(context.pool(), person_id).await?;
     if !person.verified {
       return Err(LemmyError::from_message("User not verified!"));
     }
+    
     let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());
     let puid = match uuid {
       Ok(u) => Some(PiUserId(u)),

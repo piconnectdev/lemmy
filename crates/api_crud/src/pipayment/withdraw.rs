@@ -7,6 +7,7 @@ use lemmy_api_common::pipayment::*;
 
 use lemmy_db_schema::newtypes::{PersonId, PiUserId};
 use lemmy_db_schema::source::person::Person;
+use lemmy_db_schema::source::person_balance::PersonBalance;
 use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentSafe, PiPaymentInsertForm};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_db_schema::traits::Crud;
@@ -25,18 +26,9 @@ impl PerformCrud for PiWithdraw {
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
     let person_id = local_user_view.person.id;
     let mut _payment_id: String;
-    let person = Person::read(context.pool(), person_id).await?;
-    match PiPayment::find_withdraw_pending(context.pool(), &person_id.clone()).await
-    {
-      Ok(pays) => {
-        if pays.len() > 0 {
-          return Err(LemmyError::from_message("Error: has pending withdraw!"));
-        }
-      },
-      Err(_e) => {
-      }
-    };
-    
+    let fee = 0.01;
+    let person = Person::read(context.pool(), person_id.clone()).await?;
+
     let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());
     let puid = match uuid {
       Ok(u) => Some(PiUserId(u)),
@@ -46,46 +38,39 @@ impl PerformCrud for PiWithdraw {
     };
     if !person.verified {
       return Err(LemmyError::from_message("User not verified!"));
-    }
-    /*
-      .domain(None)
-      .instance_id(None)
-      .person_id(None)
-      .obj_cat(None)
-      .obj_id(Some(uid))
-      .a2u(false)
-      .asset(None)
-      .fee(0.00)
-      .step(0)
-      .ref_id(Some(uid))
-      .testnet(settings.pinetwork.pi_testnet)
-      .finished(false)
-      .updated(None)
-      .pi_uid(Some(PiUserId(uid.clone())))
-      .pi_username(Some("wepi".into()))
-      .comment(None)
+    };
 
-      .identifier(Some(uid.hyphenated().to_string()))
-      .user_uid(Some(uid.hyphenated().to_string()))
-      .amount(0.001)
-      .memo(None)
-      .to_address(None)
-      .from_address(None)
-      .direction(None)
-      .network(None)
-      .created_at(Some(naive_now()))
-      .approved(true)
-      .verified(true)
-      .completed(false)
-      .cancelled(false)
-      .user_cancelled(false)
-      .tx_link(None)
-      .tx_id(None)
-      .tx_verified( false)
-      .metadata(None)
-      .extras(None)
-    */
-    let mut payment_form = PiPaymentInsertForm::builder()
+    match PiPayment::find_withdraw_pending(context.pool(), &person_id.clone()).await
+    {
+      Ok(pays) => {
+        if pays.len() > 0 {
+          return Err(LemmyError::from_message("Withdraw is in pending queue!"));
+        }
+      },
+      Err(_e) => {
+      }
+    };
+    
+    match PersonBalance::find_by_asset(context.pool(), person_id.clone(), "PI").await
+    {
+      Ok(balance) => {
+        if balance.amount < (fee+ data.amount) {
+          return Err(LemmyError::from_message("Balance not enough!"));
+        }
+      }
+      Err(_e) => {
+        return Err(LemmyError::from_message("Balance not found!"));
+      }
+    };
+    match PersonBalance::update_withdraw(context.pool(), person_id.clone(), data.amount, fee).await
+    {
+      Ok(balance) => {
+      }
+      Err(_e) => {
+        return Err(LemmyError::from_message("Update PI balance error!"));
+      }
+    };
+    let payment_form = PiPaymentInsertForm::builder()
       .domain(data.domain.clone())
       .instance_id(None)
       .person_id( Some(person_id.clone()))
@@ -93,12 +78,13 @@ impl PerformCrud for PiWithdraw {
       .obj_id(None)
       .a2u(true)
       .asset(data.asset.clone())
-      .ref_id(None)
+      .fee(fee)
+      .ref_id(Some(person_id.clone().0))
       .comment(data.comment.clone())
       .testnet(context.settings().pinetwork.pi_testnet)
       
       .finished(false)
-      .updated( None)
+      .updated(None)
       .pi_uid(puid)
       .pi_username(person.external_name.clone().unwrap_or_default() )
       
@@ -118,23 +104,23 @@ impl PerformCrud for PiWithdraw {
       .user_cancelled(false)
       .tx_link(None)
       .tx_id(None)
-      .tx_verified( false)
-      .metadata( None) //_payment_dto.metadata,
-      .extras( None)
+      .tx_verified(false)
+      .metadata(None) //_payment_dto.metadata,
+      .extras(None)
       .build();
-      let payment = match PiPayment::create(context.pool(), &payment_form).await
-      {
-        Ok(payment) => {
-          println!("CreatePayment, create payment success: {}", payment.id.clone());
-          payment
-        }
-        Err(_e) => {
-          let err_str = _e.to_string();
-          println!("CreatePayment, create payment error: {}", err_str.clone());
-          return Err(LemmyError::from_message(&err_str));
-        }
-      };
-      
+
+    let payment = match PiPayment::create(context.pool(), &payment_form).await
+    {
+      Ok(payment) => {
+        println!("CreatePayment, create payment success: {}", payment.id.clone());
+        payment
+      }
+      Err(_e) => {
+        let err_str = _e.to_string();
+        println!("CreatePayment, create payment error: {}", err_str.clone());
+        return Err(LemmyError::from_message(&err_str));
+      }
+    };      
 
     Ok(PiWithdrawResponse {
       status: Some("PENDING".to_string()),

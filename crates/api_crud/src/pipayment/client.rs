@@ -113,14 +113,14 @@ pub async fn pi_create(
   })
   .await?;
 
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| LemmyError::from_error_message(e, "Can not create A2U payment"))?;
-  Ok(res)
-  // let content = response.text().await?;
-  // println!("pi_create: {}", content.clone());
-  // return Err(LemmyError::from_message("Can not create A2U payment"));
+  // let res: PiPaymentDto = response
+  //   .json::<PiPaymentDto>()
+  //   .await
+  //   .map_err(|e| LemmyError::from_error_message(e, "Can not create A2U payment"))?;
+  // Ok(res)
+  let content = response.text().await?;
+  println!("pi_create: {}", content.clone());
+  return Err(LemmyError::from_message("Can not create A2U payment"));
 }
 
 pub async fn pi_cancel(

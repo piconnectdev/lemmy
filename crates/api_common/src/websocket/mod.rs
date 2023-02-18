@@ -135,6 +135,7 @@ pub enum UserOperationCrud {
   SendPayment,
   GetPiBalances,
   PiWithdraw,
+  GetMyUserInfo,
 }
 
 #[derive(EnumString, Display, Debug, Clone)]

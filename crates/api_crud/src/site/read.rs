@@ -2,7 +2,7 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
-  site::{GetSite, GetSiteResponse, MyUserInfo},
+  site::{GetSite, GetSiteResponse, MyUserInfo, GetMyUserInfoResponse, GetMyUserInfo},
   utils::{build_federated_instances, get_local_user_settings_view_from_jwt_opt},
 };
 use lemmy_db_schema::source::{
@@ -105,6 +105,68 @@ impl PerformCrud for GetSite {
       signer,
       discussion_languages,
       taglines,
+    })
+  }
+}
+
+#[async_trait::async_trait(?Send)]
+impl PerformCrud for GetMyUserInfo {
+  type Response = GetMyUserInfoResponse;
+
+  #[tracing::instrument(skip(context, _websocket_id))]
+  async fn perform(
+    &self,
+    context: &Data<LemmyContext>,
+    _websocket_id: Option<ConnectionId>,
+  ) -> Result<GetMyUserInfoResponse, LemmyError> {
+    let data: &GetMyUserInfo = self;
+    // Build the local user
+    let my_user = if let Some(local_user_view) = get_local_user_settings_view_from_jwt_opt(
+      data.auth.as_ref(),
+      context.pool(),
+      context.secret(),
+    )
+    .await?
+    {
+      let person_id = local_user_view.person.id;
+      let local_user_id = local_user_view.local_user.id;
+
+      let follows = CommunityFollowerView::for_person(context.pool(), person_id)
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "system_err_login"))?;
+
+      let person_id = local_user_view.person.id;
+      let community_blocks = CommunityBlockView::for_person(context.pool(), person_id)
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "system_err_login"))?;
+
+      let person_id = local_user_view.person.id;
+      let person_blocks = PersonBlockView::for_person(context.pool(), person_id)
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "system_err_login"))?;
+
+      let moderates = CommunityModeratorView::for_person(context.pool(), person_id)
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "system_err_login"))?;
+
+      let discussion_languages = LocalUserLanguage::read(context.pool(), local_user_id)
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "system_err_login"))?;
+
+      Some(MyUserInfo {
+        local_user_view,
+        follows,
+        moderates,
+        community_blocks,
+        person_blocks,
+        discussion_languages,
+      })
+    } else {
+      None
+    };
+
+    Ok(GetMyUserInfoResponse {
+      my_user,
     })
   }
 }

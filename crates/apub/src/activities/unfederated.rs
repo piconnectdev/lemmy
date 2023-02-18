@@ -104,7 +104,7 @@ use lemmy_api_common::{
     ResolveObjectResponse,
     Search,
     SearchResponse,
-    SiteResponse,
+    SiteResponse, GetMyUserInfo, GetMyUserInfoResponse,
   },
   websocket::structs::{
     CommunityJoin,
@@ -438,3 +438,6 @@ impl SendActivity for SendPayment {
   type Response = SendPaymentResponse;
 }
 
+impl SendActivity for GetMyUserInfo {
+  type Response = GetMyUserInfoResponse;
+}
