@@ -50,8 +50,12 @@ impl Perform for AddModToCommunity {
         .map_err(|e| LemmyError::from_error_message(e, "community_moderator_already_exists"))?;
     } else {
       if community.is_home {
-        if community.person_id.unwrap() == local_user_view.person.id {
-          return Err(LemmyError::from_message("Can not leave your home"));
+        if community.person_id.unwrap() == community_moderator_form.person_id.clone() {
+          return Err(LemmyError::from_message("Owner can not leave his home"));
+        } else {
+          if community.person_id.unwrap() != local_user_view.person.id {
+            return Err(LemmyError::from_message("Only owner can remove mod at his home"));
+          }
         }
       }  
       CommunityModerator::leave(context.pool(), &community_moderator_form)

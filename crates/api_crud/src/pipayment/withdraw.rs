@@ -25,10 +25,7 @@ impl PerformCrud for PiWithdraw {
     let local_user_view =
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
     let person_id = local_user_view.person.id;
-    let mut _payment_id: String;
-    let fee = 0.01;
     let person = Person::read(context.pool(), person_id.clone()).await?;
-
     let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());
     let puid = match uuid {
       Ok(u) => Some(PiUserId(u)),
@@ -50,19 +47,24 @@ impl PerformCrud for PiWithdraw {
       Err(_e) => {
       }
     };
-    
+    let mut _payment_id: String;
+    let fee = 0.01;
+    let amount = f64::trunc(data.amount  * 10000000.0) / 10000000.0;
+    if (amount <= 0.0 || amount > 1000000.0) {
+      return Err(LemmyError::from_message("Invalid withdraw balance (0.0 < amount < 10000000.0)!"));
+    }
     match PersonBalance::find_by_asset(context.pool(), person_id.clone(), "PI").await
     {
       Ok(balance) => {
-        if balance.amount < (fee+ data.amount) {
+        if balance.amount < (fee + amount) {
           return Err(LemmyError::from_message("Balance not enough!"));
         }
       }
       Err(_e) => {
-        return Err(LemmyError::from_message("Balance not found!"));
+        return Err(LemmyError::from_message("Balance record not found!"));
       }
     };
-    match PersonBalance::update_withdraw(context.pool(), person_id.clone(), data.amount, fee).await
+    match PersonBalance::update_withdraw(context.pool(), person_id.clone(), amount, fee).await
     {
       Ok(balance) => {
       }
@@ -90,7 +92,7 @@ impl PerformCrud for PiWithdraw {
       
       .identifier(None)
       .user_uid(person.external_id.clone())
-      .amount(data.amount)
+      .amount(amount)
       .memo(None)
       .from_address(None)
       .to_address(None)

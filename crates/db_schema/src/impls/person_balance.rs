@@ -110,7 +110,7 @@ impl PersonBalance {
     diesel::update(person_balance)
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
-      .filter(amount.gt(amt+fee))
+      .filter(amount.ge(amt+fee))
       .set((
         withdrawed.eq(withdrawed+amt+fee),
         amount.eq(amount-(amt+fee)),
@@ -130,7 +130,7 @@ impl PersonBalance {
     diesel::update(person_balance)
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
-      .filter(amount.gt(amt+fee))
+      .filter(amount.ge(amt+fee))
       .set((
         spent.eq(spent+amt+fee),
         amount.eq(amount-(amt+fee)),
