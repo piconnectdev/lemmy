@@ -1,7 +1,7 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::pipayment::*;
-use lemmy_api_common::utils::get_local_user_view_from_jwt;
+use lemmy_api_common::utils::{get_local_user_view_from_jwt, is_admin};
 use lemmy_db_schema::traits::Crud;
 use lemmy_db_views_actor::community_moderator_view::*;
 use lemmy_utils::{error::LemmyError, ConnectionId};
@@ -24,16 +24,26 @@ impl PerformCrud for GetPayments {
 
     let local_user_view =
      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
-    let person_id = local_user_view.person.id;
-    let person = Person::read(context.pool(), person_id).await?;
-    
+    let mut person_id = local_user_view.person.id;
+    //let person = Person::read(context.pool(), person_id).await?;
+    //let mut payments: Option<Vec<PiPaymentSafe>> = None;
+    match is_admin(&local_user_view)
+    {
+      Ok(x)=> {
+        if data.person_id.is_some(){
+          person_id = data.person_id.unwrap_or_default();
+        }
+      },
+      Err(e) => {        
+      }
+    };
     let payments = match PiPaymentSafe::find_by_person(context.pool(), &person_id.clone()).await
     {
       Ok(pays) => {
         Some(pays)
       },
       Err(_e) => {
-        return Err(LemmyError::from_message("Not yet implements"));
+        return Err(LemmyError::from_message("Payments not found"));
       }
     };
     // let sort = data.sort;
