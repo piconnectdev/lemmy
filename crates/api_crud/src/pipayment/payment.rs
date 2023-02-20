@@ -661,9 +661,9 @@ pub async fn pi_payment_update(
           Err(_e) => {},
         };
       } else if paytype == "reward" {
-        println!("pi_payment_update, update reward");
         if person_id.is_some() {
-          match PersonBalance::update_spent(context.pool(), person_id.clone().unwrap_or_default(), amount, fee).await
+          println!("pi_payment_update, update reward, inc spent {}", amount.clone());
+          match PersonBalance::update_spent(context.pool(), person_id.clone().unwrap_or_default(), amount.clone(), fee).await
           {
             Ok(p) =>{},
             Err(_e) => {},
@@ -680,7 +680,15 @@ pub async fn pi_payment_update(
           };
         }
       } else if paytype == "tip:page" {
-        println!("pi_payment_update, update tip:page:");
+        println!("pi_payment_update, update tip:page");
+        if person_id.is_some() {
+          println!("pi_payment_update, inc spent {}", amount.clone());
+          match PersonBalance::update_spent(context.pool(), person_id.clone().unwrap_or_default(), amount.clone(), fee).await
+          {
+            Ok(p) =>{},
+            Err(_e) => {},
+          };
+        }
         if ref_uuid.is_some() {
           let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
@@ -692,7 +700,15 @@ pub async fn pi_payment_update(
           };
         }
       } else if paytype == "tip:note" {
-        println!("pi_payment_update, update tip:note:");
+        println!("pi_payment_update, update tip:note");
+        if person_id.is_some() {
+          println!("pi_payment_update, inc spent {}", amount.clone());
+          match PersonBalance::update_spent(context.pool(), person_id.clone().unwrap_or_default(), amount.clone(), fee).await
+          {
+            Ok(p) =>{},
+            Err(_e) => {},
+          };
+        }
         if ref_uuid.is_some() {
           let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
