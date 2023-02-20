@@ -107,12 +107,16 @@ impl Signable for PrivateMessage {
   async fn update_tx(
     pool: &DbPool,
     private_message_id: PrivateMessageId,
+    identifier: &str,
     txlink: &str,
   ) -> Result<Self, Error> {
     use crate::schema::private_message::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(private_message.find(private_message_id))
-      .set(tx.eq(txlink))
+      .set((
+        tx.eq(txlink),
+        pipayid.eq(identifier)
+      ))
       .get_result::<Self>(conn)
       .await
   }
@@ -208,6 +212,7 @@ mod tests {
       secured: None,
       auth_sign: None, 
       srv_sign: None,
+      pipayid: None,
       tx: None,
     };
 

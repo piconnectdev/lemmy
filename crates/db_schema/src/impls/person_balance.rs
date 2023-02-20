@@ -130,11 +130,8 @@ impl PersonBalance {
     diesel::update(person_balance)
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
-      .filter(amount.ge(amt+fee))
       .set((
         spent.eq(spent+amt+fee),
-        amount.eq(amount-(amt+fee)),
-        //pending.eq(amt),
       ))
       .get_result::<Self>(conn)
       .await

@@ -30,6 +30,7 @@ table! {
         language_id -> Int4,
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
         tx -> Nullable<Text>,
         //extras -> Nullable<Jsonb>,
     }
@@ -108,6 +109,7 @@ table! {
         is_home -> Bool,
         person_id -> Nullable<Uuid>,
         srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
         tx -> Nullable<Text>,
         //extras -> Nullable<Jsonb>,
     }
@@ -341,6 +343,7 @@ table! {
         sui_address -> Nullable<Text>,   
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
         tx -> Nullable<Text>,
         //extras -> Nullable<Jsonb>,        
     }
@@ -411,6 +414,7 @@ table! {
 
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
         tx -> Nullable<Text>,
         //extras -> Nullable<Jsonb>,
     }
@@ -501,6 +505,7 @@ table! {
         secured -> Nullable<Text>,
         auth_sign -> Nullable<Text>,
         srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
         tx -> Nullable<Text>,
         //extras -> Nullable<Jsonb>,
     }
@@ -537,6 +542,7 @@ table! {
         public_key -> Text,
         instance_id -> Uuid,
         srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
         tx -> Nullable<Text>,
         //extras -> Nullable<Jsonb>,
     }

@@ -381,15 +381,17 @@ pub async fn pi_payment_update(
   let mut finished = false;
   let mut cancelled = false;
   let mut usercancelled = false;
-  let mut txid: String = "".to_string();
-  let mut txlink: String = "".to_string();
+  let mut cancelled = false;
+  let mut txverified = false;
+  let mut txid: Option<String> = None;
+  let mut txlink: Option<String> = None;
   let mut dto: Option<PiPaymentDto> = None;
 
   let mut pid;
   let mut pmt;
 
   let mut amount: f64 = 0.0;
-  let mut fee: f64 = 0.01;
+  let mut fee: f64 = 0.00;
 
   if pipayment.is_some() {
     let c = pipayment.clone().unwrap();
@@ -397,8 +399,9 @@ pub async fn pi_payment_update(
     approved = c.approved;
     completed = c.completed;
     cancelled = c.cancelled;
-    txid = c.tx_id.clone().unwrap_or_default();
-    txlink = c.tx_link.clone().unwrap_or_default();
+    txverified = c.tx_verified;
+    txid = c.tx_id.clone();
+    txlink = c.tx_link.clone();
     pid = c.id;
     amount = c.amount;
     if cancelled || completed {
@@ -415,18 +418,24 @@ pub async fn pi_payment_update(
     dto = match pi_payment(context.client(), &_payment_id.clone()).await {
       Ok(c) => {
         if c.transaction.is_some() {
-          txid = c.transaction.clone().unwrap().txid;
+          txid = Some(c.transaction.clone().unwrap().txid);
         }
         println!("pi_payment_update, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{} {}", _pi_user_alias.clone(), _payment_id.clone(), 
-          c.status.developer_approved, c.status.developer_approved, c.status.cancelled, c.status.user_cancelled, txid.clone());
+          c.status.developer_approved, c.status.developer_approved, c.status.cancelled, c.status.user_cancelled, txid.clone().unwrap_or_default());
         if completed == true && c.status.developer_completed == true {
             return Err(LemmyError::from_message("Both side is completed, ignore"));
-        }  
+        }
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
         usercancelled = c.status.user_cancelled;
         amount = c.amount;
+        if c.transaction.is_some() {
+        let txdto = c.transaction.clone().unwrap_or_default();
+          txverified = txdto.verified;
+          txid = Some(txdto.txid);
+          txlink = Some(txdto._link);        
+        }
         Some(c)
       }
       Err(_e) => {
@@ -455,6 +464,17 @@ pub async fn pi_payment_update(
     dto = match pi_approve(context.client(), &payment_id).await {
       Ok(c) => { 
         println!("pi_payment_update, pi_approve return dto: {} {} {}", _payment_id.clone(), c.amount, c.memo.clone());
+        approved = c.status.developer_approved;
+        completed = c.status.developer_completed;
+        cancelled = c.status.cancelled;
+        usercancelled = c.status.user_cancelled;
+        amount = c.amount;
+        if c.transaction.is_some() {
+        let txdto = c.transaction.clone().unwrap_or_default();
+          txverified = txdto.verified;
+          txid = Some(txdto.txid);
+          txlink = Some(txdto._link);        
+        }
         Some(c)
       },
       Err(_e) => {
@@ -470,13 +490,23 @@ pub async fn pi_payment_update(
     };
   } else if !completed {
     if tx.is_some() {
-      txid = tx.clone().unwrap();
+      txid = tx.clone();
     }
-    println!("pi_payment_update, pi_complete: {}, tx: {}", _payment_id.clone(), txid.clone());
-    dto = match pi_complete(context.client(), &payment_id, &txid).await {
+    println!("pi_payment_update, pi_complete: {}, tx: {}", _payment_id.clone(), txid.clone().unwrap_or_default());
+    dto = match pi_complete(context.client(), &payment_id, &txid.clone().unwrap_or_default()).await {
       Ok(c) => {
-        completed = true;
         println!("pi_payment_update, pi_complete return dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
+        approved = c.status.developer_approved;
+        completed = c.status.developer_completed;
+        cancelled = c.status.cancelled;
+        usercancelled = c.status.user_cancelled;
+        amount = c.amount;
+        if c.transaction.is_some() {
+        let txdto = c.transaction.clone().unwrap_or_default();
+          txverified = txdto.verified;
+          txid = Some(txdto.txid);
+          txlink = Some(txdto._link);        
+        }
         Some(c)
       }
       Err(_e) => {
@@ -501,7 +531,7 @@ pub async fn pi_payment_update(
   };
 
   if dto.is_some() {
-    if completed && person.is_some() && !verified {
+    if completed && person.is_some() && !verified && txverified{
       match Person::update_kyced(context.pool(), person.unwrap().id).await {
         Ok(p) =>{
           println!("pi_payment_update, verify user {}", _pi_user_alias.clone());
@@ -521,8 +551,6 @@ pub async fn pi_payment_update(
         None
       }
   };
-
-  completed = _payment_dto.status.developer_completed.clone();
   
   let object_id = info.obj_id.clone();
   if !exist {
@@ -595,19 +623,14 @@ pub async fn pi_payment_update(
         .completed(completed)
         .cancelled(cancelled)
         .user_cancelled(usercancelled)
+        .tx_verified(txverified)
+        .tx_link(txlink)
+        .tx_id(txid)
+        .updated(Some(naive_now()))
         .build();
-    payment_form.updated = Some(naive_now());
+
     if object_id.is_none() {
       payment_form.metadata = _payment_dto.metadata;
-    }
-    match _payment_dto.transaction {
-      Some(tx) => {
-        payment_form.tx_link = Some(tx._link);
-        payment_form.tx_verified = tx.verified;
-        payment_form.tx_id = Some(tx.txid);
-        payment_form.finished = true;
-      }
-      None => {}
     }
     payment_form.finished = true;
     pid = pipayment.unwrap().id;
@@ -630,7 +653,7 @@ pub async fn pi_payment_update(
     //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
     // TODO: UUID check
     println!("pi_payment_update, update balance {}", paytype);
-    if completed {     
+    if completed && txverified {
       if paytype == "deposit" {
         match PersonBalance::update_deposit(context.pool(), person_id.clone().unwrap(), amount).await
         {
@@ -648,17 +671,6 @@ pub async fn pi_payment_update(
             Ok(p) =>{},
             Err(_e) => {},
           };
-          // match Person::find_by_name(context.pool(), comment).await
-          // {
-          //   Ok(p) =>{
-          //     match PersonBalance::update_reward(context.pool(), p.id, amount).await
-          //     {
-          //       Ok(p) =>{},
-          //       Err(_e) => {},
-          //     };
-          //   },
-          //   Err(_e) => {},
-          // };
         }
       } else if paytype == "tip:page" {
         println!("pi_payment_update, update tip:page:");
@@ -684,15 +696,22 @@ pub async fn pi_payment_update(
             Err(_e) => {},
           };
         }
-      } else if paytype == "page" {
+      } else  {
+        if person_id.is_some() {
+          match PersonBalance::update_spent(context.pool(), person_id.clone().unwrap_or_default(), amount, fee).await
+          {
+            Ok(p) =>{},
+            Err(_e) => {},
+          };
+        }
+        if paytype == "page" {
         let link = payment_form.tx_link.clone();
-        let link2 = payment_form.tx_link.clone();
         let uuid = object_id.clone();
         match uuid {
           Some(u) => {
             let post_id = PostId(u);
             println!("pi_payment_update, update post link {} {} ", post_id.clone(), link.clone().unwrap_or("".to_string()).clone());
-            let updated_post = match Post::update_tx(context.pool(), post_id, &link.unwrap_or("".to_string())) .await
+            let updated_post = match Post::update_tx(context.pool(), post_id, &_payment_id.clone(), &link.unwrap_or("".to_string())) .await
             {
               Ok(p) => {
                 Some(p)
@@ -704,82 +723,81 @@ pub async fn pi_payment_update(
             //None
           }
         };
-      } else if paytype == "note" {
-        let link = payment_form.tx_link.clone();
-        let link2 = payment_form.tx_link.clone();
-        let uuid = object_id.clone();
-        match uuid {
-          Some(u) => {
-            let comment_id = CommentId(u);
-            println!("pi_payment_update, update comment link {} {} ", comment_id.clone(), link.clone().unwrap_or("".to_string()).clone());
-            let updated_comment = match Comment::update_tx(context.pool(), comment_id, &link.unwrap_or("".to_string())).await
-            {
-              Ok(c) => {
-                Some(c)
-              }
-              Err(_e) => None,
-            };
-          },
-          None => {
-          }
-        };
-      } else if paytype == "group" {
-        let link = payment_form.tx_link.clone();
-        let link2 = payment_form.tx_link.clone();
-        let uuid = object_id.clone();
-        match uuid {
-          Some(u) => {
-            let community_id = CommunityId(u);
-            println!("pi_payment_update, update community link {} {} ", community_id.clone(), link.clone().unwrap_or("".to_string()).clone());
-            let updated_comment = match Community::update_tx(context.pool(), community_id, &link.unwrap_or("".to_string())).await
-            {
-              Ok(c) => {
-                Some(c)
-              }
-              Err(_e) => None,
-            };
-          },
-          None => {
-          }
-        };
-      } else if paytype == "person" {
-        let link = payment_form.tx_link.clone();
-        let link2 = payment_form.tx_link.clone();
-        let uuid = object_id.clone();
-        match uuid {
-          Some(u) => {
-            let person_id = PersonId(u);
-            println!("pi_payment_update, update person link {} {} ", person_id.clone(), link.clone().unwrap_or("".to_string()).clone());
-            let updated_comment = match Person::update_tx(context.pool(), person_id, &link.unwrap_or("".to_string())).await
-            {
-              Ok(c) => {
-                Some(c)
-              }
-              Err(_e) => None,
-            };
-          },
-          None => {
-          }
-        };
-      } else if paytype == "site" {
-        let link = payment_form.tx_link.clone();
-        let link2 = payment_form.tx_link.clone();
-        let uuid = object_id.clone();
-        match uuid {
-          Some(u) => {
-            let site_id = SiteId(u);
-            println!("pi_payment_update, update site link {} {} ", site_id.clone(), link.clone().unwrap_or("".to_string()).clone());
-            let updated_comment = match Site::update_tx(context.pool(), site_id, &link.unwrap_or("".to_string())).await
-            {
-              Ok(c) => {
-                Some(c)
-              }
-              Err(_e) => None,
-            };
-          },
-          None => {
-          }
-        };
+        } else if paytype == "note" {
+          let link = payment_form.tx_link.clone();
+          let uuid = object_id.clone();
+          match uuid {
+            Some(u) => {
+              let comment_id = CommentId(u);
+              println!("pi_payment_update, update comment link {} {} ", comment_id.clone(), link.clone().unwrap_or("".to_string()).clone());
+              let updated_comment = match Comment::update_tx(context.pool(), comment_id, &_payment_id.clone(), &link.unwrap_or("".to_string())).await
+              {
+                Ok(c) => {
+                  Some(c)
+                }
+                Err(_e) => None,
+              };
+            },
+            None => {
+            }
+          };
+        } else if paytype == "group" {
+          let link = payment_form.tx_link.clone();
+          let uuid = object_id.clone();
+          match uuid {
+            Some(u) => {
+              let community_id = CommunityId(u);
+              println!("pi_payment_update, update community link {} {} ", community_id.clone(), link.clone().unwrap_or("".to_string()).clone());
+              let updated_comment = match Community::update_tx(context.pool(), community_id, &_payment_id.clone(), &link.unwrap_or("".to_string())).await
+              {
+                Ok(c) => {
+                  Some(c)
+                }
+                Err(_e) => None,
+              };
+            },
+            None => {
+            }
+          };
+        } else if paytype == "person" {
+          let link = payment_form.tx_link.clone();
+          let link2 = payment_form.tx_link.clone();
+          let uuid = object_id.clone();
+          match uuid {
+            Some(u) => {
+              let person_id = PersonId(u);
+              println!("pi_payment_update, update person link {} {} ", person_id.clone(), link.clone().unwrap_or("".to_string()).clone());
+              let updated_comment = match Person::update_tx(context.pool(), person_id, &_payment_id.clone(), &link.unwrap_or("".to_string())).await
+              {
+                Ok(c) => {
+                  Some(c)
+                }
+                Err(_e) => None,
+              };
+            },
+            None => {
+            }
+          };
+        } else if paytype == "site" {
+          let link = payment_form.tx_link.clone();
+          let link2 = payment_form.tx_link.clone();
+          let uuid = object_id.clone();
+          match uuid {
+            Some(u) => {
+              let site_id = SiteId(u);
+              println!("pi_payment_update, update site link {} {} ", site_id.clone(), link.clone().unwrap_or("".to_string()).clone());
+              let updated_comment = match Site::update_tx(context.pool(), site_id, &_payment_id.clone(), &link.unwrap_or("".to_string())).await
+              {
+                Ok(c) => {
+                  Some(c)
+                }
+                Err(_e) => None,
+              };
+            },
+            None => {
+            }
+          };
+        }
       }      
     }
     pmt = payment.unwrap();

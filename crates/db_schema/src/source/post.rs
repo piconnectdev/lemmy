@@ -31,6 +31,7 @@ pub struct Post {
   pub featured_local: bool,
   pub auth_sign: Option<String>,
   pub srv_sign: Option<String>,
+  pub pipayid: Option<String>,
   pub tx : Option<String>,
 }
 

@@ -25,6 +25,7 @@ pub struct PrivateMessage {
   pub secured: Option<String>,
   pub auth_sign: Option<String>,
   pub srv_sign: Option<String>,
+  pub pipayid: Option<String>,
   pub tx: Option<String>,
 }
 

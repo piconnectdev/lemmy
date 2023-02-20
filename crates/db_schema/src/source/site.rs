@@ -23,6 +23,7 @@ pub struct Site {
   pub public_key: String,
   pub instance_id: InstanceId,
   pub srv_sign: Option<String>,
+  pub pipayid: Option<String>,
   pub tx: Option<String>,
 
 }

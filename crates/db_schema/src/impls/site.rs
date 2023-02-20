@@ -108,12 +108,16 @@ impl Signable for Site {
   async fn update_tx(
     pool: &DbPool,
     site_id: SiteId,
+    identifier: &str,
     txlink: &str,
   ) -> Result<Self, Error> {
     use crate::schema::site::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(site.find(site_id))
-      .set(tx.eq(txlink))
+      .set((
+        tx.eq(txlink),
+        pipayid.eq(identifier)
+      ))
       .get_result::<Self>(conn)
       .await
   }

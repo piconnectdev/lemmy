@@ -291,12 +291,16 @@ impl Signable for Person {
   async fn update_tx(
     pool: &DbPool,
     person_id: PersonId,
+    identifier: &str,
     txlink: &str,
   ) -> Result<Self, Error> {
     use crate::schema::person::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(person.find(person_id))
-      .set(tx.eq(txlink))
+      .set((
+        tx.eq(txlink),
+        pipayid.eq(identifier)
+      ))
       .get_result::<Self>(conn)
       .await
   }
@@ -488,6 +492,7 @@ mod tests {
       sui_address: None,
       auth_sign: None, 
       srv_sign: None,
+      pipayid: None,
       tx : None,
     };
         

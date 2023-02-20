@@ -1,5 +1,5 @@
 use crate::{person::*, web3::ExternalAccount, sensitive::Sensitive};
-use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId, PersonBalanceId}, source::pipayment::PiPaymentSafe};
+use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId, PersonBalanceId, PersonId}, source::pipayment::PiPaymentSafe};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -252,6 +252,7 @@ pub struct GetPaymentResponse {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct GetPayments {
+  pub person_id: Option<PersonId>,
   pub sort: Option<String>,
   pub a2u: Option<bool>,
   pub page: Option<i64>,
@@ -261,7 +262,7 @@ pub struct GetPayments {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetPaymentsResponse {
-  pub pipayments: Vec<PiPaymentSafe>,
+  pub pipayments: Option<Vec<PiPaymentSafe>>,
 }
 
 

@@ -89,7 +89,6 @@ impl PerformCrud for PiApprove {
         };    
       }
     }
-
     let _payment = match pi_payment_create(context, &info, None, None).await {
       Ok(c) => c,
       Err(e) => {

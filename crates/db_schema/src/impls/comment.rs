@@ -1,6 +1,6 @@
 use crate::{
   newtypes::{CommentId, DbUrl, PersonId},
-  schema::comment::dsl::{ap_id, comment, content, creator_id, deleted, path, removed, updated},
+  schema::comment::dsl::{ap_id, comment, content, creator_id, deleted, path, removed, updated, pipayid},
   source::comment::{
     Comment,
     CommentInsertForm,
@@ -204,12 +204,16 @@ impl Signable for Comment {
   async fn update_tx(
     pool: &DbPool,
     comment_id: CommentId,
+    identifier: &str,
     txlink: &str,
   ) -> Result<Self, Error> {
     use crate::schema::comment::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(comment.find(comment_id))
-      .set(tx.eq(txlink))
+      .set((
+        tx.eq(txlink),
+        pipayid.eq(identifier)
+      ))
       .get_result::<Self>(conn)
       .await
   }
@@ -418,6 +422,7 @@ mod tests {
       // cert: None,
       auth_sign: None, 
       srv_sign: None,
+      pipayid: None,
       tx: None,
     };
 

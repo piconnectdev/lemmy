@@ -30,6 +30,7 @@ pub struct Comment {
   pub language_id: LanguageId,
   pub auth_sign: Option<String>,
   pub srv_sign: Option<String>,
+  pub pipayid: Option<String>,
   pub tx : Option<String>,
 }
 

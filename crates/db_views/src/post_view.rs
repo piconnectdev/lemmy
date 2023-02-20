@@ -878,6 +878,7 @@ mod tests {
         featured_local: false,
         auth_sign: None,
         srv_sign: None,
+        pipayid: None,
         tx: None,
       },
       my_vote: None,

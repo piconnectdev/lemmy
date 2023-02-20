@@ -2,11 +2,164 @@ use diesel::{result::Error,};
 use crate::{
   source::pipayment::*, 
   newtypes::{PiPaymentId, PiUserId, PersonId}, 
-  traits::{Crud, },
+  traits::{Crud, ToSafe, },
   utils::{get_conn, naive_now, DbPool, }
 };
 use diesel::{dsl::insert_into, ExpressionMethods, QueryDsl, };
 use diesel_async::RunQueryDsl;
+
+mod safe_type {
+  use crate::{
+    schema::pipayment::*,
+    schema::pipayment::{
+      id,
+      domain,
+      instance_id,
+      person_id,
+      obj_cat,
+      obj_id,
+      a2u,
+      asset, 
+      fee,
+      step,
+      testnet, 
+      finished,
+      published,
+      updated,
+      ref_id,
+      comment, 
+      stat, 
+     
+      pi_uid,
+      pi_username,
+      identifier,
+      user_uid,
+      amount,
+      memo,
+      from_address,
+      to_address,
+      direction,
+      created_at,
+
+      approved,
+      verified,
+      completed,
+      cancelled,
+      user_cancelled,
+      tx_verified,
+      tx_link,
+      tx_id,
+      network,
+      metadata,
+      extras,
+    },
+    source::pipayment::PiPayment,
+    traits::ToSafe,
+  };
+
+  type Columns = (
+      id,
+      //domain,
+      //instance_id,
+      person_id,
+      obj_cat,
+      obj_id,
+      a2u,
+      asset, 
+      fee,
+      step,
+      testnet, 
+      finished,
+      published,
+      updated,
+      ref_id,
+      comment, 
+      stat, 
+     
+      //pi_uid,
+      //pi_username,
+      identifier,
+      user_uid,
+      amount,
+      memo,
+      from_address,
+      to_address,
+      direction,
+      created_at,
+
+      approved,
+      verified,
+      completed,
+      cancelled,
+      user_cancelled,
+      tx_verified,
+      tx_link,
+      tx_id,
+      network,
+      metadata,
+      extras,
+  );
+
+  impl ToSafe for PiPayment {
+    type SafeColumns = Columns;
+    fn safe_columns_tuple() -> Self::SafeColumns {
+      (
+        id,
+        //domain,
+        //instance_id,
+        person_id,
+        obj_cat,
+        obj_id,
+        a2u,
+        asset, 
+        fee,
+        step,
+        testnet, 
+        finished,
+        published,
+        updated,
+        ref_id,
+        comment, 
+        stat, 
+      
+        //pi_uid,
+        //pi_username,
+        identifier,
+        user_uid,
+        amount,
+        memo,
+        from_address,
+        to_address,
+        direction,
+        created_at,
+
+        approved,
+        verified,
+        completed,
+        cancelled,
+        user_cancelled,
+        tx_verified,
+        tx_link,
+        tx_id,
+        network,
+        metadata,
+        extras,
+      )
+    }
+  }
+}
+
+impl PiPaymentSafe {
+  pub async fn find_by_person(pool: &DbPool, pid: &PersonId) -> Result<Vec<Self>, Error> {
+    use crate::schema::pipayment::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    pipayment
+      .filter(person_id.eq(pid))
+      .select((PiPayment::safe_columns_tuple())) 
+      .get_results::<Self>(conn)
+      .await
+  }
+}
 
 #[async_trait]
 impl Crud for PiPayment {
@@ -146,6 +299,7 @@ impl PiPayment {
   }
 
 }
+
 
 
 #[cfg(test)]

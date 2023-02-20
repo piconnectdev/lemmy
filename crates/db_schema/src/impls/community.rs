@@ -176,12 +176,16 @@ impl Signable for Community {
   async fn update_tx(
     pool: &DbPool,
     community_id: CommunityId,
+    identifier: &str,
     txlink: &str,
   ) -> Result<Self, Error> {
     use crate::schema::community::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(community.find(community_id))
-      .set(tx.eq(txlink))
+      .set((
+        tx.eq(txlink),
+        pipayid.eq(identifier)
+      ))
       .get_result::<Self>(conn)
       .await
   }
@@ -502,6 +506,7 @@ mod tests {
       is_home: false,
       person_id: None,
       srv_sign: None,
+      pipayid: None,
       tx: None,
     };
 

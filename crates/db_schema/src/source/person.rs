@@ -43,6 +43,7 @@ pub struct Person {
   pub sui_address: Option<String>,
   pub auth_sign: Option<String>,
   pub srv_sign: Option<String>,
+  pub pipayid: Option<String>,
   pub tx : Option<String>,
   //pub extras: Option<Value>,
 }

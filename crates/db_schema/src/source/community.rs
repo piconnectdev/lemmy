@@ -33,6 +33,7 @@ pub struct Community {
   pub is_home: bool,
   pub person_id: Option<PersonId>,
   pub srv_sign: Option<String>,
+  pub pipayid: Option<String>,
   pub tx : Option<String>,  
 }
 

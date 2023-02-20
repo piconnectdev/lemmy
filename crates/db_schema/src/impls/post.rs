@@ -262,12 +262,16 @@ impl Signable for Post {
   async fn update_tx(
     pool: &DbPool,
     post_id: PostId,
+    identifier: &str,
     txlink: &str,
   ) -> Result<Self, Error> {
     use crate::schema::post::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(post.find(post_id))
-      .set(tx.eq(txlink))
+      .set((
+        tx.eq(txlink),
+        pipayid.eq(identifier)
+      ))
       .get_result::<Self>(conn)
       .await
   }
@@ -472,6 +476,7 @@ mod tests {
       featured_local: false,
       auth_sign: None, 
       srv_sign: None,
+      pipayid: None,
       tx: None,
     };
 

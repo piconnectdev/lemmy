@@ -202,6 +202,7 @@ pub trait Signable {
   async fn update_tx(
     pool: &DbPool,
     community_id: Self::IdType,
+    identifier: &str,
     txlink: &str,
   ) -> Result<Self, Error>
   where
