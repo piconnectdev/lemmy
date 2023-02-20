@@ -27,15 +27,38 @@ impl PerformCrud for PiWithdraw {
     let person_id = local_user_view.person.id;
     let person = Person::read(context.pool(), person_id.clone()).await?;
     let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());
-    let puid = match uuid {
-      Ok(u) => Some(PiUserId(u)),
+    let mut pi_uid = match uuid {
+      Ok(u) => PiUserId(u),
       Err(_e) => {
-        return Err(LemmyError::from_message("User not found!"));
+        return Err(LemmyError::from_message("User's external_id os not valid!"));
       }
     };
     if !person.verified {
       return Err(LemmyError::from_message("User not verified!"));
     };
+
+    // Must use Pi Browser for withdraw?
+    /*
+    let pi_token = data.pi_token.clone().unwrap();
+    let pi_username;
+
+    // First, valid user token
+    match pi_me(context, &pi_token.clone()).await {
+      Ok(dto) => {
+        pi_username = dto.username.clone();
+        if pi_username != person.external_name.clone().unwrap_or_default() {
+          let err_str = format!("Error: Not same pi user: {} {} local:{} me:{}", pi_username,  &pi_token, pi_uid, dto.uid);
+          return Err(LemmyError::from_message(&err_str));
+        }
+        pi_uid = dto.uid;
+        Some(dto)
+      }
+      Err(_e) => {
+        let err_type = format!("Pi Network Server Error: User not found: {}, error: {}", &pi_token, _e.to_string());
+        return Err(LemmyError::from_message(&err_type));
+      }
+    };
+    */
 
     match PiPayment::find_withdraw_pending(context.pool(), &person_id.clone()).await
     {
@@ -47,9 +70,11 @@ impl PerformCrud for PiWithdraw {
       Err(_e) => {
       }
     };
+    
     let mut _payment_id: String;
     let fee = 0.01;
     let amount = f64::trunc(data.amount  * 10000000.0) / 10000000.0;
+
     if (amount <= 0.0 || amount > 1000000.0) {
       return Err(LemmyError::from_message("Invalid withdraw balance (0.0 < amount < 10000000.0)!"));
     }
@@ -87,7 +112,7 @@ impl PerformCrud for PiWithdraw {
       
       .finished(false)
       .updated(None)
-      .pi_uid(puid)
+      .pi_uid(Some(pi_uid))
       .pi_username(person.external_name.clone().unwrap_or_default() )
       
       .identifier(None)
@@ -107,7 +132,7 @@ impl PerformCrud for PiWithdraw {
       .tx_link(None)
       .tx_id(None)
       .tx_verified(false)
-      .metadata(None) //_payment_dto.metadata,
+      .metadata(None)
       .extras(None)
       .build();
 

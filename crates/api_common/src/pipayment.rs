@@ -223,6 +223,7 @@ pub struct CreatePaymentResponse {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiWithdraw {
+  pub pi_token: Option<String>,
   pub domain: Option<String>,
   pub asset: Option<String>,
   pub amount: f64,
