@@ -40,6 +40,7 @@ use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, Layer, Registry};
 use url::Url;
+use actix_cors::Cors;
 
 /// Max timeout for http requests
 const REQWEST_TIMEOUT: Duration = Duration::from_secs(10);
@@ -133,6 +134,7 @@ pub async fn start_lemmy_server() -> Result<(), LemmyError> {
   // Create Http server with websocket support
   let settings_bind = settings.clone();
   HttpServer::new(move || {
+    let cors = Cors::default().allow_any_origin().send_wildcard();
     let context = LemmyContext::create(
       pool.clone(),
       chat_server.clone(),
@@ -142,6 +144,7 @@ pub async fn start_lemmy_server() -> Result<(), LemmyError> {
       rate_limit_cell.clone(),
     );
     App::new()
+      .wrap(cors)
       .wrap(middleware::Logger::default())
       .wrap(TracingLogger::<QuieterRootSpanBuilder>::new())
       .app_data(Data::new(context))
