@@ -662,6 +662,13 @@ pub async fn pi_payment_update(
         };
       } else if paytype == "reward" {
         println!("pi_payment_update, update reward");
+        if person_id.is_some() {
+          match PersonBalance::update_spent(context.pool(), person_id.clone().unwrap_or_default(), amount, fee).await
+          {
+            Ok(p) =>{},
+            Err(_e) => {},
+          };
+        }
         if ref_uuid.is_some() {
           let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
