@@ -175,16 +175,16 @@ pub async fn pi_payment_create(
   };
 
   if dto.is_some() {
-    if completed && person.is_some() && !verified {
-      match Person::update_kyced(context.pool(), person.unwrap().id).await {
-        Ok(p) =>{
-          println!("pi_payment_create, verify user {}", _pi_user_alias.clone());
-        }
-        Err(e) => {
-          println!("pi_payment_create, verify user err {}", e.to_string());          
-        }
-      }
-    }
+    // if completed && person.is_some() && !verified {
+    //   match Person::update_kyced(context.pool(), person.unwrap().id).await {
+    //     Ok(p) =>{
+    //       println!("pi_payment_create, verify user {}", _pi_user_alias.clone());
+    //     }
+    //     Err(e) => {
+    //       println!("pi_payment_create, verify user err {}", e.to_string());          
+    //     }
+    //   }
+    // }
     _payment_dto = dto.unwrap();
   }
 
@@ -531,16 +531,7 @@ pub async fn pi_payment_update(
   };
 
   if dto.is_some() {
-    if completed && person.is_some() && !verified && txverified{
-      match Person::update_kyced(context.pool(), person.unwrap().id).await {
-        Ok(p) =>{
-          println!("pi_payment_update, verify user {}", _pi_user_alias.clone());
-        }
-        Err(e) => {
-          println!("pi_payment_update, verify user err {}", e.to_string());          
-        }
-      }
-    }
+    
     _payment_dto = dto.unwrap();
   }
 
@@ -650,10 +641,18 @@ pub async fn pi_payment_update(
       }
     };
 
-    //println!("Update blockchain memo:{} id:{} link:{}", payment_form.memo.clone(), comment2.clone(), payment_form.tx_link.clone());
-    // TODO: UUID check
     println!("pi_payment_update, update balance {}", paytype);
     if completed && txverified {
+      if person.is_some() && !verified {
+        match Person::update_kyced(context.pool(), person_id.clone().unwrap()).await {
+          Ok(p) =>{
+            println!("pi_payment_update, verify user {}", _pi_user_alias.clone());
+          }
+          Err(e) => {
+            println!("pi_payment_update, verify user err {}", e.to_string());          
+          }
+        }
+      }
       if paytype == "deposit" {
         match PersonBalance::update_deposit(context.pool(), person_id.clone().unwrap(), amount).await
         {
