@@ -1,9 +1,9 @@
 use crate::{
   newtypes::{PersonId, PersonBalanceId},
-  schema::person_balance::{dsl::{person_balance }, person_id, asset, deposited, received, withdrawed, pending, spent, amount},
+  schema::person_balance::{dsl::{person_balance }, person_id, asset, deposited, received, withdrawed, pending, spent, amount, updated},
   source::person_balance::{PersonBalance, PersonBalanceInsertForm, PersonBalanceUpdateForm},
   traits::Crud,
-  utils::{get_conn, DbPool},
+  utils::{get_conn, DbPool, naive_now,},
 };
 
 use diesel::{dsl::insert_into, result::Error, ExpressionMethods, QueryDsl};
@@ -115,6 +115,7 @@ impl PersonBalance {
         withdrawed.eq(withdrawed+amt+fee),
         amount.eq(amount-(amt+fee)),
         pending.eq(amt),
+        updated.eq(naive_now()),
       ))
       .get_result::<Self>(conn)
       .await
