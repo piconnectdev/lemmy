@@ -115,7 +115,19 @@ impl PerformCrud for CreateCommunity {
     )?;
     let community_dupe = Community::read_from_apub_id(context.pool(), &community_actor_id).await?;
     if community_dupe.is_some() {
-      return Err(LemmyError::from_message("community_already_exists"));
+      if is_home {
+        let community_id = community_dupe.unwrap().id;
+        let community_view =
+        CommunityView::read(context.pool(), community_id, person_id.clone()).await?;
+        let discussion_languages =
+        CommunityLanguage::read(context.pool(), community_id).await?;
+        return Ok(CommunityResponse {
+          community_view,
+          discussion_languages,
+        });
+      } else {
+        return Err(LemmyError::from_message("community_already_exists"));
+      }
     }
 
     // When you create a community, make sure the user becomes a moderator and a follower
