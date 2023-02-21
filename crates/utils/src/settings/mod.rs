@@ -10,7 +10,7 @@ use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use regex::Regex;
 use std::{env, fs, io::Error};
 use ethsign::SecretKey;
-use rustc_hex::{FromHex, ToHex};
+use rustc_hex::{FromHex};
 pub mod structs;
 
 static DEFAULT_CONFIG_FILE: &str = "config/config.hjson";

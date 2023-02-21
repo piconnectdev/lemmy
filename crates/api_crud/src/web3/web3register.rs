@@ -14,13 +14,12 @@ use lemmy_db_schema::{ *, source::local_site::RegistrationMode
   //traits::{Crud}, aggregates::structs::PersonAggregates,
 };
 use lemmy_db_views::structs::{SiteView};
-use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
   claims::Claims,
   error::LemmyError,
   settings::SETTINGS,
-  utils::{eth_verify, },
+  utils::web3::{eth_verify, },
   ConnectionId,
 };
 

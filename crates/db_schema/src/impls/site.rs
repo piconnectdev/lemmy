@@ -139,9 +139,9 @@ impl Signable for Site {
     sha256.update(content.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    //let meta = lemmy_utils::utils::eth_sign_message(meta);
-    //let content = lemmy_utils::utils::eth_sign_message(content);
-    let signature = lemmy_utils::utils::eth_sign_message(message);
+    //let meta = lemmy_utils::utils::web3::eth_sign_message(meta);
+    //let content = lemmy_utils::utils::web3::eth_sign_message(content);
+    let signature = lemmy_utils::utils::web3::eth_sign_message(message);
     return (signature, Some(meta_data), Some(content));
   
   }

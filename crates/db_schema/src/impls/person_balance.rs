@@ -1,6 +1,6 @@
 use crate::{
-  newtypes::{PersonId, DbUrl, PersonBalanceId},
-  schema::person_balance::{dsl::{person_balance }, person_id, asset, deposited, rewarded, withdrawed, pending, spent, amount},
+  newtypes::{PersonId, PersonBalanceId},
+  schema::person_balance::{dsl::{person_balance }, person_id, asset, deposited, received, withdrawed, pending, spent, amount},
   source::person_balance::{PersonBalance, PersonBalanceInsertForm, PersonBalanceUpdateForm},
   traits::Crud,
   utils::{get_conn, DbPool},
@@ -83,7 +83,7 @@ impl PersonBalance {
   }
 
 
-  pub async fn update_reward(
+  pub async fn update_received(
     pool: &DbPool,
     pid: PersonId,
     amt: f64,
@@ -93,7 +93,7 @@ impl PersonBalance {
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
       .set((
-        rewarded.eq(rewarded+amt),
+        received.eq(received+amt),
         amount.eq(amount+amt),
       ))
       .get_result::<Self>(conn)
@@ -170,7 +170,7 @@ mod tests {
       .person_id(inserted_person.id.clone())
       .asset(Some("PI".to_string()))
       .deposited(0.0)
-      .rewarded(0.0)
+      .received(0.0)
       .withdrawed(0.0)
       .spent(0.0)
       .amount(0.0)
@@ -188,7 +188,7 @@ mod tests {
       .published(inserted_balance.published.clone())
       .updated(None)
       .deposited(0.0)
-      .rewarded(0.0)
+      .received(0.0)
       .withdrawed(0.0)
       .spent(0.0)
       .amount(0.0)
@@ -202,7 +202,7 @@ mod tests {
 
     let person_balance_update_form = PersonBalanceUpdateForm::builder()
       .deposited(0.0)
-      .rewarded(0.0)
+      .received(0.0)
       .withdrawed(0.0)
       .spent(0.0)
       .amount(0.0)

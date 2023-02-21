@@ -208,7 +208,7 @@ pub async fn pi_payment_create(
       .obj_cat(info.obj_cat.clone())
       .obj_id(info.obj_id)
       .ref_id(info.ref_id)
-      .a2u(false)
+      .a2u(0)
       .fee(0.0)
       .asset(Some("PI".to_string()))
       .comment(info.comment.clone())
@@ -561,7 +561,7 @@ pub async fn pi_payment_update(
       .person_id( person_id.clone())
       .obj_cat(info.obj_cat.clone())
       .obj_id(info.obj_id.clone())
-      .a2u(false)
+      .a2u(0)
       .fee(0.0)
       .asset(Some("PI".to_string()))
       .ref_id(info.ref_id)
@@ -672,8 +672,8 @@ pub async fn pi_payment_update(
         if ref_uuid.is_some() {
           let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
-          println!("pi_payment_update, update_reward: {} {} ", person_tipped_id.clone(), amount.clone());
-          match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
+          println!("pi_payment_update, update reward: {} {} ", person_tipped_id.clone(), amount.clone());
+          match PersonBalance::update_received(context.pool(), person_tipped_id, amount).await
           {
             Ok(p) =>{},
             Err(_e) => {},
@@ -693,7 +693,7 @@ pub async fn pi_payment_update(
           let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
           println!("pi_payment_update, update tip:page: {} {} ", person_tipped_id.clone(), amount.clone());
-          match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
+          match PersonBalance::update_received(context.pool(), person_tipped_id, amount).await
           {
             Ok(p) =>{},
             Err(_e) => {},
@@ -713,7 +713,7 @@ pub async fn pi_payment_update(
           let uuid = ref_uuid.clone().unwrap();
           let person_tipped_id = PersonId(uuid);
           println!("pi_payment_update, update tip:note: {} {} ", person_tipped_id.clone(), amount.clone());
-          match PersonBalance::update_reward(context.pool(), person_tipped_id, amount).await
+          match PersonBalance::update_received(context.pool(), person_tipped_id, amount).await
           {
             Ok(p) =>{},
             Err(_e) => {},

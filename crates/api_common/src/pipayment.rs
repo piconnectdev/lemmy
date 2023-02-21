@@ -194,9 +194,9 @@ pub struct GetPiBalancesResponse {
   pub asset: Option<String>,
   pub status: Option<String>,
   pub deposited: f64,
-  pub rewarded: f64,
-  pub withdrawed: f64,
   pub spent: f64,
+  pub received: f64,
+  pub withdrawed: f64,
   pub amount: f64,
   pub pending: f64,
 }
@@ -255,7 +255,7 @@ pub struct GetPaymentResponse {
 pub struct GetPayments {
   pub person_id: Option<PersonId>,
   pub sort: Option<String>,
-  pub a2u: Option<bool>,
+  pub a2u: Option<i32>,
   pub page: Option<i64>,
   pub limit: Option<i64>,
   pub auth: Sensitive<String>,

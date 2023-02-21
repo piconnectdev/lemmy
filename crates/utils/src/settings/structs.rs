@@ -55,9 +55,13 @@ pub struct Settings {
   #[default(true)]
   pub web3_enabled: bool,
 
-  /// Whether the site is open for web3 registration.
+  /// Whether the site is open for pi network registration.
   #[default(false)]
   pub pi_enabled: bool,
+
+  /// Whether the site is hide pi network account.
+  #[default(false)]
+  pub pi_hide_account: bool,
 
   /// Whether the site is open for web3 registration.
   #[default(false)]

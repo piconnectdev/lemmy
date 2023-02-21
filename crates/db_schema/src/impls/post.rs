@@ -90,6 +90,22 @@ impl Post {
       .await
   }
 
+  pub async fn list_featured_for_community(
+    pool: &DbPool,
+    the_community_id: CommunityId,
+  ) -> Result<Vec<Self>, Error> {
+    let conn = &mut get_conn(pool).await?;
+    post
+      .filter(community_id.eq(the_community_id))
+      .filter(deleted.eq(false))
+      .filter(removed.eq(false))
+      .filter(featured_community.eq(true))
+      .then_order_by(published.desc())
+      .limit(FETCH_LIMIT_MAX)
+      .load::<Self>(conn)
+      .await
+  }
+
   pub async fn permadelete_for_creator(
     pool: &DbPool,
     for_creator_id: PersonId,
@@ -236,7 +252,7 @@ impl Post {
     sha256.update(content_data.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    let signature = lemmy_utils::utils::eth_sign_message(message);
+    let signature = lemmy_utils::utils::web3::eth_sign_message(message);
     return (signature, Some(meta), Some(content_data));
   }
 
@@ -294,7 +310,7 @@ impl Signable for Post {
     sha256.update(content_data.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    let signature = lemmy_utils::utils::eth_sign_message(message);
+    let signature = lemmy_utils::utils::web3::eth_sign_message(message);
     return (signature, Some(meta), Some(content_data));
   }
 }

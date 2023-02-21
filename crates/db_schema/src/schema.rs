@@ -103,6 +103,8 @@ table! {
         followers_url -> Varchar,
         inbox_url -> Varchar,
         shared_inbox_url -> Nullable<Varchar>,
+        moderators_url -> Nullable<Varchar>,
+        featured_url -> Nullable<Varchar>,
         hidden -> Bool,
         posting_restricted_to_mods -> Bool,
         instance_id -> Uuid,
@@ -695,6 +697,8 @@ table! {
   instance(id) {
     id -> Uuid,
     domain -> Text,
+    software -> Nullable<Text>,
+    version -> Nullable<Text>,
     published -> Timestamp,
     updated -> Nullable<Timestamp>,
   }
@@ -745,6 +749,7 @@ table! {
     captcha_enabled -> Bool,
     captcha_difficulty -> Text,
     registration_mode -> RegistrationModeType,
+    reports_email_admins -> Bool,
     published -> Timestamp,
     updated -> Nullable<Timestamp>,
   }
@@ -799,10 +804,10 @@ table! {
         person_id -> Nullable<Uuid>, // WePi user's id
         obj_cat -> Nullable<Text>,   // register - page - note - message - person - instance - group, withdraw, deposit ...
         obj_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
-        a2u -> Bool,
+        a2u -> Int4,
+        step -> Int4,
         asset -> Nullable<Text>, 
         fee -> Double,
-        step -> Int4,
         testnet -> Bool, 
         finished -> Bool,
         published -> Timestamp,
@@ -843,7 +848,7 @@ table! {
         published -> Timestamp,
         asset -> Nullable<Text>,
         deposited -> Double,
-        rewarded -> Double,
+        received -> Double,
         withdrawed -> Double,
         spent -> Double,
         amount -> Double,

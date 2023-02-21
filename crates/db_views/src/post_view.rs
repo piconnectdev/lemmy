@@ -372,17 +372,17 @@ impl<'a> PostQuery<'a> {
     };
 
     if self.saved_only.unwrap_or(false) {
-      query = query.filter(post_saved::id.is_not_null());
+      query = query.filter(post_saved::post_id.is_not_null());
     }
     // Only hide the read posts, if the saved_only is false. Otherwise ppl with the hide_read
     // setting wont be able to see saved posts.
     else if !self.local_user.map(|l| l.show_read_posts).unwrap_or(true) {
-      query = query.filter(post_read::id.is_null());
+      query = query.filter(post_read::post_id.is_null());
     }
 
     if self.local_user.is_some() {
       // Filter out the rows with missing languages
-      query = query.filter(local_user_language::id.is_not_null());
+      query = query.filter(local_user_language::language_id.is_not_null());
 
       // Don't show blocked communities or persons
       query = query.filter(community_block::person_id.is_null());
@@ -761,7 +761,10 @@ mod tests {
     let pool = &build_db_pool_for_tests().await;
     let data = init_data(pool).await;
 
-    let spanish_id = Language::read_id_from_code(pool, "es").await.unwrap();
+    let spanish_id = Language::read_id_from_code(pool, Some("es"))
+      .await
+      .unwrap()
+      .unwrap();
     let post_spanish = PostInsertForm::builder()
       .name("asffgdsc".to_string())
       .creator_id(data.inserted_person.id)
@@ -783,7 +786,10 @@ mod tests {
     // no language filters specified, all posts should be returned
     assert_eq!(3, post_listings_all.len());
 
-    let french_id = Language::read_id_from_code(pool, "fr").await.unwrap();
+    let french_id = Language::read_id_from_code(pool, Some("fr"))
+      .await
+      .unwrap()
+      .unwrap();
     LocalUserLanguage::update(pool, vec![french_id], data.inserted_local_user.id)
       .await
       .unwrap();
@@ -801,7 +807,10 @@ mod tests {
     assert_eq!(1, post_listing_french.len());
     assert_eq!(french_id, post_listing_french[0].post.language_id);
 
-    let undetermined_id = Language::read_id_from_code(pool, "und").await.unwrap();
+    let undetermined_id = Language::read_id_from_code(pool, Some("und"))
+      .await
+      .unwrap()
+      .unwrap();
     LocalUserLanguage::update(
       pool,
       vec![french_id, undetermined_id],

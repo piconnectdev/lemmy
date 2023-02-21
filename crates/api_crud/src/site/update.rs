@@ -28,7 +28,7 @@ use lemmy_db_schema::{
   ListingType,
 };
 use lemmy_db_views::structs::SiteView;
-use lemmy_utils::{error::LemmyError, utils::check_slurs_opt, ConnectionId};
+use lemmy_utils::{error::LemmyError, utils::slurs::check_slurs_opt, ConnectionId};
 use std::str::FromStr;
 
 #[async_trait::async_trait(?Send)]
@@ -126,6 +126,7 @@ impl PerformCrud for EditSite {
       .federation_worker_count(data.federation_worker_count)
       .captcha_enabled(data.captcha_enabled)
       .captcha_difficulty(data.captcha_difficulty.clone())
+      .reports_email_admins(data.reports_email_admins)
       .build();
 
     let update_local_site = LocalSite::update(context.pool(), &local_site_form)

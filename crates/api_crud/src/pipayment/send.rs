@@ -10,7 +10,10 @@ use lemmy_db_schema::source::person::Person;
 use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentSafe, PiPaymentUpdatePending};
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_db_schema::traits::Crud;
+use stellar_sdk::types::Operation;
 use uuid::Uuid;
+
+use stellar_sdk::{CallBuilder, Server, types::{Asset, Transaction}, utils::{Direction, Endpoint}};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for SendPayment {
@@ -53,10 +56,19 @@ impl PerformCrud for SendPayment {
       }
     };
 
-    let payment = match PiPayment::find_pending(context.pool(), data.id).await
+    let mut identifier;
+    let mut from_address;
+    let mut to_address;
+    let mut network;
+
+    let mut payment = match PiPayment::find_pending(context.pool(), data.id).await
     {
       Ok(pay) => {
         println!("Sending payment found : {}, cat: {}, identifier {}", pay.id.clone(), pay.obj_cat.clone().unwrap_or_default(),  pay.identifier.clone().unwrap_or_default());
+        identifier = pay.identifier.clone().unwrap_or_default();
+        from_address = pay.identifier.clone().unwrap_or_default();
+        to_address = pay.to_address.clone().unwrap_or_default();
+        network = pay.network.clone().unwrap_or_default();
         pay
       },
       Err(_e) => {
@@ -80,6 +92,7 @@ impl PerformCrud for SendPayment {
     if payment.step == 0 {
       PiPayment::update_step(context.pool(), payment.id.clone(), 1).await?;
     }
+    let mut dto;
     if payment.identifier.is_none() {
       let args = PiPaymentArgs {
         amount: payment.amount,
@@ -88,10 +101,14 @@ impl PerformCrud for SendPayment {
         metadata: None,
       };
       println!("SendPayment for: {} {}", person.external_id.clone().unwrap(), payment.user_uid.clone().unwrap_or_default());
-      let dto = match pi_create(context.client(), &args).await
+      dto = match pi_create(context.client(), &args).await
       {
         Ok(pay) => {
           println!("Sending payment, create : from: {}, to: {}, identifier {}", pay.from_address.clone(), pay.to_address.clone(),  pay.identifier.clone());
+          identifier = pay.identifier.clone();
+          from_address = pay.identifier.clone();
+          to_address = pay.to_address.clone();
+          network = pay.network.clone();
           pay
         },
         Err(_e) => {
@@ -115,26 +132,101 @@ impl PerformCrud for SendPayment {
       };
 
       let form = PiPaymentUpdatePending::builder()
-        .identifier(Some(dto.identifier))
+        .identifier(Some(dto.identifier.clone()))
         .step(2)
-        .from_address(Some(dto.from_address))
-        .to_address(Some(dto.to_address))
+        .from_address(Some(dto.from_address.clone()))
+        .to_address(Some(dto.to_address.clone()))
         .direction(Some(dto.direction))
         .created_at(create_at)
-        .network(Some(dto.network))
+        .network(Some(dto.network.clone()))
         .approved(approved)
         .completed(completed)
         .cancelled(cancelled)
         .user_cancelled(usercancelled)
         .build();
-        PiPayment::update_pending(context.pool(), payment.id.clone(), &form).await?;
+        payment = PiPayment::update_pending(context.pool(), payment.id.clone(), &form).await?;
     }
-    /// TODO: Check user balances > amount 
     
+    let txdata = TransactionData{
+      amount: payment.amount,
+      payment_id: identifier.clone(),
+      from_address: from_address,
+      to_dddress: to_address,
+    };
+
+    let server = get_horizon_client(&network.clone()).await?;
+    // let tx = build_a2u_transaction(&server, &txdata).await?;
+    // let tx = submit_transaction(&server, &tx).await?;
+    // if tx.successful {
+    //   let dto = match pi_complete(context.client(), &identifier.clone(), &tx.id).await
+    //   {
+    //     Ok(p) => {
+    //       Some(p)
+    //     },
+    //     Err(e) => {
+    //       None
+    //     }
+    //   };
+    // }
+
     Ok(SendPaymentResponse {      
       success: false,
       id: Some(payment.id.clone()),
       payment: None,
     })
   }
+}
+
+pub struct TransactionData {
+  amount: f64,
+  payment_id: String,
+  from_address: String,
+  to_dddress: String,
+}
+
+
+pub async fn get_horizon_client(network: &str) -> Result<Server, LemmyError> {
+  //let server = (network == "Pi Network") ? "https://api.mainnet.minepi.com" : "https://api.testnet.minepi.com";
+  let server;
+  if network == "Pi Network" {
+    server = "https://api.mainnet.minepi.com";
+  } else {
+    server = "https://api.testnet.minepi.com";
+  }
+  return Ok(Server::new(server.to_owned()));
+}
+
+pub async fn build_a2u_transaction(server: &Server, data: &TransactionData) -> Result<Transaction, LemmyError> {
+  // let pay_ops = Operation{
+  //   re: data.to_dddress,
+  //   asset: Asset::native(),
+  // };
+  // let paymentOperation = Server.Operation.payment({
+  //   destination: transactionData.toAddress,
+  //   asset: StellarSdk.Asset.native(),
+  //   amount: transactionData.amount.toString(),
+  // });
+  // const paymentOperation = StellarSdk.Operation.payment({
+  //   destination: transactionData.toAddress,
+  //   asset: StellarSdk.Asset.native(),
+  //   amount: transactionData.amount.toString(),
+  // });
+
+  // const transaction = new StellarSdk.TransactionBuilder(myAccount, {
+  //   fee: baseFee.toString(),
+  //   networkPassphrase: this.NETWORK_PASSPHRASE,
+  //   timebounds: await piHorizon.fetchTimebounds(180),
+  // })
+  //   .addOperation(paymentOperation)
+  //   .addMemo(StellarSdk.Memo.text(transactionData.paymentIdentifier))
+  //   .build();
+
+  // transaction.sign(this.myKeypair);
+  // return transaction;
+  return Err(LemmyError::from_message("CreatePayment error!"));
+}
+
+pub async fn submit_transaction(server: &Server, tx: &Transaction) -> Result<Transaction, LemmyError> {
+  //let txresult = server.submitTransaction();
+  return Err(LemmyError::from_message("CreatePayment error!"));
 }

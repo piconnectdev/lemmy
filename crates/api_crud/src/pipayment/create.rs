@@ -42,7 +42,7 @@ impl PerformCrud for CreatePayment {
       .person_id( Some(person_id.clone()))
       .obj_cat(data.obj_cat.clone())
       .obj_id(data.obj_id.clone())
-      .a2u(true)
+      .a2u(1)
       .asset(data.asset.clone())
       .ref_id(data.ref_id.clone())
       .comment(None)

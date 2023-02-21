@@ -29,8 +29,7 @@ use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   error::LemmyError,
-  utils::{check_slurs, eth_verify, is_valid_actor_name},
-  ConnectionId,
+  ConnectionId, utils::{web3::eth_verify, slurs::check_slurs, validation::is_valid_actor_name},
 };
 
 
@@ -276,7 +275,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, ext_name: &st
     .person_id(inserted_person.id.clone())
     .asset(Some("PI".to_string()))
     .deposited(0.0)
-    .rewarded(0.0)
+    .received(0.0)
     .spent(0.0)
     .amount(0.0)
     .withdrawed(0.0)

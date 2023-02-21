@@ -206,9 +206,9 @@ impl Signable for Community {
     sha256.update(content.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    //let meta = lemmy_utils::utils::eth_sign_message(meta);
-    //let content = lemmy_utils::utils::eth_sign_message(content);
-    let signature = lemmy_utils::utils::eth_sign_message(message);
+    //let meta = lemmy_utils::utils::web3::eth_sign_message(meta);
+    //let content = lemmy_utils::utils::web3::eth_sign_message(content);
+    let signature = lemmy_utils::utils::web3::eth_sign_message(message);
     return (signature, Some(meta_data), Some(content));
   }
 }
@@ -261,6 +261,38 @@ impl DeleteableOrRemoveable for Community {
     self.icon = None;
     self.banner = None;
     self
+  }
+}
+
+pub enum CollectionType {
+  Moderators,
+  Featured,
+}
+
+impl Community {
+  /// Get the community which has a given moderators or featured url, also return the collection type
+  pub async fn get_by_collection_url(
+    pool: &DbPool,
+    url: &DbUrl,
+  ) -> Result<(Community, CollectionType), Error> {
+    use crate::schema::community::dsl::{featured_url, moderators_url};
+    use CollectionType::*;
+    let conn = &mut get_conn(pool).await?;
+    let res = community
+      .filter(moderators_url.eq(url))
+      .first::<Self>(conn)
+      .await;
+    if let Ok(c) = res {
+      return Ok((c, Moderators));
+    }
+    let res = community
+      .filter(featured_url.eq(url))
+      .first::<Self>(conn)
+      .await;
+    if let Ok(c) = res {
+      return Ok((c, Featured));
+    }
+    Err(diesel::NotFound)
   }
 }
 
@@ -500,6 +532,8 @@ mod tests {
       followers_url: inserted_community.followers_url.clone(),
       inbox_url: inserted_community.inbox_url.clone(),
       shared_inbox_url: None,
+      moderators_url: None,
+      featured_url: None,
       hidden: false,
       posting_restricted_to_mods: false,
       instance_id: inserted_instance.id,

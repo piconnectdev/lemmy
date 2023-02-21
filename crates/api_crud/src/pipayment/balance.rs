@@ -41,12 +41,12 @@ impl PerformCrud for GetPiBalances {
       id: Some(balance.id),
       status: Some("".to_string()), 
       asset: balance.asset,
+      spent: balance.spent,
       deposited: balance.deposited,
-      rewarded: balance.rewarded,
+      received: balance.received,
+      withdrawed: balance.withdrawed,
       amount: balance.amount,
       pending: balance.pending,
-      withdrawed: balance.withdrawed,
-      spent: balance.spent,
     };
 
     Ok(res)

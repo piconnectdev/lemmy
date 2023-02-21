@@ -22,7 +22,7 @@ use lemmy_utils::{
   claims::Claims,
   error::LemmyError,
   settings::SETTINGS,
-  utils::{eth_verify, },
+  utils::web3::{eth_verify, },
   ConnectionId,
 };
 

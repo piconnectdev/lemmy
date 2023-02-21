@@ -11,16 +11,12 @@ pub mod settings;
 pub mod claims;
 pub mod error;
 pub mod request;
-#[cfg(test)]
-mod test;
 pub mod utils;
 pub mod version;
 
 use serde::{Deserialize, Serialize};
 use std::{fmt, time::Duration};
 use url::Url;
-
-use utils::eth_sign_message;
 
 pub type ConnectionId = usize;
 

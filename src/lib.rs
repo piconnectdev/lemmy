@@ -43,7 +43,7 @@ use url::Url;
 use actix_cors::Cors;
 
 /// Max timeout for http requests
-const REQWEST_TIMEOUT: Duration = Duration::from_secs(10);
+pub(crate) const REQWEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Placing the main function in lib.rs allows other crates to import it and embed Lemmy
 pub async fn start_lemmy_server() -> Result<(), LemmyError> {
@@ -74,11 +74,6 @@ pub async fn start_lemmy_server() -> Result<(), LemmyError> {
   let pool = build_db_pool(&settings).await?;
   run_advanced_migrations(&pool, &settings).await?;
 
-  // Schedules various cleanup tasks for the DB
-  thread::spawn(move || {
-    scheduled_tasks::setup(db_url).expect("Couldn't set up scheduled_tasks");
-  });
-
   // Initialize the secrets
   let secret = Secret::init(&pool)
     .await
@@ -107,8 +102,9 @@ pub async fn start_lemmy_server() -> Result<(), LemmyError> {
     settings.bind, settings.port
   );
 
+  let user_agent = build_user_agent(&settings);
   let reqwest_client = Client::builder()
-    .user_agent(build_user_agent(&settings))
+    .user_agent(user_agent.clone())
     .timeout(REQWEST_TIMEOUT)
     .build()?;
 
@@ -128,6 +124,11 @@ pub async fn start_lemmy_server() -> Result<(), LemmyError> {
   let pictrs_client = ClientBuilder::new(reqwest_client.clone())
     .with(TracingMiddleware::default())
     .build();
+
+  // Schedules various cleanup tasks for the DB
+  thread::spawn(move || {
+    scheduled_tasks::setup(db_url, user_agent).expect("Couldn't set up scheduled_tasks");
+  });
 
   let chat_server = Arc::new(ChatServer::startup());
 

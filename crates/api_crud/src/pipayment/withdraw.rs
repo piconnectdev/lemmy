@@ -103,7 +103,7 @@ impl PerformCrud for PiWithdraw {
       .person_id( Some(person_id.clone()))
       .obj_cat(Some("withdraw".to_string()))
       .obj_id(None)
-      .a2u(true)
+      .a2u(1)
       .asset(data.asset.clone())
       .fee(fee)
       .ref_id(Some(person_id.clone().0))

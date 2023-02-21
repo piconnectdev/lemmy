@@ -154,11 +154,11 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 pub fn run_migrations(db_url: &str) {
   // Needs to be a sync connection
   let mut conn =
-    PgConnection::establish(db_url).unwrap_or_else(|_| panic!("Error connecting to {db_url}"));
+    PgConnection::establish(db_url).unwrap_or_else(|e| panic!("Error connecting to {db_url}: {e}"));
   info!("Running Database migrations (This may take a long time)...");
   let _ = &mut conn
     .run_pending_migrations(MIGRATIONS)
-    .unwrap_or_else(|_| panic!("Couldn't run DB Migrations"));
+    .unwrap_or_else(|e| panic!("Couldn't run DB Migrations: {e}"));
   info!("Database migrations complete.");
 }
 
@@ -227,7 +227,7 @@ where
 {
   fn from_sql(value: diesel::backend::RawValue<'_, DB>) -> diesel::deserialize::Result<Self> {
     let str = String::from_sql(value)?;
-    Ok(DbUrl(Url::parse(&str)?))
+    Ok(DbUrl(Box::new(Url::parse(&str)?)))
   }
 }
 
@@ -237,7 +237,7 @@ where
   for<'de2> <Kind as ApubObject>::ApubType: serde::Deserialize<'de2>,
 {
   fn from(id: ObjectId<Kind>) -> Self {
-    DbUrl(id.into())
+    DbUrl(Box::new(id.into()))
   }
 }
 

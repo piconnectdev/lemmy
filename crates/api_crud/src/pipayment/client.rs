@@ -180,14 +180,15 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/me", settings.pi_api_host());
   let client = context.client();
-   match context.chat_server().check_pi_token(key.to_string().clone(), "".to_string())?
-        {
-          Some(p) => {
-            return Ok(p)
-          },
-          None => {
-          }
-        }
+  
+  match context.chat_server().check_pi_token(key.to_string().clone(), "".to_string())?
+  {
+    Some(p) => {
+      return Ok(p)
+    },
+    None => {
+    }
+  }
       
   let response = retry(|| {
     client
@@ -198,18 +199,23 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
   })
   .await?;
 
-  let res: PiUserDto = response
+  let mut res: PiUserDto = response
     .json::<PiUserDto>()
     .await
     .map_err(|e| LemmyError::from_error_message(e, "Fetch /me error"))?;
-    
+  
+  if settings.pi_hide_account {
+    res.username = hide_username(&res.username.clone());
+  }
+
   let token_item = PiTokenItem {
     answer: res.clone(),
     uuid: key.to_string(),
-    expires: naive_now() + Duration::days(3), // expires in 5 days
+    expires: naive_now() + Duration::days(7), // expires in 5 days
   };
+
   // Stores the PiTokenItem item on the queue
-  context.chat_server().add_pi_token(token_item);
+  context.chat_server().add_pi_token(token_item)?;
 
   Ok(res)
 }

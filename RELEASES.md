@@ -1,3 +1,23 @@
+# Lemmy v0.17.1 Release (2023-02-03)
+
+## Bugfixes
+
+### Lemmy
+
+- Fixing admin application email subject. Fixes [#2688](https://github.com/LemmyNet/lemmy/issues/2688) ([#2695](https://github.com/LemmyNet/lemmy/issues/2695))
+- Fixing person block views. Fixes [#2693](https://github.com/LemmyNet/lemmy/issues/2693) ([#2694](https://github.com/LemmyNet/lemmy/issues/2694))
+- Fixing GetPosts active sort index. Fixes [#2683](https://github.com/LemmyNet/lemmy/issues/2683) ([#2684](https://github.com/LemmyNet/lemmy/issues/2684))
+- Publish without verify ([#2681](https://github.com/LemmyNet/lemmy/issues/2681))
+- Fix paths in release script, update crate versions ([#2680](https://github.com/LemmyNet/lemmy/issues/2680))
+
+### Lemmy-UI
+
+- Fix comment box closing. Fixes [#904](https://github.com/LemmyNet/lemmy-ui/issues/904) ([#914](https://github.com/LemmyNet/lemmy-ui/issues/914))
+- Fix showing crosspost dupes. Fixes [#900](https://github.com/LemmyNet/lemmy-ui/issues/900) ([#912](https://github.com/LemmyNet/lemmy-ui/issues/912))
+- Fix live updating postres edit. Fixes [#908](https://github.com/LemmyNet/lemmy-ui/issues/908) ([#911](https://github.com/LemmyNet/lemmy-ui/issues/911))
+- Removing extra themes. Fixes [#905](https://github.com/LemmyNet/lemmy-ui/issues/905) ([#910](https://github.com/LemmyNet/lemmy-ui/issues/910))
+- Fixing post setState error. Fixes [#902](https://github.com/LemmyNet/lemmy-ui/issues/902) ([#903](https://github.com/LemmyNet/lemmy-ui/issues/903))
+
 # Lemmy v0.17.0 Release (2023-01-31)
 
 ## What is Lemmy?
@@ -55,8 +75,8 @@ This upgrade requires a newer version of postgres, which **must be done manually
 `cd` to your lemmy docker directory and run this helper script:
 
 ```
-wget https://raw.githubusercontent.com/LemmyNet/lemmy/main/scripts/postgres_12_to_15_upgrade.sh
-sh postgres_12_to_15_upgrade.sh
+sudo wget https://raw.githubusercontent.com/LemmyNet/lemmy/main/scripts/postgres_12_to_15_upgrade.sh
+sudo sh postgres_12_to_15_upgrade.sh
 ```
 
 This script saves a copy of your old database as `12_15.dump.sql`. **Do not delete this file until you've followed all the instructions below, and the upgrade is complete.**
@@ -80,7 +100,7 @@ The `image` lines should look like:
 
 - `image: dessalines/lemmy:0.17.0` for lemmy
 - `image: dessalines/lemmy-ui:0.17.0` for lemmy-ui
-- The `lemmy-ui` environment should now look like:
+- The `lemmy-ui` environment variables have changed, and should now look like:
   ```
     environment:
       - LEMMY_UI_LEMMY_INTERNAL_HOST=lemmy:8536

@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "activitypub_federation"
-version = "0.3.4"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f61d7a9a1207e70140b47869fd05222e30052ddc9ccfcc43098e48396c4e176"
+checksum = "59fbd2b7fb0aea9bdd738fc1441d34d3e7b585d60b42ed63deeac289c872f119"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2709,7 +2709,7 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "lemmy_api"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2735,7 +2735,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_api_common"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "actix-rt",
  "actix-web",
@@ -2772,7 +2772,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_api_crud"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "activitypub_federation",
  "actix-web",
@@ -2800,7 +2800,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_apub"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "activitypub_federation",
  "activitystreams-kinds",
@@ -2840,7 +2840,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_db_schema"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "activitypub_federation",
  "async-trait",
@@ -2871,7 +2871,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_db_views"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "diesel",
  "diesel-async",
@@ -2889,7 +2889,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_db_views_actor"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "diesel",
  "diesel-async",
@@ -2901,7 +2901,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_db_views_moderator"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "diesel",
  "diesel-async",
@@ -2912,7 +2912,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_routes"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2937,7 +2937,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_server"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "activitypub_federation",
  "actix-cors",
@@ -2982,7 +2982,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_utils"
-version = "0.17.0"
+version = "0.17.1"
 dependencies = [
  "actix-web",
  "anyhow",

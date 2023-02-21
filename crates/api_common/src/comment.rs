@@ -28,10 +28,16 @@ pub struct GetComment {
 pub struct EditComment {
   pub comment_id: CommentId,
   pub content: Option<String>,
-  pub distinguished: Option<bool>,
   pub language_id: Option<LanguageId>,
   pub form_id: Option<String>,
   pub auth_sign: Option<String>,
+  pub auth: Sensitive<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct DistinguishComment {
+  pub comment_id: CommentId,
+  pub distinguished: bool,
   pub auth: Sensitive<String>,
 }
 

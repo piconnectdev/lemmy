@@ -43,7 +43,7 @@ impl Comment {
     sha256.update(content_data.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    let signature = lemmy_utils::utils::eth_sign_message(message);
+    let signature = lemmy_utils::utils::web3::eth_sign_message(message);
     return (signature, Some(meta_data), Some(content_data));
   }
 
@@ -235,7 +235,7 @@ impl Signable for Comment {
     sha256.update(content_data.clone());
     let message: String = format!("{:x}", sha256.finalize());
 
-    let signature = lemmy_utils::utils::eth_sign_message(message);
+    let signature = lemmy_utils::utils::web3::eth_sign_message(message);
     return (signature, Some(meta_data), Some(content_data));
   }
 }

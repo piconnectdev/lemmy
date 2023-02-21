@@ -10,7 +10,6 @@ use diesel_async::RunQueryDsl;
 
 mod safe_type {
   use crate::{
-    schema::pipayment::*,
     schema::pipayment::{
       id,
       domain,
@@ -19,9 +18,9 @@ mod safe_type {
       obj_cat,
       obj_id,
       a2u,
+      step,
       asset, 
       fee,
-      step,
       testnet, 
       finished,
       published,
@@ -65,9 +64,9 @@ mod safe_type {
       obj_cat,
       obj_id,
       a2u,
+      step,
       asset, 
       fee,
-      step,
       testnet, 
       finished,
       published,
@@ -111,9 +110,9 @@ mod safe_type {
         obj_cat,
         obj_id,
         a2u,
+        step,
         asset, 
         fee,
-        step,
         testnet, 
         finished,
         published,
@@ -155,7 +154,7 @@ impl PiPaymentSafe {
     let conn = &mut get_conn(pool).await?;
     pipayment
       .filter(person_id.eq(pid))
-      .select((PiPayment::safe_columns_tuple())) 
+      .select(PiPayment::safe_columns_tuple()) 
       .order_by(published.desc())
       .limit(20)
       .get_results::<Self>(conn)
@@ -245,7 +244,7 @@ impl PiPayment {
     let conn = &mut get_conn(pool).await?;
     pipayment
       .filter(person_id.eq(pid))
-      .filter(a2u.eq(true))
+      .filter(a2u.eq(1))
       .filter(finished.eq(false))
       .filter(step.eq(0))
       .get_results::<Self>(conn)
@@ -257,13 +256,13 @@ impl PiPayment {
     if pid.is_some() {
     pipayment
       .filter(id.eq(pid.unwrap()))
-      .filter(a2u.eq(true))
+      .filter(a2u.eq(1))
       .filter(finished.eq(false))
       .first::<Self>(conn)
       .await
     } else {
       pipayment
-      .filter(a2u.eq(true))
+      .filter(a2u.eq(1))
       .filter(finished.eq(false))
       .filter(step.eq(1))
       .first::<Self>(conn)
