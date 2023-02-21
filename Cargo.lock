@@ -85,6 +85,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-cors"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b340e9cfa5b08690aae90fb61beb44e9b06f44fe3d0f93781aaa58cfba86245e"
+dependencies = [
+ "actix-utils",
+ "actix-web",
+ "derive_more",
+ "futures-util",
+ "log",
+ "once_cell",
+ "smallvec",
+]
+
+[[package]]
 name = "actix-form-data"
 version = "0.7.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2925,6 +2940,7 @@ name = "lemmy_server"
 version = "0.17.0"
 dependencies = [
  "activitypub_federation",
+ "actix-cors",
  "actix-rt",
  "actix-web",
  "actix-web-actors",
