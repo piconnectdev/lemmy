@@ -54,6 +54,7 @@ struct Images {
 
 #[derive(Deserialize)]
 struct PictrsParams {
+  jwt: Option<String>,
   format: Option<String>,
   thumbnail: Option<i32>,
 }
@@ -101,13 +102,11 @@ async fn upload(
   let jwt: String;
   if info.jwt.is_some() {
     jwt = info.jwt.as_ref().unwrap().to_string();
-    println!("Upload jwt from url: {}", jwt.clone());
   } else {
     let cookie = req
       .cookie("jwt")
       .expect("No auth header for picture upload");
     jwt = cookie.value().to_string();
-    println!("Upload jwt from cookie: {}", jwt.clone());
   }
 
   if Claims::decode(&jwt, &context.secret().jwt_secret).is_err() {
@@ -146,11 +145,17 @@ async fn full_res(
   let local_site = LocalSite::read(context.pool())
     .await
     .map_err(error::ErrorBadRequest)?;
-  if local_site.private_instance {
-    let jwt = req
-      .cookie("jwt")
-      .expect("No auth header for picture access");
-    if get_local_user_view_from_jwt(jwt.value(), context.pool(), context.secret())
+  if local_site.private_instance {    
+    let jwt: String;
+    if params.jwt.is_some() {
+      jwt = params.jwt.as_ref().unwrap().to_string();
+    } else {
+      let cookie = req
+        .cookie("jwt")
+        .expect("No auth header for picture upload");
+      jwt = cookie.value().to_string();
+    }
+    if get_local_user_view_from_jwt(&jwt, context.pool(), context.secret())
       .await
       .is_err()
     {
