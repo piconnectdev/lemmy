@@ -64,13 +64,14 @@ impl PerformCrud for CreateCommunity {
         "only_admins_can_create_communities",
       ));
     }
-    
+    let mut posting_restricted_to_mods = data.posting_restricted_to_mods;
     let community_name = data.name.to_lowercase();
     let mut is_home = false;
     let mut person_id = None;
     if local_user_view.person.name.to_lowercase() == community_name {
       is_home = true;
       person_id = Some(local_user_view.person.id.clone());
+      posting_restricted_to_mods = Some(true);
       // if !local_user_view.person.verified  {
       //   return Err(LemmyError::from_message(
       //     "only_admins_or_verified_users_can_create_communities",
@@ -146,7 +147,7 @@ impl PerformCrud for CreateCommunity {
       .followers_url(Some(generate_followers_url(&community_actor_id)?))
       .inbox_url(Some(generate_inbox_url(&community_actor_id)?))
       .shared_inbox_url(Some(generate_shared_inbox_url(&community_actor_id)?))
-      .posting_restricted_to_mods(data.posting_restricted_to_mods)
+      .posting_restricted_to_mods(posting_restricted_to_mods)
       .instance_id(site_view.site.instance_id)
       .is_home(Some(is_home))
       .person_id(person_id)
