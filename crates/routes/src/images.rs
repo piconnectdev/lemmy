@@ -18,6 +18,11 @@ use reqwest::Body;
 use reqwest_middleware::{ClientWithMiddleware, RequestBuilder};
 use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize, Clone)]
+struct Info {
+    jwt: Option<String>,
+}
+
 pub fn config(
   cfg: &mut web::ServiceConfig,
   client: ClientWithMiddleware,
@@ -86,17 +91,26 @@ fn adapt_request(
 }
 
 async fn upload(
+  info: web::Query<Info>,
   req: HttpRequest,
   body: web::Payload,
   client: web::Data<ClientWithMiddleware>,
   context: web::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error> {
   // TODO: check rate limit here
-  let jwt = req
-    .cookie("jwt")
-    .expect("No auth header for picture upload");
+  let jwt: String;
+  if info.jwt.is_some() {
+    jwt = info.jwt.as_ref().unwrap().to_string();
+    println!("Upload jwt from url: {}", jwt.clone());
+  } else {
+    let cookie = req
+      .cookie("jwt")
+      .expect("No auth header for picture upload");
+    jwt = cookie.value().to_string();
+    println!("Upload jwt from cookie: {}", jwt.clone());
+  }
 
-  if Claims::decode(jwt.value(), &context.secret().jwt_secret).is_err() {
+  if Claims::decode(&jwt, &context.secret().jwt_secret).is_err() {
     return Ok(HttpResponse::Unauthorized().finish());
   };
 
