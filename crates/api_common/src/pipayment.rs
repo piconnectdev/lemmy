@@ -138,6 +138,11 @@ pub struct PiPaymentArgs {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct PiPaymentCreate {
+  pub payment: PiPaymentArgs,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentStatus {
   pub developer_approved: bool,
   pub transaction_verified: bool,

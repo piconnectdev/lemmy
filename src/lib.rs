@@ -5,6 +5,7 @@ pub mod root_span_builder;
 pub mod scheduled_tasks;
 #[cfg(feature = "console")]
 pub mod telemetry;
+pub mod pipayments_tasks;
 
 use crate::{code_migrations::run_advanced_migrations, root_span_builder::QuieterRootSpanBuilder};
 use actix_web::{middleware, web::Data, App, HttpServer, Result};

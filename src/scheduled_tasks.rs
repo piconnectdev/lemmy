@@ -11,7 +11,7 @@ use lemmy_utils::{error::LemmyError, REQWEST_TIMEOUT};
 use reqwest::blocking::Client;
 use std::{thread, time::Duration};
 use tracing::info;
-
+use super::pipayments_tasks::*;
 /// Schedules various cleanup tasks for lemmy in a background thread
 pub fn setup(db_url: String, user_agent: String) -> Result<(), LemmyError> {
   // Setup the connections
@@ -21,12 +21,16 @@ pub fn setup(db_url: String, user_agent: String) -> Result<(), LemmyError> {
 
   let mut conn_2 = PgConnection::establish(&db_url).expect("could not establish connection");
 
+  let user_agent2 = user_agent.clone();
+  let db_url2 = db_url.clone();
+  let db_url3 = db_url2.clone();
+
   active_counts(&mut conn);
   update_banned_when_expired(&mut conn);
 
   // On startup, reindex the tables non-concurrently
   // TODO remove this for now, since it slows down startup a lot on lemmy.ml
-  reindex_aggregates_tables(&mut conn, true);
+  //reindex_aggregates_tables(&mut conn, true);
   scheduler.every(1.hour()).run(move || {
     let conn = &mut PgConnection::establish(&db_url)
       .unwrap_or_else(|_| panic!("Error connecting to {db_url}"));
@@ -44,6 +48,11 @@ pub fn setup(db_url: String, user_agent: String) -> Result<(), LemmyError> {
   update_instance_software(&mut conn_2, &user_agent);
   scheduler.every(1.days()).run(move || {
     update_instance_software(&mut conn_2, &user_agent);
+  });
+
+  pipayment_task(&db_url2, &user_agent2);
+  scheduler.every(1.hour()).run(move || {
+    pipayment_task(&db_url3, &user_agent2);
   });
 
   // Manually run the scheduler in an event loop

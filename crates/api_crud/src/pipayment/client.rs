@@ -98,7 +98,7 @@ pub async fn pi_approve(
 
 pub async fn pi_create(
   client: &ClientWithMiddleware,
-  payment: &PiPaymentArgs,
+  payment: &PiPaymentCreate,
 ) -> Result<PiPaymentDto, LemmyError> {
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/payments", settings.pi_api_host());

@@ -8,7 +8,7 @@ mod private_message;
 mod site;
 mod user;
 mod web3;
-mod pipayment;
+pub mod pipayment;
 
 #[async_trait::async_trait(?Send)]
 pub trait PerformCrud {
