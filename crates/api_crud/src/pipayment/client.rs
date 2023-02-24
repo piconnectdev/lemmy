@@ -118,9 +118,18 @@ pub async fn pi_create(
   //   .await
   //   .map_err(|e| LemmyError::from_error_message(e, "Can not create A2U payment"))?;
   // Ok(res)
-  let content = response.text().await?;
-  println!("pi_create: {}", content.clone());
-  return Err(LemmyError::from_message("Can not create A2U payment"));
+  
+  let content = response.text().await?;  
+  match serde_json::from_str(&content)
+  {
+    Ok(r) => {
+      Ok(r)
+    }
+    Err( _e )=>{
+      println!("pi_create error: {}", content.clone());
+      return Err(LemmyError::from_message(&_e.to_string()));
+    }
+  }  
 }
 
 pub async fn pi_cancel(

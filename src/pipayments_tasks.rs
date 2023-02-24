@@ -66,29 +66,29 @@ pub async fn pi_incompleted_payments_async () -> Result<Vec<PiPaymentDto>, Lemmy
       info!("Pipayment incompleted_payments is empty");
       return Ok(pays);
     }
-    let mut pay_iter = pays.iter();
-    for pay in pay_iter {
-      let str = serde_json::to_string(&pay).unwrap();
-      info!("Process pi_incompleted_payments: {} {} ",  pay.identifier, str);
-      if pay.direction != "app_to_user" {
-        //pi_complete(pay.identifier, );
-      }
-      if pay.status.transaction_verified == false{
+    // let mut pay_iter = pays.iter();
+    // for pay in pay_iter {
+    //   let str = serde_json::to_string(&pay).unwrap();
+    //   info!("Process pi_incompleted_payments: {} {} ",  pay.identifier, str);
+    //   if pay.direction != "app_to_user" {
+    //     //pi_complete(pay.identifier, );
+    //   }
+    //   if pay.status.transaction_verified == false{
   
-      }
-      if pay.transaction.is_some() {
-        info!("Got completed with link: {} {}", pay.identifier, pay.user_uid);
-        // match pi_complete(context.client(), pay.identifier).await
-        // {
-        // }
-      } else {
-        info!("Got completed: {}", pay.status.developer_approved);
-        // match pi_cancel(context.client(), pay.identifier).await
-        // {
+    //   }
+    //   if pay.transaction.is_some() {
+    //     info!("Got completed with link: {} {}", pay.identifier, pay.user_uid);
+    //     // match pi_complete(context.client(), pay.identifier).await
+    //     // {
+    //     // }
+    //   } else {
+    //     info!("Got completed: {}", pay.status.developer_approved);
+    //     // match pi_cancel(context.client(), pay.identifier).await
+    //     // {
   
-        // };
-      }
-    }
+    //     // };
+    //   }
+    // }
     Ok(pays)  
   }
   
@@ -101,16 +101,16 @@ pub async fn pi_incompleted_payments_async () -> Result<Vec<PiPaymentDto>, Lemmy
     let mut pay_iter = pays.iter();
     for pay in pay_iter {  
       let str = serde_json::to_string(&pay).unwrap();
-      info!("Process pi_incompleted_payments: {} {} {} ",  pay.identifier, pay.direction, str);
+      info!("Process pi_incompleted_payments: {} {} ",  pay.identifier, str);
       if pay.direction != "app_to_user" {
         //pi_complete(pay.identifier, );
         return Ok(0);
       }
       if pay.status.cancelled == true {      
-        return Ok(0);;
+        return Ok(0);
       }
       if pay.status.developer_completed == true {      
-        return Ok(0);;
+        return Ok(0);
       }
       //let conn = &mut get_conn(pool).await?;
       // let payment = match PiPayment::find_by_pipayment_id(pool, &pay.identifier.clone()).await
@@ -122,9 +122,8 @@ pub async fn pi_incompleted_payments_async () -> Result<Vec<PiPaymentDto>, Lemmy
       //     None
       //   }
       // };
-      if pay.status.transaction_verified == false {
-        
-        return Ok(0);;
+      if pay.status.transaction_verified == false {        
+        return Ok(0);
       } else {
         if pay.transaction.is_some() {
           info!("Got completed with link: {} {}", pay.identifier, pay.user_uid);

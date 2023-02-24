@@ -156,7 +156,7 @@ pub struct PiPaymentInsertForm {
 pub struct PiPaymentUpdateForm {
   //pub id: PiPaymentId,
   //pub person_id: Option<PersonId>,
-  //pub step: i32,
+  pub step: i32,
   //pub testnet: bool,
   pub finished: bool,
   pub updated: Option<chrono::NaiveDateTime>,
@@ -165,14 +165,14 @@ pub struct PiPaymentUpdateForm {
 
   //pub pi_uid: Option<PiUserId>,
   //pub pi_username: String,
-  //pub identifier: String,
-  //pub user_uid: String,
-  //pub amount: f64,
-  //pub memo: String,
+  pub identifier: Option<String>,
+  pub user_uid: Option<String>,
+  pub amount: f64,
+  pub memo: Option<String>,
   pub from_address: Option<String>,
   pub to_address: Option<String>,
-  //pub direction: String,
-  //pub created_at: Option<chrono::NaiveDateTime>,
+  pub direction: Option<String>,
+  pub created_at: Option<chrono::NaiveDateTime>,
 
   pub approved: bool,
   pub verified: bool,
@@ -182,7 +182,7 @@ pub struct PiPaymentUpdateForm {
   pub tx_verified: bool,
   pub tx_link: Option<String>,
   pub tx_id: Option<String>,
-  //pub network: Option<String>,
+  pub network: Option<String>,
   pub metadata: Option<Value>,
   pub extras: Option<Value>,
 }

@@ -132,8 +132,8 @@ pub struct PiKeyResponse {
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentArgs {
   pub amount: f64,
-  pub memo: Option<String>,
-  pub metadata: Option<Value>,
+  pub memo: String,
+  pub metadata: PiPaymentMeta,
   pub uid: String,
 }
 
