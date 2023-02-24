@@ -159,6 +159,23 @@ pub struct PiPaymentTransaction {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct PiPaymentMetaData {
+  pub site: Option<Value>,
+  pub person: Option<Value>,
+  pub group: Option<Value>,
+  pub page: Option<Value>,
+  pub note: Option<Value>,
+  pub withdraw: Option<Value>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
+pub struct PiPaymentMeta {
+  pub id: Option<Uuid>,
+  pub cat: Option<String>,
+  pub data: Option<PiPaymentMetaData>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct IncompleteServerPayments
 {
   pub incomplete_server_payments: Vec<PiPaymentDto>,
@@ -178,7 +195,7 @@ pub struct PiPaymentDto {
   pub network: String,
   pub status: PiPaymentStatus,
   pub transaction: Option<PiPaymentTransaction>,
-  pub metadata: Option<Value>,
+  pub metadata: Option<PiPaymentMeta>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

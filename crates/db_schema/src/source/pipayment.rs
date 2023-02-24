@@ -169,8 +169,8 @@ pub struct PiPaymentUpdateForm {
   //pub user_uid: String,
   //pub amount: f64,
   //pub memo: String,
-  //pub from_address: String,
-  //pub to_address: String,
+  pub from_address: Option<String>,
+  pub to_address: Option<String>,
   //pub direction: String,
   //pub created_at: Option<chrono::NaiveDateTime>,
 

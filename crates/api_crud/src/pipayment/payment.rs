@@ -376,15 +376,19 @@ pub async fn pi_payment_update(
 
   let mut exist = false;
   let mut fetch_pi_server = false;
+
   let mut approved = false;
   let mut completed = false;
-  let mut finished = false;
-  let mut cancelled = false;
+  let mut transaction_verified = false;
   let mut usercancelled = false;
   let mut cancelled = false;
   let mut txverified = false;
   let mut txid: Option<String> = None;
   let mut txlink: Option<String> = None;
+  let mut from_address: Option<String> = None;
+  let mut to_address: Option<String> = None;
+  let mut finished = false;
+  
   let mut dto: Option<PiPaymentDto> = None;
 
   let mut pid;
@@ -396,12 +400,15 @@ pub async fn pi_payment_update(
   if pipayment.is_some() {
     let c = pipayment.clone().unwrap();
     exist = true;
+    transaction_verified = c.tx_verified;
     approved = c.approved;
     completed = c.completed;
     cancelled = c.cancelled;
     txverified = c.tx_verified;
     txid = c.tx_id.clone();
     txlink = c.tx_link.clone();
+    from_address = c.from_address.clone();
+    to_address = c.to_address.clone();
     pid = c.id;
     amount = c.amount;
     if cancelled || completed {
@@ -429,7 +436,11 @@ pub async fn pi_payment_update(
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
         usercancelled = c.status.user_cancelled;
+        transaction_verified = c.status.transaction_verified;
+        from_address = Some(c.from_address.clone());
+        to_address = Some(c.to_address.clone());
         amount = c.amount;
+
         if c.transaction.is_some() {
         let txdto = c.transaction.clone().unwrap_or_default();
           txverified = txdto.verified;
@@ -468,6 +479,9 @@ pub async fn pi_payment_update(
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
         usercancelled = c.status.user_cancelled;
+        transaction_verified = c.status.transaction_verified;
+        from_address = Some(c.from_address.clone());
+        to_address = Some(c.to_address.clone());
         amount = c.amount;
         if c.transaction.is_some() {
         let txdto = c.transaction.clone().unwrap_or_default();
@@ -500,6 +514,9 @@ pub async fn pi_payment_update(
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
         usercancelled = c.status.user_cancelled;
+        transaction_verified = c.status.transaction_verified;
+        from_address = Some(c.from_address.clone());
+        to_address = Some(c.to_address.clone());
         amount = c.amount;
         if c.transaction.is_some() {
         let txdto = c.transaction.clone().unwrap_or_default();
@@ -584,6 +601,7 @@ pub async fn pi_payment_update(
       .metadata(None) //_payment_dto.metadata,
       .extras(None)
       .build();
+    
 
     match _payment_dto.transaction {
       Some(tx) => {
@@ -610,6 +628,8 @@ pub async fn pi_payment_update(
     pmt = payment.unwrap();
   } else {
     let mut payment_form = PiPaymentUpdateForm::builder()
+        .from_address(from_address)
+        .to_address(to_address)
         .approved(approved)
         .completed(completed)
         .cancelled(cancelled)
@@ -620,9 +640,9 @@ pub async fn pi_payment_update(
         .updated(Some(naive_now()))
         .build();
 
-    if object_id.is_none() {
-      payment_form.metadata = _payment_dto.metadata;
-    }
+    // if object_id.is_none() {
+    //   payment_form.metadata = _payment_dto.metadata;
+    // }
     payment_form.finished = true;
     pid = pipayment.unwrap().id;
     let paytype = info.obj_cat.clone().unwrap_or_default();

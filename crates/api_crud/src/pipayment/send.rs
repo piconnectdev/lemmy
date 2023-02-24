@@ -171,6 +171,11 @@ impl PerformCrud for SendPayment {
     //   };
     // }
 
+
+    // let serialized_user = serde_json::to_string(&user).unwrap();
+    // let v: PiPaymentMeta = serde_json::to_value(u).unwrap();
+    // let mut object: PiPaymentMeta = serde_json::from_str(input).unwrap();
+
     Ok(SendPaymentResponse {      
       success: false,
       id: Some(payment.id.clone()),
