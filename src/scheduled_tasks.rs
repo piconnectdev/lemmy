@@ -50,10 +50,10 @@ pub fn setup(db_url: String, user_agent: String) -> Result<(), LemmyError> {
     update_instance_software(&mut conn_2, &user_agent);
   });
 
-  pipayment_task(&db_url2, &user_agent2);
-  scheduler.every(1.hour()).run(move || {
-    pipayment_task(&db_url3, &user_agent2);
-  });
+  // pipayment_task(&db_url2, &user_agent2);
+  // scheduler.every(1.hour()).run(move || {
+  //   pipayment_task(&db_url3, &user_agent2);
+  // });
 
   // Manually run the scheduler in an event loop
   loop {
