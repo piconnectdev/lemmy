@@ -139,12 +139,10 @@ impl PerformCrud for PiWithdraw {
     let payment = match PiPayment::create(context.pool(), &payment_form).await
     {
       Ok(payment) => {
-        println!("CreatePayment, create payment success: {}", payment.id.clone());
         payment
       }
       Err(_e) => {
         let err_str = _e.to_string();
-        println!("CreatePayment, create payment error: {}", err_str.clone());
         return Err(LemmyError::from_message(&err_str));
       }
     };      

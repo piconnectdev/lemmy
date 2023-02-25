@@ -244,7 +244,6 @@ impl PerformCrud for SendPayment {
           dto
         },
         Err(_e) => {
-          println!("SendPayment error: {}", _e.to_string());
           return Err(LemmyError::from_message("CreatePayment error!"));
         }
       };
@@ -258,7 +257,6 @@ impl PerformCrud for SendPayment {
           }
       };
       let step = 2;
-      println!("update next payment from server: {} - {} ", pay.identifier.clone(), pay.user_uid.clone(), );
       let form = PiPaymentUpdateForm::builder()
         .step(step)
         //.finished(false)

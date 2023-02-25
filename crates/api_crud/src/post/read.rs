@@ -58,7 +58,6 @@ impl PerformCrud for GetPost {
 
     // Necessary for the sidebar subscribed
     let community_id = post_view.community.id;
-    println!("GetPost, read community id: {}", community_id.clone());
     let mut community_view = CommunityView::read(context.pool(), community_id, person_id)
       .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_find_community"))?; 

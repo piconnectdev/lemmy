@@ -139,7 +139,6 @@ impl PerformCrud for PiAgreeRegister {
           None => {
             // Not allow change username ???
             let err_type = format!("Your account already exist: {}", pi.name);
-            //println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -152,7 +151,6 @@ impl PerformCrud for PiAgreeRegister {
               "User {} is exist, create same user name is not allow!",
               &data.info.username
             );
-            //println!("{} {} {}", data.ea.account.clone(), err_type, &_pi_username.clone());
             result_string = err_type.clone();
             result = false;
           }
@@ -195,7 +193,6 @@ impl PerformCrud for PiAgreeRegister {
       }
     };
 
-    println!("PiAgreeResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(PiAgreeResponse {
       success: result,
       id: Some(_payment.id),

@@ -126,7 +126,6 @@ pub async fn pi_create(
       Ok(r)
     }
     Err( _e )=>{
-      println!("pi_create error: {}", content.clone());
       return Err(LemmyError::from_message(&_e.to_string()));
     }
   }  
@@ -228,71 +227,3 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
 
   Ok(res)
 }
-
-
-
-/*
-pub async fn pi_dopayment(
-  context: &Data<LemmyContext>,
-) -> Result<PiPayment, LemmyError> {
-
-  let local_user_view =
-  get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
-let local_site = LocalSite::read(context.pool()).await?;
-
-// Make sure user is an admin
-is_admin(&local_user_view)?;
-
-    let _pays = match pi_incompleted_server_payments(context.client()).await
-    {
-      Ok(pays) => {
-        if !pays.is_empty() {
-          let mut pay_iter = pays.iter();
-          for pay in pay_iter {
-            if pay.transaction.is_some() {
-              println!("Got completed: {}", pay.identifier);
-              // match pi_complete(context.client(), pay.identifier).await
-              // {
-              // }
-            } else {
-              println!("Got completed: {}", pay.status.developer_approved);
-              // match pi_cancel(context.client(), pay.identifier).await
-              // {
-
-              // };
-            }
-          }
-        }
-      },
-      Err(_e) => {
-        return Err(LemmyError::from_message("Server busy!"));
-      }
-    };
-    /// TODO: Check user balances > amount 
-    let args = PiPaymentArgs {
-      amount: 0.01,
-      //amount: data.amount,
-      //pub memo: String,
-      //pub metadata: Option<Value>,
-      uid: person.external_id.clone().unwrap(),
-      memo: data.comment.clone(),
-      metadata: None,
-    };
-
-    // let payment = match pi_create(context.client(), &args).await
-    // {
-    //   Ok(c) => {
-    //     _payment_id = c.identifier.clone();
-    //     Some(c)
-    //   }
-    //   Err(_e) => {
-    //     return Err(LemmyError::from_message("Not approved payment"));
-    //   },
-    // };
-    // TODO: Submit transaction
-    // TODO: Completed transaction
-    //println!("PiWithdrawResponse: {} {}", person_id.clone(), paymentid.clone());
-
-}
-
- */

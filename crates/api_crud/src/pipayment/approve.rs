@@ -96,7 +96,6 @@ impl PerformCrud for PiApprove {
         return Err(LemmyError::from_message(&err_type));
       }
     };
-    println!("PiApproveResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(PiApproveResponse {
       success: true,
       id: _payment.id,

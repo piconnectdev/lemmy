@@ -80,12 +80,12 @@ impl PerformCrud for PiPaymentFound {
       }
       Err(_e) => {
         // TODO: Check PaymentDTO, then insert
-        println!("PiPaymentFound: NOT FOUND IN LOCAL DATABASE {} {}", _pi_username.clone(), data.paymentid.clone());
+        //println!("PiPaymentFound: NOT FOUND IN LOCAL DATABASE {} {}", _pi_username.clone(), data.paymentid.clone());
         return Err(LemmyError::from_message("Payment not approved "));
       },
     };
 
-    println!("PiPaymentFound update: {} {}, finished: {}", _pi_username.clone(), data.paymentid.clone(), finished);
+    //println!("PiPaymentFound update: {} {}, finished: {}", _pi_username.clone(), data.paymentid.clone(), finished);
     let _payment = match pi_payment_update(context, &info, _payment, None).await {
       Ok(c) => c,
       Err(e) => {
@@ -94,7 +94,6 @@ impl PerformCrud for PiPaymentFound {
       }
     };
 
-    println!("PiPaymentFoundResponse: {} {}", _pi_username.clone(), data.paymentid.clone());
     let payment = _payment.clone();
     return Ok(PiPaymentFoundResponse {
       id: payment.id,

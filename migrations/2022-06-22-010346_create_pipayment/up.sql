@@ -19,6 +19,7 @@ create table pipayment (
 
   pi_uid uuid, 
   pi_username text,
+
   identifier text,
   user_uid text,
   amount double precision,
@@ -62,6 +63,7 @@ create table person_balance (
   stat text default 'active',
   deposited double precision,
   spent double precision,
+  sent double precision,
   received double precision,
   withdrawed double precision,
   amount double precision,

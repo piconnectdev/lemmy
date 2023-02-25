@@ -39,7 +39,6 @@ impl PerformCrud for PiRegisterWithFee {
     }
     if local_site.site_setup {
       if !context.settings().pi_enabled {
-        //println!("PiRegisterWithFee: not pi_enabled: {} ", data.paymentid.clone());
         return Err(LemmyError::from_message("registration_disabled"));
       }
       // if !context.settings().pinetwork.pi_allow_all {
@@ -98,13 +97,11 @@ impl PerformCrud for PiRegisterWithFee {
     {
       Ok(p) => {
         if !p.completed {
-          //println!("PiRegisterWithFee: not completed: {} ", p.identifier.clone());
           return Err(LemmyError::from_message("registration_disabled"));
         }
         Some(p)
       },
       Err(_c) => {
-        //println!("PiRegisterWithFee: pi_payment_update: {} ", _c.to_string());
         return Err(LemmyError::from_message("registration_disabled"));
       },
     };
@@ -113,12 +110,10 @@ impl PerformCrud for PiRegisterWithFee {
     {
       Ok(c) => c,
       Err(_e) => {
-        println!("PiRegisterWithFee: create_external_account error: {} {} {}", &_pi_username.clone(), &data.info.username.clone(), data.paymentid.clone());
         return Err(LemmyError::from_message("registration_disabled"));
         //None
       },
     };
-    println!("PiRegisterWithFee: {} {}", _pi_username.clone(), data.paymentid.clone());
     Ok(login_response)
   }
 }

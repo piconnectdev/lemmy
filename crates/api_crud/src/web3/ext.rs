@@ -110,12 +110,7 @@ pub async fn create_external_account(context: &Data<LemmyContext>, ext_name: &st
   
   let actor_keypair = generate_actor_keypair()?;
   if !_exist {
-    if !is_valid_actor_name(&_new_user.clone(), local_site.actor_name_max_length as usize) {
-      println!(
-        "Invalid username {} {}",
-        ext_name.to_owned(),
-        &_new_user.clone()
-      );
+    if !is_valid_actor_name(&_new_user.clone(), local_site.actor_name_max_length as usize) {      
       return Err(LemmyError::from_message("register:invalid_username"));
     }
   }
