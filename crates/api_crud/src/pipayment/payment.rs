@@ -91,7 +91,7 @@ pub async fn pi_payment_create(
   } else {
     fetch_pi_server = true;
   }
-
+ 
   dto = match pi_payment(context.client(), &_payment_id.clone()).await {
     Ok(c) => {
       approved = c.status.developer_approved;
@@ -101,7 +101,7 @@ pub async fn pi_payment_create(
       if c.transaction.is_some() {
         txid = c.transaction.clone().unwrap().txid;
       }
-      println!("pi_payment_create, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{} {}", _pi_user_alias.clone(), _payment_id.clone(), approved, completed, cancelled, usercancelled, txid.clone());
+      //println!("pi_payment_create, fetch payment from server: {}", _payment_id.clone());
       Some(c)
     }
     Err(_e) => {
@@ -127,6 +127,7 @@ pub async fn pi_payment_create(
     } 
     dto = match pi_approve(context.client(), &payment_id).await {
       Ok(c) => { 
+        println!("pi_payment_create, pi_approve: {}", _payment_id.clone());
         Some(c)
       },
       Err(_e) => {
@@ -146,7 +147,7 @@ pub async fn pi_payment_create(
     dto = match pi_complete(context.client(), &payment_id, &txid).await {
       Ok(c) => {
         completed = true;
-        println!("pi_payment_create, pi_complete return dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
+        //println!("pi_payment_create, {}", _payment_id.clone());
         Some(c)
       }
       Err(_e) => {
@@ -194,7 +195,7 @@ pub async fn pi_payment_create(
   completed = _payment_dto.status.developer_completed.clone();
   
   if !exist {
-    //println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
+    println!("pi_payment_create, create local: {}", _payment_id.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
       .domain(info.domain.clone())
       .instance_id(None)
@@ -247,12 +248,12 @@ pub async fn pi_payment_create(
     {
       Ok(payment) => {
         pid = payment.id;
-        println!("pi_payment_update, create payment success: {}", _payment_id.clone());
+        println!("pi_payment_create create success: {} {}", _payment_id.clone(), pid.clone());
         Some(payment)
       }
       Err(_e) => {
         let err_str = _e.to_string();
-        println!("pi_payment_update, create payment error: {} {} ", _payment_id.clone(), err_str.clone());
+        println!("pi_payment_create create error: {} {} ", _payment_id.clone(), err_str.clone());
         return Err(LemmyError::from_message(&err_str));
       }
     };
@@ -276,6 +277,7 @@ pub async fn pi_payment_update(
   let comment = info.comment.clone().unwrap_or("".to_string());
   let mut person_id: Option<PersonId> = None;
   let mut verified = false;
+
   let person = match Person::find_by_extra_name(context.pool(), &pi_username.clone()).await
   {
     Ok(c) => {
@@ -345,8 +347,7 @@ pub async fn pi_payment_update(
         if c.transaction.is_some() {
           txid = Some(c.transaction.clone().unwrap().txid);
         }
-        println!("pi_payment_update, fetch payment from server: {} - {} approved:{} completed:{} cancelled:{} user_cancelled:{} {}", _pi_user_alias.clone(), _payment_id.clone(), 
-          c.status.developer_approved, c.status.developer_approved, c.status.cancelled, c.status.user_cancelled, txid.clone().unwrap_or_default());
+        println!("pi_payment_update, fetch payment from server: {}", _payment_id.clone());
         if completed == true && c.status.developer_completed == true {
             return Err(LemmyError::from_message("Both side is completed, ignore"));
         }
@@ -391,7 +392,7 @@ pub async fn pi_payment_update(
     } 
     dto = match pi_approve(context.client(), &payment_id).await {
       Ok(c) => { 
-        println!("pi_payment_update, pi_approve return dto: {} {} {}", _payment_id.clone(), c.amount, c.memo.clone());
+        println!("pi_payment_update, pi_approve dto: {} {}", _payment_id.clone(), c.amount);
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
@@ -424,7 +425,8 @@ pub async fn pi_payment_update(
     }
     dto = match pi_complete(context.client(), &payment_id, &txid.clone().unwrap_or_default()).await {
       Ok(c) => {
-        println!("pi_payment_update, pi_complete return dto: {} {}, completed: {}", _payment_id.clone(), c.amount, c.status.developer_completed.clone());
+        let dto_str = serde_json::to_string(&c.clone()).unwrap();
+        println!("pi_payment_update, pi_complete dto: {} - {} {}", _pi_user_alias.clone(), _payment_id.clone(), &dto_str);
         approved = c.status.developer_approved;
         completed = c.status.developer_completed;
         cancelled = c.status.cancelled;
@@ -476,7 +478,7 @@ pub async fn pi_payment_update(
   
   let object_id = info.obj_id.clone();
   if !exist {
-    //println!("pi_payment_update, create local clone: {} - {} {} ", _pi_user_alias.clone(), _payment_id.clone(), _payment_dto.memo.clone());
+    println!("pi_payment_update, create local {}", _payment_id.clone());
     let mut payment_form = PiPaymentInsertForm::builder()
       .domain(info.domain.clone())
       .instance_id(None)
@@ -539,7 +541,7 @@ pub async fn pi_payment_update(
     };
     pmt = payment.unwrap();
   } else {
-    let step = 0;
+    println!("pi_payment_update, update local: {} - {} address:{}", _pi_user_alias.clone(), _payment_id.clone(), from_address.clone().unwrap_or_default()); 
     let mut payment_form = PiPaymentUpdateForm::builder()
         .step(step)
         .amount(_payment_dto.amount)
@@ -573,6 +575,7 @@ pub async fn pi_payment_update(
       },
       Err(_e) => {
         let err_str = _e.to_string();
+        println!("pi_payment_update, update error {}", &err_str.clone());
         return Err(LemmyError::from_message(&err_str));
       }
     };
