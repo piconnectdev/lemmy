@@ -51,5 +51,9 @@ rustc-hex = "2.1.0"
 ethsign = "0.8.0"
 web3 = {version = "0.17.0", default-features = true, features = ["http-rustls-tls"]}
 
+[dev-dependencies]
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
+
 [build-dependencies]
 rosetta-build = "0.1.2"
