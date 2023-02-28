@@ -156,7 +156,7 @@ impl PiPaymentSafe {
       .filter(person_id.eq(pid))
       .select(PiPayment::safe_columns_tuple()) 
       .order_by(published.desc())
-      .limit(20)
+      .limit(50)
       .get_results::<Self>(conn)
       .await
   }
