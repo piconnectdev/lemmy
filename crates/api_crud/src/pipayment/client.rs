@@ -219,7 +219,7 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
   let token_item = PiTokenItem {
     answer: res.clone(),
     uuid: key.to_string(),
-    expires: naive_now() + Duration::days(7), // expires in 5 days
+    expires: naive_now() + Duration::days(1), // expires in 5 days
   };
 
   // Stores the PiTokenItem item on the queue

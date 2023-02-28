@@ -29,6 +29,7 @@ impl PerformCrud for SendPayment {
       get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
 
     is_admin(&local_user_view)?;
+    return Err(LemmyError::from_message("Server send temporary disabled!"));
 
     let _pays = match pi_incompleted_server_payments(context.client()).await
     {

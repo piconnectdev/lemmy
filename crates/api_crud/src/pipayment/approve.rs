@@ -79,7 +79,10 @@ impl PerformCrud for PiApprove {
         {
           Ok(p) =>{
             if p.external_id.is_none() {
-              return Err(LemmyError::from_message("Cannot approve reward the user")); 
+              return Err(LemmyError::from_message("Cannot approve reward to this user")); 
+            }
+            if !p.verified {
+              return Err(LemmyError::from_message("Cannot approve reward the not verified user")); 
             }
             info.ref_id = Some(p.id.0);
           },

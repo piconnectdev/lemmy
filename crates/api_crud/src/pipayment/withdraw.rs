@@ -34,11 +34,11 @@ impl PerformCrud for PiWithdraw {
       }
     };
     if !person.verified {
-      return Err(LemmyError::from_message("User not verified!"));
+      return Err(LemmyError::from_message("You're not verified!"));
     };
 
     // Must use Pi Browser for withdraw?
-    /*
+    
     let pi_token = data.pi_token.clone().unwrap();
     let pi_username;
 
@@ -58,8 +58,9 @@ impl PerformCrud for PiWithdraw {
         return Err(LemmyError::from_message(&err_type));
       }
     };
-    */
+    
 
+    /*
     match PiPayment::find_withdraw_pending(context.pool(), &person_id.clone()).await
     {
       Ok(pays) => {
@@ -70,7 +71,8 @@ impl PerformCrud for PiWithdraw {
       Err(_e) => {
       }
     };
-    
+    */
+
     let mut _payment_id: String;
     let fee = 0.01;
     let amount = f64::trunc(data.amount  * 10000000.0) / 10000000.0;

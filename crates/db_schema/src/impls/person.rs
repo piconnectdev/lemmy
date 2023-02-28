@@ -269,6 +269,19 @@ impl Person {
       .await
   }
 
+  pub async fn update_external_id(
+    pool: &DbPool,
+    person_id: PersonId,
+    external: &str,
+  ) -> Result<Self, Error> {
+    use crate::schema::person::dsl::*;
+    let conn = &mut get_conn(pool).await?;
+    diesel::update(person.find(person_id))
+      .set(external_id.eq(external))
+      .get_result::<Self>(conn)
+      .await
+  }
+
 }
 
 #[async_trait]

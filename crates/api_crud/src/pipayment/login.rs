@@ -1,45 +1,29 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use bcrypt::{hash, DEFAULT_COST};
 use lemmy_api_common::{
   person::*,
   pipayment::*,
   sensitive::Sensitive,
   utils::{password_length_check},
-  // utils::{
-  //   generate_followers_url,
-  //   generate_inbox_url,
-  //   generate_local_apub_endpoint,
-  //   generate_shared_inbox_url,
-  //   get_local_user_view_from_jwt,
-  //   is_admin,
-  //   EndpointType,
-  // },
 };
 use lemmy_db_schema::{
-  newtypes::{CommunityId, PiPaymentId, PersonId, PiUserId},
-  schema::local_user::email_verified,
+  newtypes::{ PersonId, PiUserId},  
   source::{
-    community::*,
-    local_user::{LocalUser, LocalUserInsertForm},
+    local_user::{LocalUser, },
     person::*,
-    pipayment::*,
-    site::*, local_site::RegistrationMode,
+    local_site::RegistrationMode,
   },
-  traits::{ApubActor, Crud, Followable},
-  utils::naive_now,
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
-use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
   claims::Claims,
   error::LemmyError,
   ConnectionId,
 };
+
 use lemmy_api_common::{context::LemmyContext};
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -68,6 +52,7 @@ impl PerformCrud for PiLogin {
     let mut _pi_username = data.ea.account.clone();
     let mut _pi_uid = Some(PiUserId(data.ea.uuid.unwrap_or_default()));
     let _pi_token = data.ea.token.clone();
+    let mut new_external_id;
 
     println!(
       "PiLogin is processing for {} {} {} ",
@@ -81,6 +66,7 @@ impl PerformCrud for PiLogin {
       Ok(dto) => {
         _pi_username = dto.username.clone();
         _pi_uid = Some(dto.uid.clone());
+        new_external_id = format!("{}",dto.uid.0);
         Some(dto)
       }
       Err(_e) => {
@@ -158,6 +144,10 @@ impl PerformCrud for PiLogin {
         username = p.name.clone();
         external_id = p.external_id;
         external_name = p.external_name;
+        if external_id.clone().unwrap_or_default() != new_external_id {
+          println!("Person::update_external_id {} {} {}", person_id.clone().0, external_id.clone().unwrap_or_default(), new_external_id.clone());
+          //Person::update_external_id(context.pool(), person_id.clone(), &new_external_id).await?;
+        }
       }
       None => {
         if !_change_passwd {
