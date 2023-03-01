@@ -77,8 +77,8 @@ impl PerformCrud for PiWithdraw {
     let fee = 0.01;
     let amount = f64::trunc(data.amount  * 10000000.0) / 10000000.0;
 
-    if (amount <= 0.0 || amount > 1000000.0) {
-      return Err(LemmyError::from_message("Invalid withdraw balance (0.0 < amount < 10000000.0)!"));
+    if amount <= 0.0 || amount > 10000.0 {
+      return Err(LemmyError::from_message("Invalid withdraw balance (0.0 < amount < 10000.0)!"));
     }
     match PersonBalance::find_by_asset(context.pool(), person_id.clone(), "PI").await
     {
@@ -99,9 +99,10 @@ impl PerformCrud for PiWithdraw {
         return Err(LemmyError::from_message("Update PI balance error!"));
       }
     };
+    let memo = format!("{} withraw: {} ", person.name.clone(), amount.clone());
     let payment_form = PiPaymentInsertForm::builder()
       .domain(data.domain.clone())
-      .instance_id(None)
+      .instance_id(Some(person.instance_id))
       .person_id( Some(person_id.clone()))
       .obj_cat(Some("withdraw".to_string()))
       .obj_id(None)
@@ -120,7 +121,7 @@ impl PerformCrud for PiWithdraw {
       .identifier(None)
       .user_uid(person.external_id.clone())
       .amount(amount)
-      .memo(None)
+      .memo(Some(memo))
       .from_address(None)
       .to_address(None)
       .direction(None)

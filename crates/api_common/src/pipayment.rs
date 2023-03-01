@@ -231,7 +231,7 @@ pub struct CreatePayment {
   pub ref_id: Option<Uuid>,
   pub network: Option<String>,
   pub asset: Option<String>,
-  pub amount: Option<f64>,
+  pub amount: f64,
   pub comment: Option<String>,
   pub auth: Sensitive<String>,
 }
