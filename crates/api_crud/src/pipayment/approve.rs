@@ -41,7 +41,7 @@ impl PerformCrud for PiApprove {
         Some(dto)
       }
       Err(_e) => {
-        let err_type = format!("Pi Network Server Error: User not found: {}, error: {}", &_pi_token, _e.to_string());
+        let err_type = format!("Pi Network Server Error {}, : {}", &_pi_token, _e.to_string());
         return Err(LemmyError::from_message(&err_type));
       }
     };

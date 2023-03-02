@@ -41,12 +41,16 @@ pub async fn pi_payment(
   })
   .await?;
 
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| LemmyError::from_error_message(e, ""))?;
-  //.map_err(|e| RecvError(e.to_string()))?;
-  Ok(res)
+  let content = response.text().await?;
+  match serde_json::from_str(&content)
+  {
+    Ok(r) => {
+      Ok(r)
+    }
+    Err( _e )=>{
+      return Err(LemmyError::from_message(&content));
+    }
+  }
 }
 
 pub async fn pi_incompleted_server_payments(
@@ -65,10 +69,17 @@ pub async fn pi_incompleted_server_payments(
   })
   .await?;
 
-  let res: IncompleteServerPayments = response
-    .json::<IncompleteServerPayments>()
-    .await
-    .map_err(|e| LemmyError::from_error_message(e, ""))?;
+  let content = response.text().await?;
+  let res: IncompleteServerPayments = match serde_json::from_str(&content)
+  {
+    Ok(r) => {
+      r
+    }
+    Err( _e )=>{
+      return Err(LemmyError::from_message(&content));
+    }
+  };
+  
   Ok(res.incomplete_server_payments)
 }
 
@@ -88,11 +99,16 @@ pub async fn pi_approve(
   })
   .await?;
 
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| LemmyError::from_error_message(e, ""))?;
-  Ok(res)
+  let content = response.text().await?;
+  match serde_json::from_str(&content)
+  {
+    Ok(r) => {
+      Ok(r)
+    }
+    Err( _e )=>{
+      return Err(LemmyError::from_message(&content));
+    }
+  }
 }
 
 
@@ -112,21 +128,15 @@ pub async fn pi_create(
       .send()
   })
   .await?;
-
-  // let res: PiPaymentDto = response
-  //   .json::<PiPaymentDto>()
-  //   .await
-  //   .map_err(|e| LemmyError::from_error_message(e, "Can not create A2U payment"))?;
-  // Ok(res)
   
-  let content = response.text().await?;  
+  let content = response.text().await?;
   match serde_json::from_str(&content)
   {
     Ok(r) => {
       Ok(r)
     }
     Err( _e )=>{
-      return Err(LemmyError::from_message(&_e.to_string()));
+      return Err(LemmyError::from_message(&content));
     }
   }  
 }
@@ -147,11 +157,16 @@ pub async fn pi_cancel(
   })
   .await?;
 
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| LemmyError::from_error_message(e, ""))?;
-  Ok(res)
+  let content = response.text().await?;
+  match serde_json::from_str(&content)
+  {
+    Ok(r) => {
+      Ok(r)
+    }
+    Err( _e )=>{
+      return Err(LemmyError::from_message(&content));
+    }
+  }
 }
 
 pub async fn pi_complete(
@@ -176,11 +191,16 @@ pub async fn pi_complete(
   })
   .await?;
 
-  let res: PiPaymentDto = response
-    .json::<PiPaymentDto>()
-    .await
-    .map_err(|e| LemmyError::from_error_message(e, ""))?;
-  Ok(res)
+  let content = response.text().await?;
+  match serde_json::from_str(&content)
+  {
+    Ok(r) => {
+      Ok(r)
+    }
+    Err( _e )=>{
+      return Err(LemmyError::from_message(&content));
+    }
+  }
 }
 
 
@@ -207,11 +227,22 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
   })
   .await?;
 
-  let mut res: PiUserDto = response
-    .json::<PiUserDto>()
-    .await
-    .map_err(|e| LemmyError::from_error_message(e, "Fetch /me error"))?;
+  // let mut res: PiUserDto = response
+  //   .json::<PiUserDto>()
+  //   .await
+  //   .map_err(|e| LemmyError::from_error_message(e, "Fetch /me error"))?;
   
+  let content = response.text().await?;
+  let mut res: PiUserDto = match serde_json::from_str(&content)
+  {
+    Ok(r) => {
+      r
+    }
+    Err( _e )=>{
+      return Err(LemmyError::from_message(&content));
+    }
+  };
+
   if settings.pi_hide_account {
     res.username = hide_username(&res.username.clone());
   }

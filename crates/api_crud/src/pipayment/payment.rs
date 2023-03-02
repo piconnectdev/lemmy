@@ -132,8 +132,7 @@ pub async fn pi_payment_create(
       },
       Err(_e) => {
         let err_str = format!(
-          "Pi Server: approve payment error {}, paymentid {} error: {}",
-          _pi_user_alias.clone(),
+          "Pi Server: approve paymentid {} error: {}",
           _payment_id.clone(),
           _e.to_string()
         );
