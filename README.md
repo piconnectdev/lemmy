@@ -1,3 +1,42 @@
+## About WePi
+
+A **Web3 Social Network**:
+
+- Online: [https://wepi.social](https://wepi.social)
+
+- User register / login by **[Pi Network](https://minepi.com/dinhngocbang) account**.
+
+- **Login without password**, use Pi Browser.
+
+- User register / login by Web3 account (**MetaMask** / optional).
+
+- **Push contents to Pi Network**. No censorship anymore. User will be owner of the contents, not big boy (facebook / google).
+
+- **Tips** authors ( for good content ).
+
+- **Send** Pi to other users.
+
+- **Withdraw** Pi whenever user was rewarded.
+
+- List all user's Pi Network payments.
+
+- Add auth_sign: allow users sign on their post/comment
+
+- Add srv_sign: Servers sign on their data: sites, communities, persons, posts, comments
+
+- Change all Id fields from i32 to Uuid ( from lemmy).
+
+   
+## Todo list
+
+ - **Restore contents from Pi Network** (comming soon).
+
+ - EVM smart contract.
+
+ - Mint post / comment as NFT.
+
+
+
 <div align="center">
 
 ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/LemmyNet/lemmy.svg)
@@ -43,27 +82,6 @@
     <a href="https://join-lemmy.org/docs/en/code_of_conduct.html">Code of Conduct</a>
   </p>
 </p>
-
-## About This Fork
-
-This fork is a preparing for web3 social network.
-
-- Change all Id fields from i32 to Uuid.
-
-- Allow use web3 to register/login
-
-- Allow use [Pi Network](https://minepi.com/dinhngocbang) account to register / login
-
-- Add auth_sign: allow users sign on their post/comment
-
-- Add srv_sign: Servers sign on their data: sites, communities, persons, posts, comments
-
-- UI:
-   * Allow donate/tip to authors of posts/comments
-   * Mint posts / comments as NFT
-## Roadmap for Web3
-
- - EVM smart contract
 
 
 ## About The Project
