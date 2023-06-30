@@ -1,4 +1,4 @@
-table! {
+diesel::table! {
     activity (id) {
         id -> Uuid,
         data -> Jsonb,
@@ -6,11 +6,49 @@ table! {
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
         ap_id -> Text,
-        sensitive -> Nullable<Bool>,
+        sensitive -> Bool,
     }
 }
 
-table! {
+diesel::table! {
+  admin_purge_comment (id) {
+    id -> Uuid,
+    admin_person_id -> Uuid,
+    post_id -> Uuid,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+diesel::table! {
+  admin_purge_community (id) {
+    id -> Uuid,
+    admin_person_id -> Uuid,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+diesel::table! {
+  admin_purge_person (id) {
+    id -> Uuid,
+    admin_person_id -> Uuid,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+diesel::table! {
+  admin_purge_post (id) {
+    id -> Uuid,
+    admin_person_id -> Uuid,
+    community_id -> Uuid,
+    reason -> Nullable<Text>,
+    when_ -> Timestamp,
+  }
+}
+
+diesel::table! {
   use diesel_ltree::sql_types::Ltree;
   use diesel::sql_types::*;
 
@@ -36,7 +74,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     comment_aggregates (id) {
         id -> Uuid,
         comment_id -> Uuid,
@@ -48,7 +86,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     comment_like (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -59,7 +97,17 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
+    comment_reply (id) {
+        id -> Uuid,
+        recipient_id -> Uuid,
+        comment_id -> Uuid,
+        read -> Bool,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
     comment_report (id) {
         id -> Uuid,
         creator_id -> Uuid,
@@ -73,7 +121,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     comment_saved (id) {
         id -> Uuid,
         comment_id -> Uuid,
@@ -82,7 +130,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     community (id) {
         id -> Uuid,
         name -> Varchar,
@@ -117,7 +165,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     community_aggregates (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -132,7 +180,16 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
+    community_block (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        community_id -> Uuid,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
     community_follower (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -142,7 +199,15 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
+    community_language(id) {
+        id -> Uuid,
+        community_id -> Uuid,
+        language_id -> Int4,
+    }
+}
+
+diesel::table! {
     community_moderator (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -151,7 +216,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     community_person_ban (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -161,446 +226,30 @@ table! {
     }
 }
 
-table! {
-    local_user (id) {
+diesel::table! {
+    custom_emoji (id) {
         id -> Uuid,
-        person_id -> Uuid,
-        password_encrypted -> Text,
-        email -> Nullable<Text>,
-        show_nsfw -> Bool,
-        theme -> Varchar,
-        default_sort_type -> Int2,
-        default_listing_type -> Int2,
-        interface_language -> Varchar,
-        show_avatars -> Bool,
-        send_notifications_to_email -> Bool,
-        validator_time -> Timestamp,
-        show_bot_accounts -> Bool,
-        show_scores -> Bool,
-        show_read_posts -> Bool,
-        show_new_post_notifs -> Bool,
-        email_verified -> Bool,
-        accepted_application -> Bool,
-        //private_seeds -> Nullable<Text>,
-        //signing_data -> Bool,
-        //extras -> Nullable<Jsonb>,
-    }
-}
-
-table! {
-    mod_add (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        other_person_id -> Uuid,
-        removed -> Nullable<Bool>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_add_community (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        other_person_id -> Uuid,
-        community_id -> Uuid,
-        removed -> Nullable<Bool>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_transfer_community (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        other_person_id -> Uuid,
-        community_id -> Uuid,
-        removed -> Nullable<Bool>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_ban (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        other_person_id -> Uuid,
-        reason -> Nullable<Text>,
-        banned -> Nullable<Bool>,
-        expires -> Nullable<Timestamp>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_ban_from_community (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        other_person_id -> Uuid,
-        community_id -> Uuid,
-        reason -> Nullable<Text>,
-        banned -> Nullable<Bool>,
-        expires -> Nullable<Timestamp>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_lock_post (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        post_id -> Uuid,
-        locked -> Nullable<Bool>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_remove_comment (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        comment_id -> Uuid,
-        reason -> Nullable<Text>,
-        removed -> Nullable<Bool>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_remove_community (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        community_id -> Uuid,
-        reason -> Nullable<Text>,
-        removed -> Nullable<Bool>,
-        expires -> Nullable<Timestamp>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_remove_post (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        post_id -> Uuid,
-        reason -> Nullable<Text>,
-        removed -> Nullable<Bool>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    mod_feature_post (id) {
-        id -> Uuid,
-        mod_person_id -> Uuid,
-        post_id -> Uuid,
-        featured -> Bool,
-        when_ -> Timestamp,
-        is_featured_community -> Bool,
-    }
-}
-
-table! {
-    password_reset_request (id) {
-        id -> Uuid,
-        token_encrypted -> Text,
-        published -> Timestamp,
-        local_user_id -> Uuid,
-    }
-}
-
-table! {
-    person (id) {
-        id -> Uuid,
-        name -> Varchar,
-        display_name -> Nullable<Varchar>,
-        avatar -> Nullable<Varchar>,
-        banned -> Bool,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        actor_id -> Varchar,
-        bio -> Nullable<Text>,
-        local -> Bool,
-        private_key -> Nullable<Text>,
-        public_key -> Text,
-        last_refreshed_at -> Timestamp,
-        banner -> Nullable<Varchar>,
-        deleted -> Bool,
-        inbox_url -> Varchar,
-        shared_inbox_url -> Nullable<Varchar>,
-        matrix_user_id -> Nullable<Text>,
-        admin -> Bool,
-        bot_account -> Bool,
-        ban_expires -> Nullable<Timestamp>,
-        instance_id -> Uuid,
-        home -> Nullable<Uuid>,	
-        external_id -> Nullable<Text>,
-        external_name -> Nullable<Text>,
-        //private_seeds -> Nullable<Text>,
-        verified -> Bool,
-        pi_address -> Nullable<Text>,
-        web3_address -> Nullable<Text>,
-        pol_address -> Nullable<Text>,
-        dap_address -> Nullable<Text>,
-        cosmos_address -> Nullable<Text>,
-        sui_address -> Nullable<Text>,   
-        auth_sign -> Nullable<Text>,
-        srv_sign -> Nullable<Text>,
-        pipayid -> Nullable<Text>,
-        tx -> Nullable<Text>,
-        //extras -> Nullable<Jsonb>,        
-    }
-}
-
-table! {
-    person_aggregates (id) {
-        id -> Uuid,
-        person_id -> Uuid,
-        post_count -> Int8,
-        post_score -> Int8,
-        comment_count -> Int8,
-        comment_score -> Int8,
-    }
-}
-
-table! {
-    person_ban (id) {
-        id -> Uuid,
-        person_id -> Uuid,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    person_mention (id) {
-        id -> Uuid,
-        recipient_id -> Uuid,
-        comment_id -> Uuid,
-        read -> Bool,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    comment_reply (id) {
-        id -> Uuid,
-        recipient_id -> Uuid,
-        comment_id -> Uuid,
-        read -> Bool,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    post (id) {
-        id -> Uuid,
-        name -> Varchar,
-        url -> Nullable<Varchar>,
-        body -> Nullable<Text>,
-        creator_id -> Uuid,
-        community_id -> Uuid,
-        removed -> Bool,
-        locked -> Bool,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        deleted -> Bool,
-        nsfw -> Bool,
-        embed_title -> Nullable<Text>,
-        embed_description -> Nullable<Text>,
-        embed_video_url -> Nullable<Text>,
-        thumbnail_url -> Nullable<Text>,
-        ap_id -> Varchar,
-        local -> Bool,
-        language_id -> Int4,
-        featured_community -> Bool,
-        featured_local -> Bool,
-
-        auth_sign -> Nullable<Text>,
-        srv_sign -> Nullable<Text>,
-        pipayid -> Nullable<Text>,
-        tx -> Nullable<Text>,
-        //extras -> Nullable<Jsonb>,
-    }
-}
-
-table! {
-    person_post_aggregates (id) {
-        id -> Uuid,
-        person_id -> Uuid,
-        post_id -> Uuid,
-        read_comments -> Int8,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    post_aggregates (id) {
-        id -> Uuid,
-        post_id -> Uuid,
-        comments -> Int8,
-        score -> Int8,
-        upvotes -> Int8,
-        downvotes -> Int8,
-        published -> Timestamp,
-        newest_comment_time_necro -> Timestamp,
-        newest_comment_time -> Timestamp,
-        featured_community -> Bool,
-        featured_local -> Bool,
-    }
-}
-
-table! {
-    post_like (id) {
-        id -> Uuid,
-        post_id -> Uuid,
-        person_id -> Uuid,
-        score -> Int2,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    post_read (id) {
-        id -> Uuid,
-        post_id -> Uuid,
-        person_id -> Uuid,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    post_report (id) {
-        id -> Uuid,
-        creator_id -> Uuid,
-        post_id -> Uuid,
-        original_post_name -> Varchar,
-        original_post_url -> Nullable<Text>,
-        original_post_body -> Nullable<Text>,
-        reason -> Text,
-        resolved -> Bool,
-        resolver_id -> Nullable<Uuid>,
+        local_site_id -> Uuid,
+        #[max_length = 128]
+        shortcode -> Varchar,
+        image_url -> Text,
+        alt_text -> Text,
+        category -> Text,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
     }
 }
 
-table! {
-    post_saved (id) {
+diesel::table! {
+    custom_emoji_keyword (id) {
         id -> Uuid,
-        post_id -> Uuid,
-        person_id -> Uuid,
-        published -> Timestamp,
+        custom_emoji_id -> Uuid,
+        #[max_length = 128]
+        keyword -> Varchar,
     }
 }
 
-table! {
-    private_message (id) {
-        id -> Uuid,
-        creator_id -> Uuid,
-        recipient_id -> Uuid,
-        content -> Text,
-        deleted -> Bool,
-        read -> Bool,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        ap_id -> Varchar,
-        local -> Bool,
-        secured -> Nullable<Text>,
-        auth_sign -> Nullable<Text>,
-        srv_sign -> Nullable<Text>,
-        pipayid -> Nullable<Text>,
-        tx -> Nullable<Text>,
-        //extras -> Nullable<Jsonb>,
-    }
-}
-
-table! {
-    private_message_report (id) {
-        id -> Uuid,
-        creator_id -> Uuid,
-        private_message_id -> Uuid,
-        original_pm_text -> Text,
-        reason -> Text,
-        resolved -> Bool,
-        resolver_id -> Nullable<Uuid>,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-    }
-}
-
-table! {
-    site (id) {
-        id -> Uuid,
-        name -> Varchar,
-        sidebar -> Nullable<Text>,
-        published -> Timestamp,
-        updated -> Nullable<Timestamp>,
-        icon -> Nullable<Varchar>,
-        banner -> Nullable<Varchar>,
-        description -> Nullable<Text>,
-        actor_id -> Text,
-        last_refreshed_at -> Timestamp,
-        inbox_url -> Text,
-        private_key -> Nullable<Text>,
-        public_key -> Text,
-        instance_id -> Uuid,
-        srv_sign -> Nullable<Text>,
-        pipayid -> Nullable<Text>,
-        tx -> Nullable<Text>,
-        //extras -> Nullable<Jsonb>,
-    }
-}
-
-table! {
-    site_aggregates (id) {
-        id -> Uuid,
-        site_id -> Uuid,
-        users -> Int8,
-        posts -> Int8,
-        comments -> Int8,
-        communities -> Int8,
-        users_active_day -> Int8,
-        users_active_week -> Int8,
-        users_active_month -> Int8,
-        users_active_half_year -> Int8,
-    }
-}
-
-table! {
-    person_block (id) {
-        id -> Uuid,
-        person_id -> Uuid,
-        target_id -> Uuid,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    community_block (id) {
-        id -> Uuid,
-        person_id -> Uuid,
-        community_id -> Uuid,
-        published -> Timestamp,
-    }
-}
-
-table! {
-  secret(id) {
-    id -> Uuid,
-    jwt_secret -> Varchar,
-  }
-}
-
-table! {
-  admin_purge_comment (id) {
-    id -> Uuid,
-    admin_person_id -> Uuid,
-    post_id -> Uuid,
-    reason -> Nullable<Text>,
-    when_ -> Timestamp,
-  }
-}
-
-table! {
+diesel::table! {
   email_verification (id) {
     id -> Uuid,
     local_user_id -> Uuid,
@@ -610,90 +259,25 @@ table! {
   }
 }
 
-table! {
-  admin_purge_community (id) {
+diesel::table! {
+  federation_allowlist(id) {
     id -> Uuid,
-    admin_person_id -> Uuid,
-    reason -> Nullable<Text>,
-    when_ -> Timestamp,
+    instance_id -> Uuid,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
   }
 }
 
-table! {
-  admin_purge_person (id) {
+diesel::table! {
+  federation_blocklist(id) {
     id -> Uuid,
-    admin_person_id -> Uuid,
-    reason -> Nullable<Text>,
-    when_ -> Timestamp,
+    instance_id -> Uuid,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
   }
 }
 
-table! {
-  admin_purge_post (id) {
-    id -> Uuid,
-    admin_person_id -> Uuid,
-    community_id -> Uuid,
-    reason -> Nullable<Text>,
-    when_ -> Timestamp,
-  }
-}
-
-table! {
-    registration_application (id) {
-        id -> Uuid,
-        local_user_id -> Uuid,
-        answer -> Text,
-        admin_id -> Nullable<Uuid>,
-        deny_reason -> Nullable<Text>,
-        published -> Timestamp,
-    }
-}
-
-table! {
-    mod_hide_community (id) {
-        id -> Uuid,
-        community_id -> Uuid,
-        mod_person_id -> Uuid,
-        reason -> Nullable<Text>,
-        hidden -> Nullable<Bool>,
-        when_ -> Timestamp,
-    }
-}
-
-table! {
-    language (id) {
-        id -> Int4,
-        code -> Text,
-        name -> Text,
-    }
-}
-
-
-table! {
-    local_user_language(id) {
-        id -> Uuid,
-        local_user_id -> Uuid,
-        language_id -> Int4,
-    }
-}
-
-table! {
-    site_language(id) {
-        id -> Uuid,
-        site_id -> Uuid,
-        language_id -> Int4,
-    }
-}
-
-table! {
-    community_language(id) {
-        id -> Uuid,
-        community_id -> Uuid,
-        language_id -> Int4,
-    }
-}
-
-table! {
+diesel::table! {
   instance(id) {
     id -> Uuid,
     domain -> Text,
@@ -704,25 +288,15 @@ table! {
   }
 }
 
-table! {
-  federation_allowlist(id) {
-    id -> Uuid,
-    instance_id -> Uuid,
-    published -> Timestamp,
-    updated -> Nullable<Timestamp>,
-  }
+diesel::table! {
+    language (id) {
+        id -> Int4,
+        code -> Text,
+        name -> Text,
+    }
 }
 
-table! {
-  federation_blocklist(id) {
-    id -> Uuid,
-    instance_id -> Uuid,
-    published -> Timestamp,
-    updated -> Nullable<Timestamp>,
-  }
-}
-
-table! {
+diesel::table! {
   use crate::source::local_site::RegistrationModeType;
   use diesel::sql_types::*;
 
@@ -755,7 +329,7 @@ table! {
   }
 }
 
-table! {
+diesel::table! {
   local_site_rate_limit(id) {
     id -> Uuid,
     local_site_id -> Uuid,
@@ -776,17 +350,244 @@ table! {
   }
 }
 
-table! {
-  tagline(id) {
-    id -> Uuid,
-    local_site_id -> Uuid,
-    content -> Text,
-    published -> Timestamp,
-    updated -> Nullable<Timestamp>,
-  }
+diesel::table! {
+    local_user (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        password_encrypted -> Text,
+        email -> Nullable<Text>,
+        show_nsfw -> Bool,
+        theme -> Varchar,
+        default_sort_type -> Int2,
+        default_listing_type -> Int2,
+        interface_language -> Varchar,
+        show_avatars -> Bool,
+        send_notifications_to_email -> Bool,
+        validator_time -> Timestamp,
+        show_bot_accounts -> Bool,
+        show_scores -> Bool,
+        show_read_posts -> Bool,
+        show_new_post_notifs -> Bool,
+        email_verified -> Bool,
+        accepted_application -> Bool,
+        //private_seeds -> Nullable<Text>,
+        //signing_data -> Bool,
+        //extras -> Nullable<Jsonb>,
+    }
 }
 
-table! {
+diesel::table! {
+    local_user_language(id) {
+        id -> Uuid,
+        local_user_id -> Uuid,
+        language_id -> Int4,
+    }
+}
+
+diesel::table! {
+    mod_add (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        removed -> Bool,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_add_community (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        community_id -> Uuid,
+        removed -> Bool,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_ban (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        reason -> Nullable<Text>,
+        banned -> Bool,
+        expires -> Nullable<Timestamp>,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_ban_from_community (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        community_id -> Uuid,
+        reason -> Nullable<Text>,
+        banned -> Bool,
+        expires -> Nullable<Timestamp>,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_feature_post (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        post_id -> Uuid,
+        featured -> Bool,
+        when_ -> Timestamp,
+        is_featured_community -> Bool,
+    }
+}
+
+diesel::table! {
+    mod_hide_community (id) {
+        id -> Uuid,
+        community_id -> Uuid,
+        mod_person_id -> Uuid,
+        reason -> Nullable<Text>,
+        hidden -> Bool,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_lock_post (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        post_id -> Uuid,
+        locked -> Bool,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_remove_comment (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        comment_id -> Uuid,
+        reason -> Nullable<Text>,
+        removed -> Bool,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_remove_community (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        community_id -> Uuid,
+        reason -> Nullable<Text>,
+        removed -> Bool,
+        expires -> Nullable<Timestamp>,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_remove_post (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        post_id -> Uuid,
+        reason -> Nullable<Text>,
+        removed -> Bool,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    mod_transfer_community (id) {
+        id -> Uuid,
+        mod_person_id -> Uuid,
+        other_person_id -> Uuid,
+        community_id -> Uuid,
+        removed -> Bool,
+        when_ -> Timestamp,
+    }
+}
+
+diesel::table! {
+    password_reset_request (id) {
+        id -> Uuid,
+        token_encrypted -> Text,
+        published -> Timestamp,
+        local_user_id -> Uuid,
+    }
+}
+
+diesel::table! {
+    person (id) {
+        id -> Uuid,
+        name -> Varchar,
+        display_name -> Nullable<Varchar>,
+        avatar -> Nullable<Varchar>,
+        banned -> Bool,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+        actor_id -> Varchar,
+        bio -> Nullable<Text>,
+        local -> Bool,
+        private_key -> Nullable<Text>,
+        public_key -> Text,
+        last_refreshed_at -> Timestamp,
+        banner -> Nullable<Varchar>,
+        deleted -> Bool,
+        inbox_url -> Varchar,
+        shared_inbox_url -> Nullable<Varchar>,
+        matrix_user_id -> Nullable<Text>,
+        admin -> Bool,
+        bot_account -> Bool,
+        ban_expires -> Nullable<Timestamp>,
+        instance_id -> Uuid,
+        home -> Nullable<Uuid>,
+        external_id -> Nullable<Text>,
+        external_name -> Nullable<Text>,
+        //private_seeds -> Nullable<Text>,
+        verified -> Bool,
+        pi_address -> Nullable<Text>,
+        web3_address -> Nullable<Text>,
+        pol_address -> Nullable<Text>,
+        dap_address -> Nullable<Text>,
+        cosmos_address -> Nullable<Text>,
+        sui_address -> Nullable<Text>,
+        auth_sign -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
+        tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
+    person_aggregates (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        post_count -> Int8,
+        post_score -> Int8,
+        comment_count -> Int8,
+        comment_score -> Int8,
+    }
+}
+
+diesel::table! {
+    person_ban (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+    person_block (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        target_id -> Uuid,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
     person_follower (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -796,26 +597,247 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
+    person_mention (id) {
+        id -> Uuid,
+        recipient_id -> Uuid,
+        comment_id -> Uuid,
+        read -> Bool,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+    person_post_aggregates (id) {
+        id -> Uuid,
+        person_id -> Uuid,
+        post_id -> Uuid,
+        read_comments -> Int8,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+    post (id) {
+        id -> Uuid,
+        name -> Varchar,
+        url -> Nullable<Varchar>,
+        body -> Nullable<Text>,
+        creator_id -> Uuid,
+        community_id -> Uuid,
+        removed -> Bool,
+        locked -> Bool,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+        deleted -> Bool,
+        nsfw -> Bool,
+        embed_title -> Nullable<Text>,
+        embed_description -> Nullable<Text>,
+        embed_video_url -> Nullable<Text>,
+        thumbnail_url -> Nullable<Text>,
+        ap_id -> Varchar,
+        local -> Bool,
+        language_id -> Int4,
+        featured_community -> Bool,
+        featured_local -> Bool,
+
+        auth_sign -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
+        tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
+    post_aggregates (id) {
+        id -> Uuid,
+        post_id -> Uuid,
+        comments -> Int8,
+        score -> Int8,
+        upvotes -> Int8,
+        downvotes -> Int8,
+        published -> Timestamp,
+        newest_comment_time_necro -> Timestamp,
+        newest_comment_time -> Timestamp,
+        featured_community -> Bool,
+        featured_local -> Bool,
+    }
+}
+
+diesel::table! {
+    post_like (id) {
+        id -> Uuid,
+        post_id -> Uuid,
+        person_id -> Uuid,
+        score -> Int2,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+    post_read (id) {
+        id -> Uuid,
+        post_id -> Uuid,
+        person_id -> Uuid,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+    post_report (id) {
+        id -> Uuid,
+        creator_id -> Uuid,
+        post_id -> Uuid,
+        original_post_name -> Varchar,
+        original_post_url -> Nullable<Text>,
+        original_post_body -> Nullable<Text>,
+        reason -> Text,
+        resolved -> Bool,
+        resolver_id -> Nullable<Uuid>,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    post_saved (id) {
+        id -> Uuid,
+        post_id -> Uuid,
+        person_id -> Uuid,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+    private_message (id) {
+        id -> Uuid,
+        creator_id -> Uuid,
+        recipient_id -> Uuid,
+        content -> Text,
+        deleted -> Bool,
+        read -> Bool,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+        ap_id -> Varchar,
+        local -> Bool,
+        secured -> Nullable<Text>,
+        auth_sign -> Nullable<Text>,
+        srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
+        tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
+    private_message_report (id) {
+        id -> Uuid,
+        creator_id -> Uuid,
+        private_message_id -> Uuid,
+        original_pm_text -> Text,
+        reason -> Text,
+        resolved -> Bool,
+        resolver_id -> Nullable<Uuid>,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
+    registration_application (id) {
+        id -> Uuid,
+        local_user_id -> Uuid,
+        answer -> Text,
+        admin_id -> Nullable<Uuid>,
+        deny_reason -> Nullable<Text>,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+  secret(id) {
+    id -> Uuid,
+    jwt_secret -> Varchar,
+  }
+}
+
+diesel::table! {
+    site (id) {
+        id -> Uuid,
+        name -> Varchar,
+        sidebar -> Nullable<Text>,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+        icon -> Nullable<Varchar>,
+        banner -> Nullable<Varchar>,
+        description -> Nullable<Text>,
+        actor_id -> Text,
+        last_refreshed_at -> Timestamp,
+        inbox_url -> Text,
+        private_key -> Nullable<Text>,
+        public_key -> Text,
+        instance_id -> Uuid,
+        srv_sign -> Nullable<Text>,
+        pipayid -> Nullable<Text>,
+        tx -> Nullable<Text>,
+        //extras -> Nullable<Jsonb>,
+    }
+}
+
+diesel::table! {
+    site_aggregates (id) {
+        id -> Uuid,
+        site_id -> Uuid,
+        users -> Int8,
+        posts -> Int8,
+        comments -> Int8,
+        communities -> Int8,
+        users_active_day -> Int8,
+        users_active_week -> Int8,
+        users_active_month -> Int8,
+        users_active_half_year -> Int8,
+    }
+}
+
+diesel::table! {
+    site_language(id) {
+        id -> Uuid,
+        site_id -> Uuid,
+        language_id -> Int4,
+    }
+}
+
+diesel::table! {
+  tagline(id) {
+    id -> Uuid,
+    local_site_id -> Uuid,
+    content -> Text,
+    published -> Timestamp,
+    updated -> Nullable<Timestamp>,
+  }
+}
+
+diesel::table! {
     pipayment (id) {
         id -> Uuid,
         domain -> Nullable<Text>,      //
         instance_id -> Nullable<Uuid>, // WePi instance
         person_id -> Nullable<Uuid>, // WePi user's id
         obj_cat -> Nullable<Text>,   // register - page - note - message - person - instance - group, withdraw, deposit ...
-        obj_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id 
+        obj_id -> Nullable<Uuid>,    // Post id - comment id, chat message id, site id, instance id, person id, community id
         a2u -> Int4,
         step -> Int4,
-        asset -> Nullable<Text>, 
+        asset -> Nullable<Text>,
         fee -> Double,
-        testnet -> Bool, 
+        testnet -> Bool,
         finished -> Bool,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
         ref_id -> Nullable<Uuid>,
-        comment -> Nullable<Text>, 
-        stat -> Nullable<Text>, 
-       
+        comment -> Nullable<Text>,
+        stat -> Nullable<Text>,
+
         pi_uid -> Nullable<Uuid>,   // UserDTO - uid
         pi_username -> Text,        // UserDTO - username
         identifier -> Nullable<Text>,         // PaymentDto - identifier
@@ -841,7 +863,7 @@ table! {
     }
 }
 
-table! {
+diesel::table! {
     person_balance (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -858,7 +880,7 @@ table! {
     }
 }
 
-// table! {
+// diesel::table! {
 //     person_web3address (id) {
 //         id -> Uuid,
 //         person_id -> Nullable<Uuid>,
@@ -878,8 +900,8 @@ table! {
 //         zil -> Nullable<Text>,
 //         avax -> Nullable<Text>,
 //         icp -> Nullable<Text>,
-//         trx -> Nullable<Text>,        
-//         xtz -> Nullable<Text>,        
+//         trx -> Nullable<Text>,
+//         xtz -> Nullable<Text>,
 //         ada -> Nullable<Text>,
 //         btc -> Nullable<Text>,
 //         doge -> Nullable<Text>,
@@ -888,7 +910,7 @@ table! {
 //     }
 // }
 
-//joinable!(pipayment -> person (person_id)); 
+//joinable!(pipayment -> person (person_id));
 //joinable!(person_web3address -> person (person_id));
 
 joinable!(person_block -> person (person_id));
