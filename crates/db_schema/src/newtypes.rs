@@ -14,16 +14,6 @@ use uuid::Uuid;
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
-pub struct SiteId(pub Uuid);
-impl fmt::Display for SiteId {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self.0)
-  }
-}
-
-
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
-#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct PostId(pub Uuid);
 impl fmt::Display for PostId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -171,7 +161,6 @@ impl fmt::Display for PostReadId {
     write!(f, "{}", self.0)
   }
 }
-
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
@@ -465,16 +454,6 @@ impl fmt::Display for RegistrationApplicationId {
 
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType))]
-pub struct SecretId(pub Uuid);
-
-impl fmt::Display for SecretId	{
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{}", self.0)
-  }
-}
-
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
-#[cfg_attr(feature = "full", derive(DieselNewType))]
 pub struct CommentReplyId(pub Uuid);
 
 impl fmt::Display for CommentReplyId {
@@ -526,6 +505,15 @@ impl fmt::Display for PiUserId {
 pub struct PrivateMessageReportId(pub Uuid);
 
 impl fmt::Display for PrivateMessageReportId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct SiteId(pub Uuid);
+impl fmt::Display for SiteId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
   }
@@ -633,7 +621,6 @@ impl fmt::Display for PersonBalanceId {
   }
 }
 
-
 #[repr(transparent)]
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "full", derive(AsExpression, FromSqlRow))]
@@ -681,5 +668,15 @@ impl Deref for DbUrl {
 
   fn deref(&self) -> &Self::Target {
     &self.0
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "full", derive(DieselNewType))]
+pub struct SecretId(pub Uuid);
+
+impl fmt::Display for SecretId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
   }
 }
