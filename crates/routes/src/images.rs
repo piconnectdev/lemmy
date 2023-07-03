@@ -11,7 +11,7 @@ use actix_web::{
   HttpResponse,
 };
 use futures::stream::{Stream, StreamExt};
-use lemmy_api_common::{context::LemmyContext, utils::get_local_user_view_from_jwt};
+use lemmy_api_common::{context::LemmyContext, utils::local_user_view_from_jwt};
 use lemmy_db_schema::source::local_site::LocalSite;
 use lemmy_utils::{claims::Claims, rate_limit::RateLimitCell, REQWEST_TIMEOUT};
 use reqwest::Body;
@@ -145,6 +145,7 @@ async fn full_res(
   let local_site = LocalSite::read(context.pool())
     .await
     .map_err(error::ErrorBadRequest)?;
+<<<<<<< HEAD
   if local_site.private_instance {    
     let jwt: String;
     if params.jwt.is_some() {
@@ -156,6 +157,13 @@ async fn full_res(
       jwt = cookie.value().to_string();
     }
     if get_local_user_view_from_jwt(&jwt, context.pool(), context.secret())
+=======
+  if local_site.private_instance {
+    let jwt = req
+      .cookie("jwt")
+      .expect("No auth header for picture access");
+    if local_user_view_from_jwt(jwt.value(), &context)
+>>>>>>> upstream/main
       .await
       .is_err()
     {

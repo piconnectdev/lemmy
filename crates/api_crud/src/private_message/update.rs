@@ -3,32 +3,33 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   private_message::{EditPrivateMessage, PrivateMessageResponse},
-  utils::{get_local_user_view_from_jwt, local_site_to_slur_regex},
-  websocket::{send::send_pm_ws_message, UserOperationCrud},
+  utils::{local_site_to_slur_regex, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::{
     local_site::LocalSite,
     private_message::{PrivateMessage, PrivateMessageUpdateForm},
   },
-  traits::{Crud, Signable}, 
+  traits::{Crud, Signable},
   utils::naive_now,
 };
-use lemmy_utils::{error::LemmyError, utils::slurs::remove_slurs, ConnectionId};
+use lemmy_db_views::structs::PrivateMessageView;
+use lemmy_utils::{
+  error::LemmyError,
+  utils::{slurs::remove_slurs, validation::is_valid_body_field},
+};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditPrivateMessage {
   type Response = PrivateMessageResponse;
 
-  #[tracing::instrument(skip(self, context, websocket_id))]
+  #[tracing::instrument(skip(self, context))]
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
   ) -> Result<PrivateMessageResponse, LemmyError> {
     let data: &EditPrivateMessage = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     // Checking permissions
@@ -40,6 +41,8 @@ impl PerformCrud for EditPrivateMessage {
 
     // Doing the update
     let content_slurs_removed = remove_slurs(&data.content, &local_site_to_slur_regex(&local_site));
+    is_valid_body_field(&Some(content_slurs_removed.clone()))?;
+
     let private_message_id = data.private_message_id;
     let updated_private_message = PrivateMessage::update(
       context.pool(),
@@ -53,13 +56,21 @@ impl PerformCrud for EditPrivateMessage {
     .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
 
     if context.settings().sign_enabled {
-      let (signature, _meta, _content)  = PrivateMessage::sign_data(&updated_private_message.clone()).await;
-      let updated_private_message = PrivateMessage::update_srv_sign(context.pool(), updated_private_message.id.clone(), signature.clone().unwrap_or_default().as_str())
-        .await
-        .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
+      let (signature, _meta, _content) =
+        PrivateMessage::sign_data(&updated_private_message.clone()).await;
+      let updated_private_message = PrivateMessage::update_srv_sign(
+        context.pool(),
+        updated_private_message.id.clone(),
+        signature.clone().unwrap_or_default().as_str(),
+      )
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_private_message"))?;
     }
 
-    let op = UserOperationCrud::EditPrivateMessage;
-    send_pm_ws_message(data.private_message_id, op, websocket_id, context).await
+    let view = PrivateMessageView::read(context.pool(), private_message_id).await?;
+
+    Ok(PrivateMessageResponse {
+      private_message_view: view,
+    })
   }
 }

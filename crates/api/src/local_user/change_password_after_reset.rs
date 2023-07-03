@@ -5,24 +5,19 @@ use lemmy_api_common::{
   person::{LoginResponse, PasswordChangeAfterReset},
   utils::password_length_check,
 };
-use lemmy_db_schema::source::{
-  local_site::RegistrationMode,
-  local_user::LocalUser,
-  password_reset_request::PasswordResetRequest,
+use lemmy_db_schema::{
+  source::{local_user::LocalUser, password_reset_request::PasswordResetRequest},
+  RegistrationMode,
 };
 use lemmy_db_views::structs::SiteView;
-use lemmy_utils::{claims::Claims, error::LemmyError, ConnectionId};
+use lemmy_utils::{claims::Claims, error::LemmyError};
 
 #[async_trait::async_trait(?Send)]
 impl Perform for PasswordChangeAfterReset {
   type Response = LoginResponse;
 
-  #[tracing::instrument(skip(self, context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  #[tracing::instrument(skip(self, context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<LoginResponse, LemmyError> {
     let data: &PasswordChangeAfterReset = self;
 
     // Fetch the user_id from the token

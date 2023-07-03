@@ -3,25 +3,20 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   person::{GetUnreadCount, GetUnreadCountResponse},
-  utils::get_local_user_view_from_jwt,
+  utils::local_user_view_from_jwt,
 };
 use lemmy_db_views::structs::PrivateMessageView;
 use lemmy_db_views_actor::structs::{CommentReplyView, PersonMentionView};
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for GetUnreadCount {
   type Response = GetUnreadCountResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<Self::Response, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<Self::Response, LemmyError> {
     let data = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let person_id = local_user_view.person.id;
 
@@ -32,12 +27,10 @@ impl Perform for GetUnreadCount {
     let private_messages =
       PrivateMessageView::get_unread_messages(context.pool(), person_id).await?;
 
-    let res = Self::Response {
+    Ok(Self::Response {
       replies,
       mentions,
       private_messages,
-    };
-
-    Ok(res)
+    })
   }
 }

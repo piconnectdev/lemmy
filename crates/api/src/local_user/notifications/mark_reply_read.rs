@@ -3,28 +3,26 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   person::{CommentReplyResponse, MarkCommentReplyAsRead},
-  utils::get_local_user_view_from_jwt,
+  utils::local_user_view_from_jwt,
 };
 use lemmy_db_schema::{
   source::comment_reply::{CommentReply, CommentReplyUpdateForm},
   traits::Crud,
 };
 use lemmy_db_views_actor::structs::CommentReplyView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for MarkCommentReplyAsRead {
   type Response = CommentReplyResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
+  #[tracing::instrument(skip(context))]
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
   ) -> Result<CommentReplyResponse, LemmyError> {
     let data = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let comment_reply_id = data.comment_reply_id;
     let read_comment_reply = CommentReply::read(context.pool(), comment_reply_id).await?;

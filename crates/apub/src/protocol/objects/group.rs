@@ -14,11 +14,14 @@ use crate::{
   },
 };
 use activitypub_federation::{
-  core::{object_id::ObjectId, signatures::PublicKey},
-  deser::helpers::deserialize_skip_error,
-  utils::verify_domains_match,
+  fetch::{collection_id::CollectionId, object_id::ObjectId},
+  kinds::actor::GroupType,
+  protocol::{
+    helpers::deserialize_skip_error,
+    public_key::PublicKey,
+    verification::verify_domains_match,
+  },
 };
-use activitystreams_kinds::actor::GroupType;
 use chrono::{DateTime, FixedOffset};
 use lemmy_api_common::{context::LemmyContext, utils::local_site_opt_to_slur_regex};
 use lemmy_db_schema::{
@@ -58,15 +61,13 @@ pub struct Group {
   pub(crate) image: Option<ImageObject>,
   // lemmy extension
   pub(crate) sensitive: Option<bool>,
-  // deprecated, use attributed_to instead
-  pub(crate) moderators: Option<ObjectId<ApubCommunityModerators>>,
   #[serde(deserialize_with = "deserialize_skip_error", default)]
-  pub(crate) attributed_to: Option<ObjectId<ApubCommunityModerators>>,
+  pub(crate) attributed_to: Option<CollectionId<ApubCommunityModerators>>,
   // lemmy extension
   pub(crate) posting_restricted_to_mods: Option<bool>,
-  pub(crate) outbox: ObjectId<ApubCommunityOutbox>,
+  pub(crate) outbox: CollectionId<ApubCommunityOutbox>,
   pub(crate) endpoints: Option<Endpoints>,
-  pub(crate) featured: Option<ObjectId<ApubCommunityFeatured>>,
+  pub(crate) featured: Option<CollectionId<ApubCommunityFeatured>>,
   #[serde(default)]
   pub(crate) language: Vec<LanguageTag>,
   pub(crate) published: Option<DateTime<FixedOffset>>,
@@ -111,7 +112,7 @@ impl Group {
       actor_id: Some(self.id.into()),
       local: Some(false),
       private_key: None,
-      hidden: Some(false),
+      hidden: None,
       public_key: self.public_key.public_key_pem,
       last_refreshed_at: Some(naive_now()),
       icon: self.icon.map(|i| i.url.into()),
@@ -119,7 +120,7 @@ impl Group {
       followers_url: Some(self.followers.into()),
       inbox_url: Some(self.inbox.into()),
       shared_inbox_url: self.endpoints.map(|e| e.shared_inbox.into()),
-      moderators_url: self.moderators.map(Into::into),
+      moderators_url: self.attributed_to.map(Into::into),
       posting_restricted_to_mods: self.posting_restricted_to_mods,
       instance_id,
       featured_url: self.featured.map(Into::into),
@@ -144,9 +145,9 @@ impl Group {
       deleted: None,
       nsfw: Some(self.sensitive.unwrap_or(false)),
       actor_id: Some(self.id.into()),
-      local: Some(false),
+      local: None,
       private_key: None,
-      hidden: Some(false),
+      hidden: None,
       public_key: Some(self.public_key.public_key_pem),
       last_refreshed_at: Some(naive_now()),
       icon: Some(self.icon.map(|i| i.url.into())),
@@ -154,7 +155,7 @@ impl Group {
       followers_url: Some(self.followers.into()),
       inbox_url: Some(self.inbox.into()),
       shared_inbox_url: Some(self.endpoints.map(|e| e.shared_inbox.into())),
-      moderators_url: self.moderators.map(Into::into),
+      moderators_url: self.attributed_to.map(Into::into),
       posting_restricted_to_mods: self.posting_restricted_to_mods,
       featured_url: self.featured.map(Into::into),
       srv_sign: None,

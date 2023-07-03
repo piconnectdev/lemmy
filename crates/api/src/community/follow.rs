@@ -3,7 +3,7 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   community::{CommunityResponse, FollowCommunity},
   context::LemmyContext,
-  utils::{check_community_ban, check_community_deleted_or_removed, get_local_user_view_from_jwt},
+  utils::{check_community_ban, check_community_deleted_or_removed, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::{
@@ -13,21 +13,16 @@ use lemmy_db_schema::{
   traits::{Crud, Followable},
 };
 use lemmy_db_views_actor::structs::CommunityView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for FollowCommunity {
   type Response = CommunityResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<CommunityResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<CommunityResponse, LemmyError> {
     let data: &FollowCommunity = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let community_id = data.community_id;
     let community = Community::read(context.pool(), community_id).await?;
@@ -53,7 +48,8 @@ impl Perform for FollowCommunity {
 
     let community_id = data.community_id;
     let person_id = local_user_view.person.id;
-    let community_view = CommunityView::read(context.pool(), community_id, Some(person_id)).await?;
+    let community_view =
+      CommunityView::read(context.pool(), community_id, Some(person_id), None).await?;
     let discussion_languages = CommunityLanguage::read(context.pool(), community_id).await?;
 
     Ok(Self::Response {

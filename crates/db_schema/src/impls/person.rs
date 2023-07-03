@@ -1,45 +1,42 @@
 use crate::{
   newtypes::{CommunityId, DbUrl, PersonId},
-  schema::person::dsl::{
-    actor_id,
-    avatar,
-    banner,
-    bio,
-    deleted,
-    display_name,
-    local,
-    matrix_user_id,
-    name,
-    person,
-    updated,
-    //home,
-    //external_id,
-    external_name,
-    //private_seeds,
-    //verified,
-    // pi_address,
-    // web3_address,
-    // pol_address,
-    // dap_address,
-    // cosmos_address,
-    // auth_sign,
-    // srv_sign,
-    // tx,
-  },
+  // schema::person::dsl::{
+  //   actor_id,
+  //   avatar,
+  //   banner,
+  //   bio,
+  //   deleted,
+  //   display_name,
+  //   //home,
+  //   //external_id,
+  //   external_name,
+  //   //private_seeds,
+  //   //verified,
+  //   // pi_address,
+  //   // web3_address,
+  //   // pol_address,
+  //   // dap_address,
+  //   // cosmos_address,
+  //   // auth_sign,
+  //   // srv_sign,
+  //   // tx,
+  //   local,
+  //   matrix_user_id,
+  //   name,
+  //   person,
+  //   updated,
+  // },
+  schema::{instance, local_user, person, person_follower},
   source::person::{
-    Person,
-    PersonFollower,
-    PersonFollowerForm,
-    PersonInsertForm,
-    PersonUpdateForm,
+    Person, PersonFollower, PersonFollowerForm, PersonInsertForm, PersonUpdateForm,
   },
   traits::{ApubActor, Crud, Followable, Signable},
   utils::{functions::lower, get_conn, naive_now, DbPool},
 };
-use diesel::{dsl::insert_into, result::Error, ExpressionMethods, QueryDsl, TextExpressionMethods};
+use diesel::{dsl::insert_into, result::Error, ExpressionMethods, JoinOnDsl, QueryDsl};
 use diesel_async::RunQueryDsl;
 use sha2::{Digest, Sha256};
-
+/*
 mod safe_type {
   use crate::{
     schema::person::columns::{
@@ -74,7 +71,7 @@ mod safe_type {
       sui_address,
       auth_sign,
       srv_sign,
-      tx,      
+      tx,
     },
     source::person::Person,
     traits::ToSafe,
@@ -155,6 +152,7 @@ mod safe_type {
     }
   }
 }
+*/
 
 #[async_trait]
 impl Crud for Person {
@@ -163,23 +161,22 @@ impl Crud for Person {
   type IdType = PersonId;
   async fn read(pool: &DbPool, person_id: PersonId) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
-    person
-      .filter(deleted.eq(false))
+    person::table
+      .filter(person::deleted.eq(false))
       .find(person_id)
       .first::<Self>(conn)
       .await
   }
   async fn delete(pool: &DbPool, person_id: PersonId) -> Result<usize, Error> {
     let conn = &mut get_conn(pool).await?;
-    diesel::delete(person.find(person_id)).execute(conn).await
+    diesel::delete(person::table.find(person_id))
+      .execute(conn)
+      .await
   }
   async fn create(pool: &DbPool, form: &PersonInsertForm) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
-    insert_into(person)
+    insert_into(person::table)
       .values(form)
-      .on_conflict(actor_id)
-      .do_update()
-      .set(form)
       .get_result::<Self>(conn)
       .await
   }
@@ -189,7 +186,7 @@ impl Crud for Person {
     form: &PersonUpdateForm,
   ) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
-    diesel::update(person.find(person_id))
+    diesel::update(person::table.find(person_id))
       .set(form)
       .get_result::<Self>(conn)
       .await
@@ -197,8 +194,20 @@ impl Crud for Person {
 }
 
 impl Person {
+  /// Update or insert the person.
+  ///
+  /// This is necessary for federation, because Activitypub doesnt distinguish between these actions.
+  pub async fn upsert(pool: &DbPool, form: &PersonInsertForm) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+    insert_into(person::table)
+      .values(form)
+      .on_conflict(person::actor_id)
+      .do_update()
+      .set(form)
+      .get_result::<Self>(conn)
+      .await
+  }
   pub async fn delete_account(pool: &DbPool, person_id: PersonId) -> Result<Person, Error> {
-    use crate::schema::local_user;
     let conn = &mut get_conn(pool).await?;
 
     // Set the local user info to none
@@ -210,15 +219,15 @@ impl Person {
       .execute(conn)
       .await?;
 
-    diesel::update(person.find(person_id))
+    diesel::update(person::table.find(person_id))
       .set((
-        display_name.eq::<Option<String>>(None),
-        avatar.eq::<Option<String>>(None),
-        banner.eq::<Option<String>>(None),
-        bio.eq::<Option<String>>(None),
-        matrix_user_id.eq::<Option<String>>(None),
-        deleted.eq(true),
-        updated.eq(naive_now()),
+        person::display_name.eq::<Option<String>>(None),
+        person::avatar.eq::<Option<String>>(None),
+        person::banner.eq::<Option<String>>(None),
+        person::bio.eq::<Option<String>>(None),
+        person::matrix_user_id.eq::<Option<String>>(None),
+        person::deleted.eq(true),
+        person::updated.eq(naive_now()),
       ))
       .get_result::<Self>(conn)
       .await
@@ -226,28 +235,25 @@ impl Person {
 
   pub async fn find_by_name(pool: &DbPool, from_name: &str) -> Result<Person, Error> {
     let conn = &mut get_conn(pool).await?;
-    person
-      .filter(deleted.eq(false))
-      .filter(local.eq(true))
-      .filter(name.eq(from_name))
+    person::table
+      .filter(person::deleted.eq(false))
+      .filter(person::local.eq(true))
+      .filter(person::name.eq(from_name))
       .first::<Person>(conn)
       .await
   }
 
   pub async fn find_by_extra_name(pool: &DbPool, from_name: &str) -> Result<Person, Error> {
     let conn = &mut get_conn(pool).await?;
-    person
-      .filter(deleted.eq(false))
-      .filter(local.eq(true))
-      .filter(external_name.eq(from_name))
+    person::table
+      .filter(person::deleted.eq(false))
+      .filter(person::local.eq(true))
+      .filter(person::external_name.eq(from_name))
       .first::<Person>(conn)
       .await
   }
 
-  pub async fn update_kyced(
-    pool: &DbPool,
-    person_id: PersonId,
-  ) -> Result<Self, Error> {
+  pub async fn update_kyced(pool: &DbPool, person_id: PersonId) -> Result<Self, Error> {
     use crate::schema::person::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(person.find(person_id))
@@ -281,18 +287,13 @@ impl Person {
       .get_result::<Self>(conn)
       .await
   }
-
 }
 
 #[async_trait]
 impl Signable for Person {
   type Form = Person;
   type IdType = PersonId;
-  async fn update_srv_sign(
-    pool: &DbPool,
-    person_id: PersonId,
-    sig: &str,
-  ) -> Result<Self, Error> {
+  async fn update_srv_sign(pool: &DbPool, person_id: PersonId, sig: &str) -> Result<Self, Error> {
     use crate::schema::person::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(person.find(person_id))
@@ -310,26 +311,29 @@ impl Signable for Person {
     use crate::schema::person::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(person.find(person_id))
-      .set((
-        tx.eq(txlink),
-        pipayid.eq(identifier)
-      ))
+      .set((tx.eq(txlink), pipayid.eq(identifier)))
       .get_result::<Self>(conn)
       .await
   }
 
-  async fn sign_data(data: &Person) -> (Option<String>, Option<String>, Option<String>) {    
+  async fn sign_data(data: &Person) -> (Option<String>, Option<String>, Option<String>) {
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
-    
-    let meta_data = format!("{};{};{};{}", data.id.clone().0.simple(), data.actor_id.clone().to_string(), data.name.clone(), data.published.clone().to_string());
 
-    sha_meta.update(format!("{}",meta_data));
-    let meta:  String = format!("{:x}", sha_meta.finalize());
+    let meta_data = format!(
+      "{};{};{};{}",
+      data.id.clone().0.simple(),
+      data.actor_id.clone().to_string(),
+      data.name.clone(),
+      data.published.clone().to_string()
+    );
+
+    sha_meta.update(format!("{}", meta_data));
+    let meta: String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(data.display_name.clone().unwrap_or_default());
-    let content_data:  String = format!("{:x}", sha_content.finalize());
+    let content_data: String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
     sha256.update(content_data.clone());
@@ -353,9 +357,9 @@ impl ApubActor for Person {
   async fn read_from_apub_id(pool: &DbPool, object_id: &DbUrl) -> Result<Option<Self>, Error> {
     let conn = &mut get_conn(pool).await?;
     Ok(
-      person
-        .filter(deleted.eq(false))
-        .filter(actor_id.eq(object_id))
+      person::table
+        .filter(person::deleted.eq(false))
+        .filter(person::actor_id.eq(object_id))
         .first::<Person>(conn)
         .await
         .ok()
@@ -369,12 +373,12 @@ impl ApubActor for Person {
     include_deleted: bool,
   ) -> Result<Person, Error> {
     let conn = &mut get_conn(pool).await?;
-    let mut q = person
+    let mut q = person::table
       .into_boxed()
-      .filter(local.eq(true))
-      .filter(lower(name).eq(lower(from_name)));
+      .filter(person::local.eq(true))
+      .filter(lower(person::name).eq(from_name.to_lowercase()));
     if !include_deleted {
-      q = q.filter(deleted.eq(false))
+      q = q.filter(person::deleted.eq(false))
     }
     q.first::<Self>(conn).await
   }
@@ -382,12 +386,15 @@ impl ApubActor for Person {
   async fn read_from_name_and_domain(
     pool: &DbPool,
     person_name: &str,
-    protocol_domain: &str,
+    for_domain: &str,
   ) -> Result<Person, Error> {
     let conn = &mut get_conn(pool).await?;
-    person
-      .filter(lower(name).eq(lower(person_name)))
-      .filter(actor_id.like(format!("{protocol_domain}%")))
+
+    person::table
+      .inner_join(instance::table)
+      .filter(lower(person::name).eq(person_name.to_lowercase()))
+      .filter(instance::domain.eq(for_domain))
+      .select(person::all_columns)
       .first::<Self>(conn)
       .await
   }
@@ -424,12 +431,14 @@ impl Followable for PersonFollower {
 }
 
 impl PersonFollower {
-  pub async fn list_followers(pool: &DbPool, person_id_: PersonId) -> Result<Vec<Person>, Error> {
-    use crate::schema::{person, person_follower, person_follower::person_id};
+  pub async fn list_followers(
+    pool: &DbPool,
+    for_person_id: PersonId,
+  ) -> Result<Vec<Person>, Error> {
     let conn = &mut get_conn(pool).await?;
     person_follower::table
-      .inner_join(person::table)
-      .filter(person_id.eq(person_id_))
+      .inner_join(person::table.on(person_follower::follower_id.eq(person::id)))
+      .filter(person_follower::person_id.eq(for_person_id))
       .select(person::all_columns)
       .load(conn)
       .await
@@ -446,9 +455,7 @@ mod tests {
     traits::{Crud, Followable, Signable},
     utils::build_db_pool_for_tests,
   };
-  use lemmy_utils::{
-    error::LemmyError,
-  };
+  use lemmy_utils::error::LemmyError;
   use serial_test::serial;
 
   #[tokio::test]
@@ -456,7 +463,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let new_person = PersonInsertForm::builder()
       .name("holly".into())
@@ -503,12 +512,12 @@ mod tests {
       dap_address: None,
       cosmos_address: None,
       sui_address: None,
-      auth_sign: None, 
+      auth_sign: None,
       srv_sign: None,
       pipayid: None,
-      tx : None,
+      tx: None,
     };
-        
+
     let read_person = Person::read(pool, inserted_person.id).await.unwrap();
 
     let update_person_form = PersonUpdateForm::builder()
@@ -530,7 +539,9 @@ mod tests {
   #[serial]
   async fn follow() {
     let pool = &build_db_pool_for_tests().await;
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let person_form_1 = PersonInsertForm::builder()
       .name("erich".into())

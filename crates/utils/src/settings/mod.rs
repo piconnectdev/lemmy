@@ -13,10 +13,13 @@ use ethsign::SecretKey;
 use rustc_hex::{FromHex};
 pub mod structs;
 
+use structs::DatabaseConnection;
+
 static DEFAULT_CONFIG_FILE: &str = "config/config.hjson";
 
-pub static SETTINGS: Lazy<Settings> =
-  Lazy::new(|| Settings::init().expect("Failed to load settings file"));
+pub static SETTINGS: Lazy<Settings> = Lazy::new(|| {
+  Settings::init().expect("Failed to load settings file, see documentation (https://join-lemmy.org/docs/en/administration/configuration.html)")
+});
 static WEBFINGER_REGEX: Lazy<Regex> = Lazy::new(|| {
   Regex::new(&format!(
     "^acct:([a-zA-Z0-9_]{{3,}})@{}$",
@@ -56,22 +59,26 @@ impl Settings {
   }
 
   pub fn get_database_url(&self) -> String {
-    let conf = &self.database;
-    format!(
-      "postgres://{}:{}@{}:{}/{}",
-      utf8_percent_encode(&conf.user, NON_ALPHANUMERIC),
-      utf8_percent_encode(&conf.password, NON_ALPHANUMERIC),
-      conf.host,
-      conf.port,
-      utf8_percent_encode(&conf.database, NON_ALPHANUMERIC),
-    )
+    match &self.database.connection {
+      DatabaseConnection::Uri { uri } => uri.clone(),
+      DatabaseConnection::Parts(parts) => {
+        format!(
+          "postgres://{}:{}@{}:{}/{}",
+          utf8_percent_encode(&parts.user, NON_ALPHANUMERIC),
+          utf8_percent_encode(&parts.password, NON_ALPHANUMERIC),
+          parts.host,
+          parts.port,
+          utf8_percent_encode(&parts.database, NON_ALPHANUMERIC),
+        )
+      }
+    }
   }
 
-  pub fn get_config_location() -> String {
+  fn get_config_location() -> String {
     env::var("LEMMY_CONFIG_LOCATION").unwrap_or_else(|_| DEFAULT_CONFIG_FILE.to_string())
   }
 
-  pub fn read_config_file() -> Result<String, Error> {
+  fn read_config_file() -> Result<String, Error> {
     fs::read_to_string(Self::get_config_location())
   }
 

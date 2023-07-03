@@ -1,16 +1,16 @@
 use crate::Perform;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::build_post_response,
   context::LemmyContext,
   post::{FeaturePost, PostResponse},
   utils::{
     check_community_ban,
     check_community_deleted_or_removed,
-    get_local_user_view_from_jwt,
     is_admin,
     is_mod_or_admin,
+    local_user_view_from_jwt,
   },
-  websocket::{send::send_post_ws_message, UserOperation},
 };
 use lemmy_db_schema::{
   source::{
@@ -20,21 +20,16 @@ use lemmy_db_schema::{
   traits::Crud,
   PostFeatureType,
 };
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for FeaturePost {
   type Response = PostResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<PostResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PostResponse, LemmyError> {
     let data: &FeaturePost = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let post_id = data.post_id;
     let orig_post = Post::read(context.pool(), post_id).await?;
@@ -82,12 +77,11 @@ impl Perform for FeaturePost {
 
     ModFeaturePost::create(context.pool(), &form).await?;
 
-    send_post_ws_message(
-      data.post_id,
-      UserOperation::FeaturePost,
-      websocket_id,
-      Some(local_user_view.person.id),
+    build_post_response(
       context,
+      orig_post.community_id,
+      local_user_view.person.id,
+      post_id,
     )
     .await
   }

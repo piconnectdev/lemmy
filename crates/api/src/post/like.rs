@@ -1,16 +1,16 @@
 use crate::Perform;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::build_post_response,
   context::LemmyContext,
   post::{CreatePostLike, PostResponse},
   utils::{
     check_community_ban,
     check_community_deleted_or_removed,
     check_downvotes_enabled,
-    get_local_user_view_from_jwt,
+    local_user_view_from_jwt,
     mark_post_as_read,
   },
-  websocket::{send::send_post_ws_message, UserOperation},
 };
 use lemmy_db_schema::{
   source::{
@@ -19,21 +19,16 @@ use lemmy_db_schema::{
   },
   traits::{Crud, Likeable},
 };
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for CreatePostLike {
   type Response = PostResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<PostResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PostResponse, LemmyError> {
     let data: &CreatePostLike = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     // Don't do a downvote if site has downvotes disabled
@@ -60,8 +55,7 @@ impl Perform for CreatePostLike {
     // Only add the like if the score isnt 0
     let do_add = like_form.score != 0 && (like_form.score == 1 || like_form.score == -1);
     if do_add {
-      let like_form2 = like_form.clone();
-      PostLike::like(context.pool(), &like_form2)
+      PostLike::like(context.pool(), &like_form)
         .await
         .map_err(|e| LemmyError::from_error_message(e, "couldnt_like_post"))?;
     }
@@ -69,12 +63,11 @@ impl Perform for CreatePostLike {
     // Mark the post as read
     mark_post_as_read(person_id, post_id, context.pool()).await?;
 
-    send_post_ws_message(
-      data.post_id,
-      UserOperation::CreatePostLike,
-      websocket_id,
-      Some(local_user_view.person.id),
+    build_post_response(
       context,
+      post.community_id,
+      local_user_view.person.id,
+      post_id,
     )
     .await
   }

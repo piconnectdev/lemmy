@@ -1,153 +1,55 @@
 use crate::SendActivity;
 use lemmy_api_common::{
   comment::{
-    CommentReportResponse,
-    CommentResponse,
-    DistinguishComment,
-    GetComment,
-    GetComments,
-    GetCommentsResponse,
-    ListCommentReports,
-    ListCommentReportsResponse,
-    ResolveCommentReport,
+    CommentReportResponse, CommentResponse, DistinguishComment, GetComment, GetComments,
+    GetCommentsResponse, ListCommentReports, ListCommentReportsResponse, ResolveCommentReport,
     SaveComment,
   },
   community::{
-    CommunityResponse,
-    CreateCommunity,
-    GetCommunity,
-    GetCommunityResponse,
-    ListCommunities,
-    ListCommunitiesResponse,
-    TransferCommunity,
+    CommunityResponse, CreateCommunity, GetCommunity, GetCommunityResponse, ListCommunities,
+    ListCommunitiesResponse, TransferCommunity,
+  },
+  custom_emoji::{
+    CreateCustomEmoji, CustomEmojiResponse, DeleteCustomEmoji, DeleteCustomEmojiResponse,
+    EditCustomEmoji,
   },
   person::{
-    AddAdmin,
-    AddAdminResponse,
-    BannedPersonsResponse,
-    BlockPerson,
-    BlockPersonResponse,
-    ChangePassword,
-    CommentReplyResponse,
-    GetBannedPersons,
-    GetCaptcha,
-    GetCaptchaResponse,
-    GetPersonDetails,
-    GetPersonDetailsResponse,
-    GetPersonMentions,
-    GetPersonMentionsResponse,
-    GetReplies,
-    GetRepliesResponse,
-    GetReportCount,
-    GetReportCountResponse,
-    GetUnreadCount,
-    GetUnreadCountResponse,
-    Login,
-    LoginResponse,
-    MarkAllAsRead,
-    MarkCommentReplyAsRead,
-    MarkPersonMentionAsRead,
-    PasswordChangeAfterReset,
-    PasswordReset,
-    PasswordResetResponse,
-    PersonMentionResponse,
-    Register,
-    SaveUserSettings,
-    VerifyEmail,
-    VerifyEmailResponse, GetToken, GetTokenResponse,
+    AddAdmin, AddAdminResponse, BannedPersonsResponse, BlockPerson, BlockPersonResponse,
+    ChangePassword, CommentReplyResponse, GetBannedPersons, GetCaptcha, GetCaptchaResponse,
+    GetPersonDetails, GetPersonDetailsResponse, GetPersonMentions, GetPersonMentionsResponse,
+    GetReplies, GetRepliesResponse, GetReportCount, GetReportCountResponse, GetToken,
+    GetTokenResponse, GetUnreadCount, GetUnreadCountResponse, Login, LoginResponse, MarkAllAsRead,
+    MarkCommentReplyAsRead, MarkPersonMentionAsRead, PasswordChangeAfterReset, PasswordReset,
+    PasswordResetResponse, PersonMentionResponse, Register, SaveUserSettings, VerifyEmail,
+    VerifyEmailResponse,
+  },
+  pipayment::{
+    CreatePayment, CreatePaymentResponse, GetPayment, GetPaymentResponse, GetPayments,
+    GetPaymentsResponse, GetPiBalances, GetPiBalancesResponse, PiAgreeRegister, PiAgreeResponse,
+    PiApprove, PiApproveResponse, PiKey, PiKeyResponse, PiLogin, PiPaymentComplete,
+    PiPaymentCompleteResponse, PiPaymentFound, PiPaymentFoundResponse, PiRegister,
+    PiRegisterWithFee, PiWithdraw, PiWithdrawResponse, SendPayment, SendPaymentResponse,
   },
   post::{
-    GetPost,
-    GetPostResponse,
-    GetPosts,
-    GetPostsResponse,
-    GetSiteMetadata,
-    GetSiteMetadataResponse,
-    ListPostReports,
-    ListPostReportsResponse,
-    MarkPostAsRead,
-    PostReportResponse,
-    PostResponse,
-    ResolvePostReport,
-    SavePost,
+    GetPost, GetPostResponse, GetPosts, GetPostsResponse, GetSiteMetadata, GetSiteMetadataResponse,
+    ListPostReports, ListPostReportsResponse, MarkPostAsRead, PostReportResponse, PostResponse,
+    ResolvePostReport, SavePost,
   },
   private_message::{
-    CreatePrivateMessageReport,
-    GetPrivateMessages,
-    ListPrivateMessageReports,
-    ListPrivateMessageReportsResponse,
-    MarkPrivateMessageAsRead,
-    PrivateMessageReportResponse,
-    PrivateMessageResponse,
-    PrivateMessagesResponse,
-    ResolvePrivateMessageReport,
+    CreatePrivateMessageReport, GetPrivateMessages, ListPrivateMessageReports,
+    ListPrivateMessageReportsResponse, MarkPrivateMessageAsRead, PrivateMessageReportResponse,
+    PrivateMessageResponse, PrivateMessagesResponse, ResolvePrivateMessageReport,
   },
   site::{
-    ApproveRegistrationApplication,
-    CreateSite,
-    EditSite,
-    GetModlog,
-    GetModlogResponse,
-    GetSite,
-    GetSiteResponse,
-    GetUnreadRegistrationApplicationCount,
-    GetUnreadRegistrationApplicationCountResponse,
-    LeaveAdmin,
-    ListRegistrationApplications,
-    ListRegistrationApplicationsResponse,
-    PurgeComment,
-    PurgeCommunity,
-    PurgeItemResponse,
-    PurgePerson,
-    PurgePost,
-    RegistrationApplicationResponse,
-    ResolveObject,
-    ResolveObjectResponse,
-    Search,
-    SearchResponse,
-    SiteResponse, GetMyUserInfo, GetMyUserInfoResponse,
+    ApproveRegistrationApplication, CreateSite, EditSite, GetFederatedInstances,
+    GetFederatedInstancesResponse, GetModlog, GetModlogResponse, GetMyUserInfo,
+    GetMyUserInfoResponse, GetSite, GetSiteResponse, GetUnreadRegistrationApplicationCount,
+    GetUnreadRegistrationApplicationCountResponse, LeaveAdmin, ListRegistrationApplications,
+    ListRegistrationApplicationsResponse, PurgeComment, PurgeCommunity, PurgeItemResponse,
+    PurgePerson, PurgePost, RegistrationApplicationResponse, ResolveObject, ResolveObjectResponse,
+    Search, SearchResponse, SiteResponse,
   },
-  websocket::structs::{
-    CommunityJoin,
-    CommunityJoinResponse,
-    ModJoin,
-    ModJoinResponse,
-    PostJoin,
-    PostJoinResponse,
-    UserJoin,
-    UserJoinResponse,
-  }, 
-  web3::{
-    Web3Register,
-    Web3Login,
-  }, 
-  pipayment::{
-    PiRegister,
-    PiLogin,
-    PiAgreeRegister,
-    PiRegisterWithFee,
-    PiApprove,
-    PiPaymentComplete,
-    PiPaymentFound, 
-    PiAgreeResponse, 
-    PiApproveResponse,
-    PiPaymentCompleteResponse, 
-    PiPaymentFoundResponse, 
-    PiKey, 
-    PiKeyResponse, 
-    GetPiBalances,
-    GetPiBalancesResponse, 
-    PiWithdraw, 
-    PiWithdrawResponse, 
-    GetPayment, 
-    GetPaymentResponse, 
-    GetPayments, 
-    GetPaymentsResponse, 
-    CreatePayment, 
-    CreatePaymentResponse, 
-    SendPayment, 
-    SendPaymentResponse, 
-  },
+  web3::{Web3Login, Web3Register},
 };
 
 impl SendActivity for Register {
@@ -266,22 +168,6 @@ impl SendActivity for PasswordChangeAfterReset {
   type Response = LoginResponse;
 }
 
-impl SendActivity for UserJoin {
-  type Response = UserJoinResponse;
-}
-
-impl SendActivity for PostJoin {
-  type Response = PostJoinResponse;
-}
-
-impl SendActivity for CommunityJoin {
-  type Response = CommunityJoinResponse;
-}
-
-impl SendActivity for ModJoin {
-  type Response = ModJoinResponse;
-}
-
 impl SendActivity for SaveUserSettings {
   type Response = LoginResponse;
 }
@@ -388,6 +274,22 @@ impl SendActivity for ListCommentReports {
 
 impl SendActivity for ResolveCommentReport {
   type Response = CommentReportResponse;
+}
+
+impl SendActivity for CreateCustomEmoji {
+  type Response = CustomEmojiResponse;
+}
+
+impl SendActivity for EditCustomEmoji {
+  type Response = CustomEmojiResponse;
+}
+
+impl SendActivity for DeleteCustomEmoji {
+  type Response = DeleteCustomEmojiResponse;
+}
+
+impl SendActivity for GetFederatedInstances {
+  type Response = GetFederatedInstancesResponse;
 }
 
 impl SendActivity for Web3Register {

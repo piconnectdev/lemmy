@@ -1,10 +1,10 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::build_community_response,
   community::{CommunityResponse, RemoveCommunity},
   context::LemmyContext,
-  utils::{get_local_user_view_from_jwt, is_admin},
-  websocket::{send::send_community_ws_message, UserOperationCrud},
+  utils::{is_admin, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::{
@@ -13,21 +13,16 @@ use lemmy_db_schema::{
   },
   traits::{Crud, ApubActor},
 };
-use lemmy_utils::{error::LemmyError, utils::time::naive_from_unix, ConnectionId};
+use lemmy_utils::{error::LemmyError, utils::time::naive_from_unix};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for RemoveCommunity {
   type Response = CommunityResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<CommunityResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<CommunityResponse, LemmyError> {
     let data: &RemoveCommunity = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     // Verify its an admin (only an admin can remove a community)
     is_admin(&local_user_view)?;
@@ -72,15 +67,6 @@ impl PerformCrud for RemoveCommunity {
     };
     ModRemoveCommunity::create(context.pool(), &form).await?;
 
-    let res = send_community_ws_message(
-      data.community_id,
-      UserOperationCrud::RemoveCommunity,
-      websocket_id,
-      Some(local_user_view.person.id),
-      context,
-    )
-    .await?;
-
-    Ok(res)
+    build_community_response(context, local_user_view, community_id).await
   }
 }

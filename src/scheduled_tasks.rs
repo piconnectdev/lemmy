@@ -1,53 +1,78 @@
-use clokwerk::{Scheduler, TimeUnits};
+use clokwerk::{Scheduler, TimeUnits as CTimeUnits};
+use diesel::{
+  dsl::{now, IntervalDsl},
+  Connection, ExpressionMethods, QueryDsl,
+};
 // Import week days and WeekDay
+use super::pipayments_tasks::*;
 use diesel::{sql_query, PgConnection, RunQueryDsl};
-use diesel::{Connection, ExpressionMethods, QueryDsl};
+use lemmy_api_common::context::LemmyContext;
 use lemmy_db_schema::{
+  schema::{
+    activity, comment_aggregates, community_aggregates, community_person_ban, instance, person,
+    post_aggregates,
+  },
   source::instance::{Instance, InstanceForm},
-  utils::naive_now,
+  utils::{functions::hot_rank, naive_now},
 };
 use lemmy_routes::nodeinfo::NodeInfo;
 use lemmy_utils::{error::LemmyError, REQWEST_TIMEOUT};
 use reqwest::blocking::Client;
 use std::{thread, time::Duration};
-use tracing::info;
-use super::pipayments_tasks::*;
+use tracing::{error, info};
 /// Schedules various cleanup tasks for lemmy in a background thread
-pub fn setup(db_url: String, user_agent: String) -> Result<(), LemmyError> {
+pub fn setup(
+  db_url: String,
+  user_agent: String,
+  context_1: LemmyContext,
+) -> Result<(), LemmyError> {
   // Setup the connections
   let mut scheduler = Scheduler::new();
 
-  let mut conn = PgConnection::establish(&db_url).expect("could not establish connection");
+  startup_jobs(&db_url);
+  /*
+    let mut conn_2 = PgConnection::establish(&db_url).expect("could not establish connection");
 
-  let mut conn_2 = PgConnection::establish(&db_url).expect("could not establish connection");
+    let user_agent2 = user_agent.clone();
+    let db_url2 = db_url.clone();
+    let db_url3 = db_url2.clone();
 
-  let user_agent2 = user_agent.clone();
-  let db_url2 = db_url.clone();
-  let db_url3 = db_url2.clone();
+    active_counts(&mut conn);
+    update_banned_when_expired(&mut conn);
 
-  active_counts(&mut conn);
-  update_banned_when_expired(&mut conn);
-
-  // On startup, reindex the tables non-concurrently
-  // TODO remove this for now, since it slows down startup a lot on lemmy.ml
-  //reindex_aggregates_tables(&mut conn, true);
-  scheduler.every(1.hour()).run(move || {
-    let conn = &mut PgConnection::establish(&db_url)
-      .unwrap_or_else(|_| panic!("Error connecting to {db_url}"));
-    active_counts(conn);
-    update_banned_when_expired(conn);
-    reindex_aggregates_tables(conn, true);
-    drop_ccnew_indexes(conn);
+  */
+  // Update active counts every hour
+  let url = db_url.clone();
+  scheduler.every(CTimeUnits::hour(1)).run(move || {
+    let mut conn = PgConnection::establish(&url).expect("could not establish connection");
+    active_counts(&mut conn);
+    update_banned_when_expired(&mut conn);
   });
 
-  clear_old_activities(&mut conn);
-  scheduler.every(1.weeks()).run(move || {
+  // Update hot ranks every 5 minutes
+  let url = db_url.clone();
+  scheduler.every(CTimeUnits::minutes(5)).run(move || {
+    let mut conn = PgConnection::establish(&url).expect("could not establish connection");
+    update_hot_ranks(&mut conn, true);
+  });
+
+  // Clear old activities every week
+  let url = db_url.clone();
+  scheduler.every(CTimeUnits::weeks(1)).run(move || {
+    let mut conn = PgConnection::establish(&url).expect("could not establish connection");
     clear_old_activities(&mut conn);
   });
 
-  update_instance_software(&mut conn_2, &user_agent);
-  scheduler.every(1.days()).run(move || {
-    update_instance_software(&mut conn_2, &user_agent);
+  // Remove old rate limit buckets after 1 to 2 hours of inactivity
+  scheduler.every(CTimeUnits::hour(1)).run(move || {
+    let hour = Duration::from_secs(3600);
+    context_1.settings_updated_channel().remove_older_than(hour);
+  });
+
+  // Update the Instance Software
+  scheduler.every(CTimeUnits::days(1)).run(move || {
+    let mut conn = PgConnection::establish(&db_url).expect("could not establish connection");
+    update_instance_software(&mut conn, &user_agent);
   });
 
   // pipayment_task(&db_url2, &user_agent2);
@@ -62,36 +87,91 @@ pub fn setup(db_url: String, user_agent: String) -> Result<(), LemmyError> {
   }
 }
 
-/// Reindex the aggregates tables every one hour
-/// This is necessary because hot_rank is actually a mutable function:
-/// https://dba.stackexchange.com/questions/284052/how-to-create-an-index-based-on-a-time-based-function-in-postgres?noredirect=1#comment555727_284052
-fn reindex_aggregates_tables(conn: &mut PgConnection, concurrently: bool) {
-  for table_name in &[
-    "post_aggregates",
-    "comment_aggregates",
-    "community_aggregates",
-  ] {
-    reindex_table(conn, table_name, concurrently);
-  }
+/// Run these on server startup
+fn startup_jobs(db_url: &str) {
+  let mut conn = PgConnection::establish(db_url).expect("could not establish connection");
+  active_counts(&mut conn);
+  update_hot_ranks(&mut conn, false);
+  update_banned_when_expired(&mut conn);
+  clear_old_activities(&mut conn);
 }
 
-fn reindex_table(conn: &mut PgConnection, table_name: &str, concurrently: bool) {
-  let concurrently_str = if concurrently { "concurrently" } else { "" };
-  info!("Reindexing table {} {} ...", concurrently_str, table_name);
-  let query = format!("reindex table {concurrently_str} {table_name}");
-  sql_query(query).execute(conn).expect("reindex table");
-  info!("Done.");
+/// Update the hot_rank columns for the aggregates tables
+fn update_hot_ranks(conn: &mut PgConnection, last_week_only: bool) {
+  let mut post_update = diesel::update(post_aggregates::table).into_boxed();
+  let mut comment_update = diesel::update(comment_aggregates::table).into_boxed();
+  let mut community_update = diesel::update(community_aggregates::table).into_boxed();
+
+  // Only update for the last week of content
+  if last_week_only {
+    info!("Updating hot ranks for last week...");
+    let last_week = now - diesel::dsl::IntervalDsl::weeks(1);
+
+    post_update = post_update.filter(post_aggregates::published.gt(last_week));
+    comment_update = comment_update.filter(comment_aggregates::published.gt(last_week));
+    community_update = community_update.filter(community_aggregates::published.gt(last_week));
+  } else {
+    info!("Updating hot ranks for all history...");
+  }
+
+  match post_update
+    .set((
+      post_aggregates::hot_rank.eq(hot_rank(post_aggregates::score, post_aggregates::published)),
+      post_aggregates::hot_rank_active.eq(hot_rank(
+        post_aggregates::score,
+        post_aggregates::newest_comment_time_necro,
+      )),
+    ))
+    .execute(conn)
+  {
+    Ok(_) => {}
+    Err(e) => {
+      error!("Failed to update post_aggregates hot_ranks: {}", e)
+    }
+  }
+
+  match comment_update
+    .set(comment_aggregates::hot_rank.eq(hot_rank(
+      comment_aggregates::score,
+      comment_aggregates::published,
+    )))
+    .execute(conn)
+  {
+    Ok(_) => {}
+    Err(e) => {
+      error!("Failed to update comment_aggregates hot_ranks: {}", e)
+    }
+  }
+
+  match community_update
+    .set(community_aggregates::hot_rank.eq(hot_rank(
+      community_aggregates::subscribers,
+      community_aggregates::published,
+    )))
+    .execute(conn)
+  {
+    Ok(_) => {
+      info!("Done.");
+    }
+    Err(e) => {
+      error!("Failed to update community_aggregates hot_ranks: {}", e)
+    }
+  }
 }
 
 /// Clear old activities (this table gets very large)
 fn clear_old_activities(conn: &mut PgConnection) {
-  use diesel::dsl::{now, IntervalDsl};
-  use lemmy_db_schema::schema::activity::dsl::{activity, published};
   info!("Clearing old activities...");
-  diesel::delete(activity.filter(published.lt(now - 6.months())))
+  match diesel::delete(activity::table.filter(activity::published.lt(now - 6.months())))
     .execute(conn)
-    .expect("clear old activities");
-  info!("Done.");
+  {
+    Ok(_) => {
+      info!("Done.");
+    }
+    Err(e) => {
+      error!("Failed to clear old activities: {}", e)
+    }
+  }
 }
 
 /// Re-calculate the site and community active counts every 12 hours
@@ -110,14 +190,20 @@ fn active_counts(conn: &mut PgConnection) {
       "update site_aggregates set users_active_{} = (select * from site_aggregates_activity('{}'))",
       i.1, i.0
     );
-    sql_query(update_site_stmt)
-      .execute(conn)
-      .expect("update site stats");
+    match sql_query(update_site_stmt).execute(conn) {
+      Ok(_) => {}
+      Err(e) => {
+        error!("Failed to update site stats: {}", e)
+      }
+    }
 
     let update_community_stmt = format!("update community_aggregates ca set users_active_{} = mv.count_ from community_aggregates_activity('{}') mv where ca.community_id = mv.community_id_", i.1, i.0);
-    sql_query(update_community_stmt)
-      .execute(conn)
-      .expect("update community stats");
+    match sql_query(update_community_stmt).execute(conn) {
+      Ok(_) => {}
+      Err(e) => {
+        error!("Failed to update community stats: {}", e)
+      }
+    }
   }
 
   info!("Done.");
@@ -126,37 +212,53 @@ fn active_counts(conn: &mut PgConnection) {
 /// Set banned to false after ban expires
 fn update_banned_when_expired(conn: &mut PgConnection) {
   info!("Updating banned column if it expires ...");
-  let update_ban_expires_stmt =
-    "update person set banned = false where banned = true and ban_expires < now()";
-  sql_query(update_ban_expires_stmt)
-    .execute(conn)
-    .expect("update banned when expires");
-}
 
-/// Drops the phantom CCNEW indexes created by postgres
-/// https://github.com/LemmyNet/lemmy/issues/2431
-fn drop_ccnew_indexes(conn: &mut PgConnection) {
-  info!("Dropping phantom ccnew indexes...");
-  let drop_stmt = "select drop_ccnew_indexes()";
-  sql_query(drop_stmt)
+  match diesel::update(
+    person::table
+      .filter(person::banned.eq(true))
+      .filter(person::ban_expires.lt(now)),
+  )
+  .set(person::banned.eq(false))
+  .execute(conn)
+  {
+    Ok(_) => {}
+    Err(e) => {
+      error!("Failed to update person.banned when expires: {}", e)
+    }
+  }
+  match diesel::delete(community_person_ban::table.filter(community_person_ban::expires.lt(now)))
     .execute(conn)
-    .expect("drop ccnew indexes");
+  {
+    Ok(_) => {}
+    Err(e) => {
+      error!("Failed to remove community_ban expired rows: {}", e)
+    }
+  }
 }
 
 /// Updates the instance software and version
 fn update_instance_software(conn: &mut PgConnection, user_agent: &str) {
-  use lemmy_db_schema::schema::instance;
   info!("Updating instances software and versions...");
 
-  let client = Client::builder()
+  let client = match Client::builder()
     .user_agent(user_agent)
     .timeout(REQWEST_TIMEOUT)
     .build()
-    .expect("couldnt build reqwest client");
+  {
+    Ok(client) => client,
+    Err(e) => {
+      error!("Failed to build reqwest client: {}", e);
+      return;
+    }
+  };
 
-  let instances = instance::table
-    .get_results::<Instance>(conn)
-    .expect("no instances found");
+  let instances = match instance::table.get_results::<Instance>(conn) {
+    Ok(instances) => instances,
+    Err(e) => {
+      error!("Failed to get instances: {}", e);
+      return;
+    }
+  };
 
   for instance in instances {
     let node_info_url = format!("https://{}/nodeinfo/2.0.json", instance.domain);
@@ -177,13 +279,20 @@ fn update_instance_software(conn: &mut PgConnection, user_agent: &str) {
         .updated(Some(naive_now()))
         .build();
 
-      diesel::update(instance::table.find(instance.id))
+      match diesel::update(instance::table.find(instance.id))
         .set(form)
         .execute(conn)
-        .expect("update site instance software");
+      {
+        Ok(_) => {
+          info!("Done.");
+        }
+        Err(e) => {
+          error!("Failed to update site instance software: {}", e);
+          return;
+        }
+      }
     }
   }
-  info!("Done.");
 }
 
 #[cfg(test)]
@@ -192,6 +301,7 @@ mod tests {
   use reqwest::Client;
 
   #[tokio::test]
+  #[ignore]
   async fn test_nodeinfo() {
     let client = Client::builder().build().unwrap();
     let lemmy_ml_nodeinfo = client

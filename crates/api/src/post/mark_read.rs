@@ -3,24 +3,19 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   post::{MarkPostAsRead, PostResponse},
-  utils::{get_local_user_view_from_jwt, mark_post_as_read, mark_post_as_unread},
+  utils::{local_user_view_from_jwt, mark_post_as_read, mark_post_as_unread},
 };
 use lemmy_db_views::structs::PostView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for MarkPostAsRead {
   type Response = PostResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<Self::Response, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<Self::Response, LemmyError> {
     let data = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let post_id = data.post_id;
     let person_id = local_user_view.person.id;
@@ -33,10 +28,8 @@ impl Perform for MarkPostAsRead {
     }
 
     // Fetch it
-    let post_view = PostView::read(context.pool(), post_id, Some(person_id)).await?;
+    let post_view = PostView::read(context.pool(), post_id, Some(person_id), None).await?;
 
-    let res = Self::Response { post_view };
-
-    Ok(res)
+    Ok(Self::Response { post_view })
   }
 }

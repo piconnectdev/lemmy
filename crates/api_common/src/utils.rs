@@ -1,36 +1,33 @@
-use crate::{request::purge_image_from_pictrs, sensitive::Sensitive, site::FederatedInstances};
+use crate::{
+  context::LemmyContext, request::purge_image_from_pictrs, sensitive::Sensitive,
+  site::FederatedInstances,
+};
 use anyhow::Context;
 use chrono::NaiveDateTime;
+use futures::try_join;
 use lemmy_db_schema::{
   impls::person::is_banned,
   newtypes::{CommunityId, DbUrl, LocalUserId, PersonId, PostId},
   source::{
     comment::{Comment, CommentUpdateForm},
-    community::{Community, CommunityUpdateForm},
+    community::{Community, CommunityModerator, CommunityUpdateForm},
     email_verification::{EmailVerification, EmailVerificationForm},
     instance::Instance,
-    local_site::{LocalSite, RegistrationMode},
+    local_site::LocalSite,
     local_site_rate_limit::LocalSiteRateLimit,
     password_reset_request::PasswordResetRequest,
     person::{Person, PersonUpdateForm},
     person_block::PersonBlock,
     post::{Post, PostRead, PostReadForm},
     registration_application::RegistrationApplication,
-    secret::Secret,
   },
   traits::{Crud, Readable},
   utils::DbPool,
-  ListingType,
+  RegistrationMode,
 };
-use lemmy_db_views::{
-  comment_view::CommentQuery,
-  structs::{LocalUserSettingsView, LocalUserView},
-};
+use lemmy_db_views::{comment_view::CommentQuery, structs::LocalUserView};
 use lemmy_db_views_actor::structs::{
-  CommunityModeratorView,
-  CommunityPersonBanView,
-  CommunityView,
-  PersonViewSafe,
+  CommunityModeratorView, CommunityPersonBanView, CommunityView, PersonView,
 };
 use lemmy_utils::{
   claims::Claims,
@@ -44,7 +41,6 @@ use lemmy_utils::{
 use regex::Regex;
 use reqwest_middleware::ClientWithMiddleware;
 use rosetta_i18n::{Language, LanguageId};
-use std::str::FromStr;
 use tracing::warn;
 use url::{ParseError, Url};
 
@@ -61,10 +57,27 @@ pub async fn is_mod_or_admin(
   Ok(())
 }
 
+#[tracing::instrument(skip_all)]
+pub async fn is_mod_or_admin_opt(
+  pool: &DbPool,
+  local_user_view: Option<&LocalUserView>,
+  community_id: Option<CommunityId>,
+) -> Result<(), LemmyError> {
+  if let Some(local_user_view) = local_user_view {
+    if let Some(community_id) = community_id {
+      is_mod_or_admin(pool, local_user_view.person.id, community_id).await
+    } else {
+      is_admin(local_user_view)
+    }
+  } else {
+    Err(LemmyError::from_message("not_a_mod_or_admin"))
+  }
+}
+
 pub async fn is_top_admin(pool: &DbPool, person_id: PersonId) -> Result<(), LemmyError> {
-  let admins = PersonViewSafe::admins(pool).await?;
+  let admins = PersonView::admins(pool).await?;
   let top_admin = admins
-    .get(0)
+    .first()
     .ok_or_else(|| LemmyError::from_message("no admins"))?;
 
   if top_admin.person.id != person_id {
@@ -76,6 +89,21 @@ pub async fn is_top_admin(pool: &DbPool, person_id: PersonId) -> Result<(), Lemm
 pub fn is_admin(local_user_view: &LocalUserView) -> Result<(), LemmyError> {
   if !local_user_view.person.admin {
     return Err(LemmyError::from_message("not_an_admin"));
+  }
+  Ok(())
+}
+
+pub fn is_top_mod(
+  local_user_view: &LocalUserView,
+  community_mods: &[CommunityModeratorView],
+) -> Result<(), LemmyError> {
+  if local_user_view.person.id
+    != community_mods
+      .first()
+      .map(|cm| cm.moderator.id)
+      .unwrap_or(PersonId(0))
+  {
+    return Err(LemmyError::from_message("not_top_mod"));
   }
   Ok(())
 }
@@ -114,16 +142,15 @@ pub async fn mark_post_as_unread(
 }
 
 #[tracing::instrument(skip_all)]
-pub async fn get_local_user_view_from_jwt(
+pub async fn local_user_view_from_jwt(
   jwt: &str,
-  pool: &DbPool,
-  secret: &Secret,
+  context: &LemmyContext,
 ) -> Result<LocalUserView, LemmyError> {
-  let claims = Claims::decode(jwt, &secret.jwt_secret)
+  let claims = Claims::decode(jwt, &context.secret().jwt_secret)
     .map_err(|e| e.with_message("not_logged_in"))?
     .claims;
   let local_user_id = LocalUserId(claims.sub);
-  let local_user_view = LocalUserView::read(pool, local_user_id).await?;
+  let local_user_view = LocalUserView::read(context.pool(), local_user_id).await?;
   check_user_valid(
     local_user_view.person.banned,
     local_user_view.person.ban_expires,
@@ -133,6 +160,14 @@ pub async fn get_local_user_view_from_jwt(
   check_validator_time(&local_user_view.local_user.validator_time, &claims)?;
 
   Ok(local_user_view)
+}
+
+#[tracing::instrument(skip_all)]
+pub async fn local_user_view_from_jwt_opt(
+  jwt: Option<&Sensitive<String>>,
+  context: &LemmyContext,
+) -> Option<LocalUserView> {
+  local_user_view_from_jwt(jwt?, context).await.ok()
 }
 
 /// Checks if user's token was issued before user's password reset.
@@ -148,44 +183,6 @@ pub fn check_validator_time(
   }
 }
 
-#[tracing::instrument(skip_all)]
-pub async fn get_local_user_view_from_jwt_opt(
-  jwt: Option<&Sensitive<String>>,
-  pool: &DbPool,
-  secret: &Secret,
-) -> Result<Option<LocalUserView>, LemmyError> {
-  match jwt {
-    Some(jwt) => Ok(Some(get_local_user_view_from_jwt(jwt, pool, secret).await?)),
-    None => Ok(None),
-  }
-}
-
-#[tracing::instrument(skip_all)]
-pub async fn get_local_user_settings_view_from_jwt_opt(
-  jwt: Option<&Sensitive<String>>,
-  pool: &DbPool,
-  secret: &Secret,
-) -> Result<Option<LocalUserSettingsView>, LemmyError> {
-  match jwt {
-    Some(jwt) => {
-      let claims = Claims::decode(jwt.as_ref(), &secret.jwt_secret)
-        .map_err(|e| e.with_message("not_logged_in"))?
-        .claims;
-      let local_user_id = LocalUserId(claims.sub);
-      let local_user_view = LocalUserSettingsView::read(pool, local_user_id).await?;
-      check_user_valid(
-        local_user_view.person.banned,
-        local_user_view.person.ban_expires,
-        local_user_view.person.deleted,
-      )?;
-
-      check_validator_time(&local_user_view.local_user.validator_time, &claims)?;
-
-      Ok(Some(local_user_view))
-    }
-    None => Ok(None),
-  }
-}
 pub fn check_user_valid(
   banned: bool,
   ban_expires: Option<NaiveDateTime>,
@@ -285,13 +282,11 @@ pub async fn build_federated_instances(
 ) -> Result<Option<FederatedInstances>, LemmyError> {
   if local_site.federation_enabled {
     // TODO I hate that this requires 3 queries
-    let linked = Instance::linked(pool).await?;
-    let allowed = Instance::allowlist(pool).await?;
-    let blocked = Instance::blocklist(pool).await?;
-
-    // These can return empty vectors, so convert them to options
-    let allowed = (!allowed.is_empty()).then_some(allowed);
-    let blocked = (!blocked.is_empty()).then_some(blocked);
+    let (linked, allowed, blocked) = try_join!(
+      Instance::linked(pool),
+      Instance::allowlist(pool),
+      Instance::blocklist(pool)
+    )?;
 
     Ok(Some(FederatedInstances {
       linked,
@@ -403,22 +398,11 @@ pub async fn send_verification_email(
   Ok(())
 }
 
-pub fn send_email_verification_success(
-  user: &LocalUserView,
-  settings: &Settings,
-) -> Result<(), LemmyError> {
-  let email = &user.local_user.email.clone().expect("email");
-  let lang = get_interface_language(user);
-  let subject = &lang.email_verified_subject(&user.person.actor_id);
-  let body = &lang.email_verified_body();
-  send_email(subject, email, &user.person.name, body, settings)
-}
-
 pub fn get_interface_language(user: &LocalUserView) -> Lang {
   lang_str_to_lang(&user.local_user.interface_language)
 }
 
-pub fn get_interface_language_from_settings(user: &LocalUserSettingsView) -> Lang {
+pub fn get_interface_language_from_settings(user: &LocalUserView) -> Lang {
   lang_str_to_lang(&user.local_user.interface_language)
 }
 
@@ -479,7 +463,7 @@ pub async fn send_new_applicant_email_to_admins(
   settings: &Settings,
 ) -> Result<(), LemmyError> {
   // Collect the admins with emails
-  let admins = LocalUserSettingsView::list_admins_with_emails(pool).await?;
+  let admins = LocalUserView::list_admins_with_emails(pool).await?;
 
   let applications_link = &format!(
     "{}/registration_applications",
@@ -504,7 +488,7 @@ pub async fn send_new_report_email_to_admins(
   settings: &Settings,
 ) -> Result<(), LemmyError> {
   // Collect the admins with emails
-  let admins = LocalUserSettingsView::list_admins_with_emails(pool).await?;
+  let admins = LocalUserView::list_admins_with_emails(pool).await?;
 
   let reports_link = &format!("{}/reports", settings.get_protocol_and_hostname(),);
 
@@ -512,7 +496,7 @@ pub async fn send_new_report_email_to_admins(
     // TODO: Check Lang pack
     // let email = &admin.local_user.email.clone().expect("email");
     // let lang = get_interface_language_from_settings(admin);
-    // let subject = lang.new_report_subject(&settings.hostname, reporter_username, reported_username);
+    // let subject = lang.new_report_subject(&settings.hostname, reported_username, reporter_username);
     // let body = lang.new_report_body(reports_link);
     // send_email(&subject, email, &admin.person.name, &body, settings)?;
   }
@@ -524,7 +508,8 @@ pub async fn check_registration_application(
   local_site: &LocalSite,
   pool: &DbPool,
 ) -> Result<(), LemmyError> {
-  if local_site.registration_mode == RegistrationMode::RequireApplication
+  if (local_site.registration_mode == RegistrationMode::RequireApplication
+    || local_site.registration_mode == RegistrationMode::Closed)
     && !local_user_view.local_user.accepted_application
     && !local_user_view.person.admin
   {
@@ -747,18 +732,12 @@ pub async fn delete_user_account(
   // Purge image posts
   purge_image_posts_for_person(person_id, pool, settings, client).await?;
 
+  // Leave communities they mod
+  CommunityModerator::leave_all_communities(pool, person_id).await?;
+
   Person::delete_account(pool, person_id).await?;
 
   Ok(())
-}
-
-pub fn listing_type_with_site_default(
-  listing_type: Option<ListingType>,
-  local_site: &LocalSite,
-) -> Result<ListingType, LemmyError> {
-  Ok(listing_type.unwrap_or(ListingType::from_str(
-    &local_site.default_post_listing_type,
-  )?))
 }
 
 #[cfg(test)]

@@ -3,77 +3,104 @@ use lemmy_db_schema::{
   source::{
     comment::Comment,
     comment_reply::CommentReply,
-    community::CommunitySafe,
-    person::PersonSafe,
+    community::Community,
+    person::Person,
     person_mention::PersonMention,
     post::Post,
   },
   SubscribedType,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
+#[cfg(feature = "full")]
+use ts_rs::TS;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A community block.
 pub struct CommunityBlockView {
-  pub person: PersonSafe,
-  pub community: CommunitySafe,
+  pub person: Person,
+  pub community: Community,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A community follower.
 pub struct CommunityFollowerView {
-  pub community: CommunitySafe,
-  pub follower: PersonSafe,
+  pub community: Community,
+  pub follower: Person,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A community moderator.
 pub struct CommunityModeratorView {
-  pub community: CommunitySafe,
-  pub moderator: PersonSafe,
+  pub community: Community,
+  pub moderator: Person,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// A community person ban.
 pub struct CommunityPersonBanView {
-  pub community: CommunitySafe,
-  pub person: PersonSafe,
+  pub community: Community,
+  pub person: Person,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A community view.
 pub struct CommunityView {
-  pub community: CommunitySafe,
+  pub community: Community,
   pub subscribed: SubscribedType,
   pub blocked: bool,
   pub counts: CommunityAggregates,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A person block.
 pub struct PersonBlockView {
-  pub person: PersonSafe,
-  pub target: PersonSafe,
+  pub person: Person,
+  pub target: Person,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A person mention view.
 pub struct PersonMentionView {
   pub person_mention: PersonMention,
   pub comment: Comment,
-  pub creator: PersonSafe,
+  pub creator: Person,
   pub post: Post,
-  pub community: CommunitySafe,
-  pub recipient: PersonSafe,
+  pub community: Community,
+  pub recipient: Person,
   pub counts: CommentAggregates,
-  pub creator_banned_from_community: bool, // Left Join to CommunityPersonBan
-  pub subscribed: SubscribedType,          // Left join to CommunityFollower
-  pub saved: bool,                         // Left join to CommentSaved
-  pub creator_blocked: bool,               // Left join to PersonBlock
-  pub my_vote: Option<i16>,                // Left join to CommentLike
+  pub creator_banned_from_community: bool,
+  pub subscribed: SubscribedType,
+  pub saved: bool,
+  pub creator_blocked: bool,
+  pub my_vote: Option<i16>,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A comment reply view.
 pub struct CommentReplyView {
   pub comment_reply: CommentReply,
   pub comment: Comment,
-  pub creator: PersonSafe,
+  pub creator: Person,
   pub post: Post,
-  pub community: CommunitySafe,
-  pub recipient: PersonSafe,
+  pub community: Community,
+  pub recipient: Person,
   pub counts: CommentAggregates,
   pub creator_banned_from_community: bool, // Left Join to CommunityPersonBan
   pub subscribed: SubscribedType,          // Left join to CommunityFollower
@@ -83,7 +110,10 @@ pub struct CommentReplyView {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PersonViewSafe {
-  pub person: PersonSafe,
+#[cfg_attr(feature = "full", derive(TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A person view.
+pub struct PersonView {
+  pub person: Person,
   pub counts: PersonAggregates,
 }

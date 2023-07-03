@@ -1,7 +1,10 @@
+#[cfg(feature = "full")]
+pub mod build_response;
 pub mod comment;
 pub mod community;
 #[cfg(feature = "full")]
 pub mod context;
+pub mod custom_emoji;
 pub mod person;
 pub mod pipayment;
 pub mod post;
@@ -13,11 +16,7 @@ pub mod site;
 #[cfg(feature = "full")]
 pub mod utils;
 pub mod web3;
-#[cfg(feature = "full")]
-pub mod websocket;
 
-#[macro_use]
-extern crate strum_macros;
 pub extern crate lemmy_db_schema;
 pub extern crate lemmy_db_views;
 pub extern crate lemmy_db_views_actor;

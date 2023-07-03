@@ -17,8 +17,8 @@ lemmy_db_views = { workspace = true }
 lemmy_db_views_actor = { workspace = true }
 lemmy_db_schema = { workspace = true }
 lemmy_api_common = { workspace = true, features = ["full"] }
-diesel = { workspace = true }
-actix-web = { workspace = true }
+activitypub_federation = { workspace = true }
+actix-web = { workspace = true, features = ["cookies"] }
 anyhow = { workspace = true }
 chrono = { workspace = true }
 futures = { workspace = true }
@@ -30,4 +30,4 @@ strum = { workspace = true }
 once_cell = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
-rss = "2.0.1"
+rss = "2.0.4"

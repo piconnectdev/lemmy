@@ -2,7 +2,7 @@ use crate::{
   aggregates::structs::CommentAggregates,
   newtypes::CommentId,
   schema::comment_aggregates,
-  utils::{get_conn, DbPool},
+  utils::{functions::hot_rank, get_conn, DbPool},
 };
 use diesel::{result::Error, ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
@@ -13,6 +13,19 @@ impl CommentAggregates {
     comment_aggregates::table
       .filter(comment_aggregates::comment_id.eq(comment_id))
       .first::<Self>(conn)
+      .await
+  }
+
+  pub async fn update_hot_rank(pool: &DbPool, comment_id: CommentId) -> Result<Self, Error> {
+    let conn = &mut get_conn(pool).await?;
+
+    diesel::update(comment_aggregates::table)
+      .filter(comment_aggregates::comment_id.eq(comment_id))
+      .set(comment_aggregates::hot_rank.eq(hot_rank(
+        comment_aggregates::score,
+        comment_aggregates::published,
+      )))
+      .get_result::<Self>(conn)
       .await
   }
 }
@@ -38,7 +51,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let new_person = PersonInsertForm::builder()
       .name("thommy_comment_agg".into())

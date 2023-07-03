@@ -3,28 +3,23 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   person::{BlockPerson, BlockPersonResponse},
-  utils::get_local_user_view_from_jwt,
+  utils::local_user_view_from_jwt,
 };
 use lemmy_db_schema::{
   source::person_block::{PersonBlock, PersonBlockForm},
   traits::Blockable,
 };
-use lemmy_db_views_actor::structs::PersonViewSafe;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_db_views_actor::structs::PersonView;
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for BlockPerson {
   type Response = BlockPersonResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<BlockPersonResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<BlockPersonResponse, LemmyError> {
     let data: &BlockPerson = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let target_id = data.person_id;
     let person_id = local_user_view.person.id;
@@ -39,7 +34,7 @@ impl Perform for BlockPerson {
       target_id,
     };
 
-    let target_person_view = PersonViewSafe::read(context.pool(), target_id).await?;
+    let target_person_view = PersonView::read(context.pool(), target_id).await?;
 
     if target_person_view.person.admin {
       return Err(LemmyError::from_message("cant_block_admin"));
@@ -55,11 +50,9 @@ impl Perform for BlockPerson {
         .map_err(|e| LemmyError::from_error_message(e, "person_block_already_exists"))?;
     }
 
-    let res = BlockPersonResponse {
+    Ok(BlockPersonResponse {
       person_view: target_person_view,
       blocked: data.block,
-    };
-
-    Ok(res)
+    })
   }
 }

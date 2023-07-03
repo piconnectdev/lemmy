@@ -1,3 +1,24 @@
+// @generated automatically by Diesel CLI.
+
+use uuid::Uuid;
+//use crate::schema::Uuid;
+//use diesel::sql_types::Uuid;
+//use diesel::pg::sql_types::Uuid;
+
+pub mod sql_types {
+  #[derive(diesel::sql_types::SqlType)]
+  #[diesel(postgres_type(name = "listing_type_enum"))]
+  pub struct ListingTypeEnum;
+
+  #[derive(diesel::sql_types::SqlType)]
+  #[diesel(postgres_type(name = "registration_mode_enum"))]
+  pub struct RegistrationModeEnum;
+
+  #[derive(diesel::sql_types::SqlType)]
+  #[diesel(postgres_type(name = "sort_type_enum"))]
+  pub struct SortTypeEnum;
+}
+
 diesel::table! {
     activity (id) {
         id -> Uuid,
@@ -49,6 +70,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::{Bool, Int4, Nullable, Text, Timestamp, Varchar};
   use diesel_ltree::sql_types::Ltree;
   use diesel::sql_types::*;
 
@@ -61,6 +83,7 @@ diesel::table! {
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
         deleted -> Bool,
+        #[max_length = 255]
         ap_id -> Varchar,
         local -> Bool,
         path -> Ltree,
@@ -82,7 +105,8 @@ diesel::table! {
         upvotes -> Int8,
         downvotes -> Int8,
         published -> Timestamp,
-        child_count ->  Int4,
+        child_count -> Int4,
+        hot_rank -> Int4,
     }
 }
 
@@ -133,7 +157,9 @@ diesel::table! {
 diesel::table! {
     community (id) {
         id -> Uuid,
+        #[max_length = 255]
         name -> Varchar,
+        #[max_length = 255]
         title -> Varchar,
         description -> Nullable<Text>,
         removed -> Bool,
@@ -141,21 +167,27 @@ diesel::table! {
         updated -> Nullable<Timestamp>,
         deleted -> Bool,
         nsfw -> Bool,
+        #[max_length = 255]
         actor_id -> Varchar,
         local -> Bool,
         private_key -> Nullable<Text>,
         public_key -> Text,
         last_refreshed_at -> Timestamp,
-        icon -> Nullable<Varchar>,
-        banner -> Nullable<Varchar>,
+        icon -> Nullable<Text>,
+        banner -> Nullable<Text>,
+        #[max_length = 255]
         followers_url -> Varchar,
+        #[max_length = 255]
         inbox_url -> Varchar,
+        #[max_length = 255]
         shared_inbox_url -> Nullable<Varchar>,
-        moderators_url -> Nullable<Varchar>,
-        featured_url -> Nullable<Varchar>,
         hidden -> Bool,
         posting_restricted_to_mods -> Bool,
         instance_id -> Uuid,
+        #[max_length = 255]
+        moderators_url -> Nullable<Varchar>,
+        #[max_length = 255]
+        featured_url -> Nullable<Varchar>,
         is_home -> Bool,
         person_id -> Nullable<Uuid>,
         srv_sign -> Nullable<Text>,
@@ -177,6 +209,7 @@ diesel::table! {
         users_active_week -> Int8,
         users_active_month -> Int8,
         users_active_half_year -> Int8,
+        hot_rank -> Int4,
     }
 }
 
@@ -254,7 +287,7 @@ diesel::table! {
     id -> Uuid,
     local_user_id -> Uuid,
     email -> Text,
-    verification_token -> Varchar,
+    verification_token -> Text,
     published -> Timestamp,
   }
 }
@@ -280,25 +313,30 @@ diesel::table! {
 diesel::table! {
   instance(id) {
     id -> Uuid,
-    domain -> Text,
-    software -> Nullable<Text>,
-    version -> Nullable<Text>,
+    #[max_length = 255]
+    domain -> Varchar,
     published -> Timestamp,
     updated -> Nullable<Timestamp>,
+    #[max_length = 255]
+    software -> Nullable<Varchar>,
+    #[max_length = 255]
+    version -> Nullable<Varchar>,
   }
 }
 
 diesel::table! {
     language (id) {
         id -> Int4,
-        code -> Text,
+        #[max_length = 3]
+        code -> Varchar,
         name -> Text,
     }
 }
 
 diesel::table! {
-  use crate::source::local_site::RegistrationModeType;
-  use diesel::sql_types::*;
+    use diesel::sql_types::{Bool, Int4, Nullable, Text, Timestamp, Varchar};
+    use super::sql_types::ListingTypeEnum;
+    use super::sql_types::RegistrationModeEnum;
 
   local_site(id) {
     id -> Uuid,
@@ -311,7 +349,7 @@ diesel::table! {
     application_question -> Nullable<Text>,
     private_instance -> Bool,
     default_theme -> Text,
-    default_post_listing_type -> Text,
+    default_post_listing_type -> ListingTypeEnum,
     legal_information -> Nullable<Text>,
     hide_modlog_mod_names -> Bool,
     application_email_admins -> Bool,
@@ -321,11 +359,12 @@ diesel::table! {
     federation_debug -> Bool,
     federation_worker_count -> Int4,
     captcha_enabled -> Bool,
-    captcha_difficulty -> Text,
-    registration_mode -> RegistrationModeType,
-    reports_email_admins -> Bool,
+    #[max_length = 255]
+    captcha_difficulty -> Varchar,
     published -> Timestamp,
     updated -> Nullable<Timestamp>,
+    registration_mode -> RegistrationModeEnum,
+    reports_email_admins -> Bool,
   }
 }
 
@@ -351,25 +390,33 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::{Bool, Int4, Nullable, Text, Timestamp, Varchar};
+    use super::sql_types::SortTypeEnum;
+    use super::sql_types::ListingTypeEnum;
+
     local_user (id) {
         id -> Uuid,
         person_id -> Uuid,
         password_encrypted -> Text,
         email -> Nullable<Text>,
         show_nsfw -> Bool,
+        #[max_length = 20]
         theme -> Varchar,
-        default_sort_type -> Int2,
-        default_listing_type -> Int2,
+        default_sort_type -> SortTypeEnum,
+        default_listing_type -> ListingTypeEnum,
+        #[max_length = 20]
         interface_language -> Varchar,
         show_avatars -> Bool,
         send_notifications_to_email -> Bool,
         validator_time -> Timestamp,
-        show_bot_accounts -> Bool,
         show_scores -> Bool,
+        show_bot_accounts -> Bool,
         show_read_posts -> Bool,
         show_new_post_notifs -> Bool,
         email_verified -> Bool,
         accepted_application -> Bool,
+        totp_2fa_secret -> Nullable<Text>,
+        totp_2fa_url -> Nullable<Text>,
         //private_seeds -> Nullable<Text>,
         //signing_data -> Bool,
         //extras -> Nullable<Jsonb>,
@@ -519,12 +566,15 @@ diesel::table! {
 diesel::table! {
     person (id) {
         id -> Uuid,
+        #[max_length = 255]
         name -> Varchar,
+        #[max_length = 255]
         display_name -> Nullable<Varchar>,
-        avatar -> Nullable<Varchar>,
+        avatar -> Nullable<Text>,
         banned -> Bool,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
+        #[max_length = 255]
         actor_id -> Varchar,
         bio -> Nullable<Text>,
         local -> Bool,
@@ -533,7 +583,9 @@ diesel::table! {
         last_refreshed_at -> Timestamp,
         banner -> Nullable<Varchar>,
         deleted -> Bool,
+        #[max_length = 255]
         inbox_url -> Varchar,
+        #[max_length = 255]
         shared_inbox_url -> Nullable<Varchar>,
         matrix_user_id -> Nullable<Text>,
         admin -> Bool,
@@ -614,13 +666,17 @@ diesel::table! {
         post_id -> Uuid,
         read_comments -> Int8,
         published -> Timestamp,
+        hot_rank -> Int4,
+        hot_rank_active -> Int4,
     }
 }
 
 diesel::table! {
     post (id) {
         id -> Uuid,
+        #[max_length = 200]
         name -> Varchar,
+        #[max_length = 512]
         url -> Nullable<Varchar>,
         body -> Nullable<Text>,
         creator_id -> Uuid,
@@ -635,6 +691,7 @@ diesel::table! {
         embed_description -> Nullable<Text>,
         embed_video_url -> Nullable<Text>,
         thumbnail_url -> Nullable<Text>,
+        #[max_length = 255]
         ap_id -> Varchar,
         local -> Bool,
         language_id -> Int4,
@@ -662,6 +719,8 @@ diesel::table! {
         newest_comment_time -> Timestamp,
         featured_community -> Bool,
         featured_local -> Bool,
+        hot_rank -> Int4,
+        hot_rank_active -> Int4,
     }
 }
 
@@ -689,6 +748,7 @@ diesel::table! {
         id -> Uuid,
         creator_id -> Uuid,
         post_id -> Uuid,
+        #[max_length = 200]
         original_post_name -> Varchar,
         original_post_url -> Nullable<Text>,
         original_post_body -> Nullable<Text>,
@@ -719,6 +779,7 @@ diesel::table! {
         read -> Bool,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
+        #[max_length = 255]
         ap_id -> Varchar,
         local -> Bool,
         secured -> Nullable<Text>,
@@ -765,15 +826,19 @@ diesel::table! {
 diesel::table! {
     site (id) {
         id -> Uuid,
+        #[max_length = 20]
         name -> Varchar,
         sidebar -> Nullable<Text>,
         published -> Timestamp,
         updated -> Nullable<Timestamp>,
-        icon -> Nullable<Varchar>,
-        banner -> Nullable<Varchar>,
+        icon -> Nullable<Text>,
+        banner -> Nullable<Text>,
+        #[max_length = 150]
         description -> Nullable<Text>,
+        #[max_length = 255]
         actor_id -> Text,
         last_refreshed_at -> Timestamp,
+        #[max_length = 255]
         inbox_url -> Text,
         private_key -> Nullable<Text>,
         public_key -> Text,
@@ -913,94 +978,92 @@ diesel::table! {
 //joinable!(pipayment -> person (person_id));
 //joinable!(person_web3address -> person (person_id));
 
-joinable!(person_block -> person (person_id));
+diesel::joinable!(admin_purge_comment -> person (admin_person_id));
+diesel::joinable!(admin_purge_comment -> post (post_id));
+diesel::joinable!(admin_purge_community -> person (admin_person_id));
+diesel::joinable!(admin_purge_person -> person (admin_person_id));
+diesel::joinable!(admin_purge_post -> community (community_id));
+diesel::joinable!(admin_purge_post -> person (admin_person_id));
+diesel::joinable!(comment -> language (language_id));
+diesel::joinable!(comment -> person (creator_id));
+diesel::joinable!(comment -> post (post_id));
+diesel::joinable!(comment_aggregates -> comment (comment_id));
+diesel::joinable!(comment_like -> comment (comment_id));
+diesel::joinable!(comment_like -> person (person_id));
+diesel::joinable!(comment_like -> post (post_id));
+diesel::joinable!(comment_reply -> comment (comment_id));
+diesel::joinable!(comment_reply -> person (recipient_id));
+diesel::joinable!(comment_report -> comment (comment_id));
+diesel::joinable!(comment_saved -> comment (comment_id));
+diesel::joinable!(comment_saved -> person (person_id));
+diesel::joinable!(community -> instance (instance_id));
+diesel::joinable!(community_aggregates -> community (community_id));
+diesel::joinable!(community_block -> community (community_id));
+diesel::joinable!(community_block -> person (person_id));
+diesel::joinable!(community_follower -> community (community_id));
+diesel::joinable!(community_follower -> person (person_id));
+diesel::joinable!(community_language -> community (community_id));
+diesel::joinable!(community_language -> language (language_id));
+diesel::joinable!(community_moderator -> community (community_id));
+diesel::joinable!(community_moderator -> person (person_id));
+diesel::joinable!(community_person_ban -> community (community_id));
+diesel::joinable!(community_person_ban -> person (person_id));
+diesel::joinable!(custom_emoji -> local_site (local_site_id));
+diesel::joinable!(custom_emoji_keyword -> custom_emoji (custom_emoji_id));
+diesel::joinable!(email_verification -> local_user (local_user_id));
+diesel::joinable!(federation_allowlist -> instance (instance_id));
+diesel::joinable!(federation_blocklist -> instance (instance_id));
+diesel::joinable!(local_site -> site (site_id));
+diesel::joinable!(local_site_rate_limit -> local_site (local_site_id));
+diesel::joinable!(local_user -> person (person_id));
+diesel::joinable!(local_user_language -> language (language_id));
+diesel::joinable!(local_user_language -> local_user (local_user_id));
+diesel::joinable!(mod_add_community -> community (community_id));
+diesel::joinable!(mod_ban_from_community -> community (community_id));
+diesel::joinable!(mod_feature_post -> person (mod_person_id));
+diesel::joinable!(mod_feature_post -> post (post_id));
+diesel::joinable!(mod_hide_community -> community (community_id));
+diesel::joinable!(mod_hide_community -> person (mod_person_id));
+diesel::joinable!(mod_lock_post -> person (mod_person_id));
+diesel::joinable!(mod_lock_post -> post (post_id));
+diesel::joinable!(mod_remove_comment -> comment (comment_id));
+diesel::joinable!(mod_remove_comment -> person (mod_person_id));
+diesel::joinable!(mod_remove_community -> community (community_id));
+diesel::joinable!(mod_remove_community -> person (mod_person_id));
+diesel::joinable!(mod_remove_post -> person (mod_person_id));
+diesel::joinable!(mod_remove_post -> post (post_id));
+diesel::joinable!(mod_transfer_community -> community (community_id));
+diesel::joinable!(password_reset_request -> local_user (local_user_id));
+diesel::joinable!(person -> instance (instance_id));
+diesel::joinable!(person_aggregates -> person (person_id));
+diesel::joinable!(person_ban -> person (person_id));
+diesel::joinable!(person_mention -> comment (comment_id));
+diesel::joinable!(person_mention -> person (recipient_id));
+diesel::joinable!(person_post_aggregates -> person (person_id));
+diesel::joinable!(person_post_aggregates -> post (post_id));
+diesel::joinable!(post -> community (community_id));
+diesel::joinable!(post -> language (language_id));
+diesel::joinable!(post -> person (creator_id));
+diesel::joinable!(post_aggregates -> post (post_id));
+diesel::joinable!(post_like -> person (person_id));
+diesel::joinable!(post_like -> post (post_id));
+diesel::joinable!(post_read -> person (person_id));
+diesel::joinable!(post_read -> post (post_id));
+diesel::joinable!(post_report -> post (post_id));
+diesel::joinable!(post_saved -> person (person_id));
+diesel::joinable!(post_saved -> post (post_id));
+diesel::joinable!(private_message_report -> private_message (private_message_id));
+diesel::joinable!(registration_application -> local_user (local_user_id));
+diesel::joinable!(registration_application -> person (admin_id));
+diesel::joinable!(site -> instance (instance_id));
+diesel::joinable!(site_aggregates -> site (site_id));
+diesel::joinable!(site_language -> language (language_id));
+diesel::joinable!(site_language -> site (site_id));
+diesel::joinable!(tagline -> local_site (local_site_id));
 
-joinable!(comment -> person (creator_id));
-joinable!(comment -> post (post_id));
-joinable!(comment_aggregates -> comment (comment_id));
-joinable!(comment_like -> comment (comment_id));
-joinable!(comment_like -> person (person_id));
-joinable!(comment_like -> post (post_id));
-joinable!(comment_report -> comment (comment_id));
-joinable!(comment_saved -> comment (comment_id));
-joinable!(comment_saved -> person (person_id));
-joinable!(community_aggregates -> community (community_id));
-joinable!(community_block -> community (community_id));
-joinable!(community_block -> person (person_id));
-joinable!(community_follower -> community (community_id));
-joinable!(community_follower -> person (person_id));
-joinable!(community_moderator -> community (community_id));
-joinable!(community_moderator -> person (person_id));
-joinable!(community_person_ban -> community (community_id));
-joinable!(community_person_ban -> person (person_id));
-joinable!(local_user -> person (person_id));
-joinable!(mod_add_community -> community (community_id));
-joinable!(mod_transfer_community -> community (community_id));
-joinable!(mod_ban_from_community -> community (community_id));
-joinable!(mod_lock_post -> person (mod_person_id));
-joinable!(mod_lock_post -> post (post_id));
-joinable!(mod_remove_comment -> comment (comment_id));
-joinable!(mod_remove_comment -> person (mod_person_id));
-joinable!(mod_remove_community -> community (community_id));
-joinable!(mod_remove_community -> person (mod_person_id));
-joinable!(mod_remove_post -> person (mod_person_id));
-joinable!(mod_remove_post -> post (post_id));
-joinable!(mod_feature_post -> person (mod_person_id));
-joinable!(mod_feature_post -> post (post_id));
-joinable!(password_reset_request -> local_user (local_user_id));
-joinable!(person_aggregates -> person (person_id));
-joinable!(person_ban -> person (person_id));
-joinable!(person_mention -> comment (comment_id));
-joinable!(person_mention -> person (recipient_id));
-joinable!(comment_reply -> comment (comment_id));
-joinable!(comment_reply -> person (recipient_id));
-joinable!(post -> community (community_id));
-joinable!(post -> person (creator_id));
-joinable!(person_post_aggregates -> post (post_id));
-joinable!(person_post_aggregates -> person (person_id));
-joinable!(post_aggregates -> post (post_id));
-joinable!(post_like -> person (person_id));
-joinable!(post_like -> post (post_id));
-joinable!(post_read -> person (person_id));
-joinable!(post_read -> post (post_id));
-joinable!(post_report -> post (post_id));
-joinable!(post_saved -> person (person_id));
-joinable!(post_saved -> post (post_id));
-joinable!(site_aggregates -> site (site_id));
-joinable!(email_verification -> local_user (local_user_id));
-joinable!(registration_application -> local_user (local_user_id));
-joinable!(registration_application -> person (admin_id));
-joinable!(mod_hide_community -> person (mod_person_id));
-joinable!(mod_hide_community -> community (community_id));
-joinable!(post -> language (language_id));
-joinable!(comment -> language (language_id));
-joinable!(local_user_language -> language (language_id));
-joinable!(local_user_language -> local_user (local_user_id));
-joinable!(private_message_report -> private_message (private_message_id));
-joinable!(site_language -> language (language_id));
-joinable!(site_language -> site (site_id));
-joinable!(community_language -> language (language_id));
-joinable!(community_language -> community (community_id));
-joinable!(person_follower -> person (follower_id));
-
-joinable!(admin_purge_comment -> person (admin_person_id));
-joinable!(admin_purge_comment -> post (post_id));
-joinable!(admin_purge_community -> person (admin_person_id));
-joinable!(admin_purge_person -> person (admin_person_id));
-joinable!(admin_purge_post -> community (community_id));
-joinable!(admin_purge_post -> person (admin_person_id));
-
-joinable!(site -> instance (instance_id));
-joinable!(person -> instance (instance_id));
-joinable!(community -> instance (instance_id));
-joinable!(federation_allowlist -> instance (instance_id));
-joinable!(federation_blocklist -> instance (instance_id));
-joinable!(local_site -> site (site_id));
-joinable!(local_site_rate_limit -> local_site (local_site_id));
-joinable!(tagline -> local_site (local_site_id));
 joinable!(person_balance -> person (person_id));
 
-allow_tables_to_appear_in_same_query!(
+diesel::allow_tables_to_appear_in_same_query!(
   activity,
   comment,
   comment_aggregates,
@@ -1013,6 +1076,8 @@ allow_tables_to_appear_in_same_query!(
   community_follower,
   community_moderator,
   community_person_ban,
+  custom_emoji,
+  custom_emoji_keyword,
   local_user,
   mod_add,
   mod_add_community,

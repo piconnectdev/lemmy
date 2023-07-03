@@ -3,28 +3,23 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   comment::{CommentResponse, DistinguishComment},
   context::LemmyContext,
-  utils::{check_community_ban, get_local_user_view_from_jwt, is_mod_or_admin},
+  utils::{check_community_ban, is_mod_or_admin, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::comment::{Comment, CommentUpdateForm},
   traits::Crud,
 };
 use lemmy_db_views::structs::CommentView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for DistinguishComment {
   type Response = CommentResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<CommentResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<CommentResponse, LemmyError> {
     let data: &DistinguishComment = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let comment_id = data.comment_id;
     let orig_comment = CommentView::read(context.pool(), comment_id, None).await?;

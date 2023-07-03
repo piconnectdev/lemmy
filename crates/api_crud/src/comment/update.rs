@@ -1,13 +1,10 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::{build_comment_response, send_local_notifs},
   comment::{CommentResponse, EditComment},
   context::LemmyContext,
-  utils::{check_community_ban, get_local_user_view_from_jwt, local_site_to_slur_regex},
-  websocket::{
-    send::{send_comment_ws_message, send_local_notifs},
-    UserOperationCrud,
-  },
+  utils::{check_community_ban, local_site_to_slur_regex, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::{
@@ -21,23 +18,19 @@ use lemmy_db_schema::{
 use lemmy_db_views::structs::CommentView;
 use lemmy_utils::{
   error::LemmyError,
-  utils::{mention::scrape_text_for_mentions, slurs::remove_slurs},
-  ConnectionId,
+  utils::{
+    mention::scrape_text_for_mentions, slurs::remove_slurs, validation::is_valid_body_field,
+  },
 };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditComment {
   type Response = CommentResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<CommentResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<CommentResponse, LemmyError> {
     let data: &EditComment = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     let comment_id = data.comment_id;
@@ -69,26 +62,35 @@ impl PerformCrud for EditComment {
       .as_ref()
       .map(|c| remove_slurs(c, &local_site_to_slur_regex(&local_site)));
 
-    let content = content_slurs_removed.clone().unwrap_or(orig_comment.comment.content.clone());
-    let (signature, _meta, _content)  = Comment::sign_data_update(&orig_comment.comment.clone(), &content.clone());
+    is_valid_body_field(&content_slurs_removed)?;
+
+    let content = content_slurs_removed
+      .clone()
+      .unwrap_or(orig_comment.comment.content.clone());
+    let (signature, _meta, _content) =
+      Comment::sign_data_update(&orig_comment.comment.clone(), &content.clone());
 
     let comment_id = data.comment_id;
     let form = CommentUpdateForm::builder()
       .content(content_slurs_removed)
       .language_id(data.language_id)
-      .updated(Some(Some(naive_now())))      
+      .updated(Some(Some(naive_now())))
       .auth_sign(data.auth_sign.clone())
       .srv_sign(signature)
       .build();
     let updated_comment = Comment::update(context.pool(), comment_id, &form)
       .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
-    
+
     if context.settings().sign_enabled {
-      let (signature, _meta, _content)  = Comment::sign_data(&updated_comment.clone()).await;
-      let updated_comment = Comment::update_srv_sign(context.pool(), updated_comment.id.clone(), signature.clone().unwrap_or_default().as_str())
-          .await
-          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
+      let (signature, _meta, _content) = Comment::sign_data(&updated_comment.clone()).await;
+      let updated_comment = Comment::update_srv_sign(
+        context.pool(),
+        updated_comment.id.clone(),
+        signature.clone().unwrap_or_default().as_str(),
+      )
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_comment"))?;
     }
 
     // Do the mentions / recipients
@@ -104,14 +106,12 @@ impl PerformCrud for EditComment {
     )
     .await?;
 
-    send_comment_ws_message(
-      data.comment_id,
-      UserOperationCrud::EditComment,
-      websocket_id,
-      data.form_id.clone(),
-      None,
-      recipient_ids,
+    build_comment_response(
       context,
+      updated_comment.id,
+      Some(local_user_view),
+      self.form_id.clone(),
+      recipient_ids,
     )
     .await
   }

@@ -1,32 +1,14 @@
 use crate::{
   newtypes::{CommunityId, DbUrl, PersonId, PostId},
   schema::post::dsl::{
-    ap_id,
-    body,
-    community_id,
-    creator_id,
-    deleted,
-    featured_community,
-    name,
-    post,
-    published,
-    removed,
-    thumbnail_url,
-    updated,
-    url,
+    ap_id, body, community_id, creator_id, deleted, featured_community, name, post, published,
+    removed, thumbnail_url, updated, url,
   },
   source::post::{
-    Post,
-    PostInsertForm,
-    PostLike,
-    PostLikeForm,
-    PostRead,
-    PostReadForm,
-    PostSaved,
-    PostSavedForm,
+    Post, PostInsertForm, PostLike, PostLikeForm, PostRead, PostReadForm, PostSaved, PostSavedForm,
     PostUpdateForm,
   },
-  traits::{Crud, DeleteableOrRemoveable, Likeable, Readable, Saveable, Signable},
+  traits::{Crud, Likeable, Readable, Saveable, Signable},
   utils::{get_conn, naive_now, DbPool, FETCH_LIMIT_MAX},
 };
 use ::url::Url;
@@ -234,19 +216,32 @@ impl Post {
     .await
   }
 
-  pub fn sign_data_update(data: &Post, name_data: Option<String>, url_data: Option<DbUrl>, body_data: Option<String>) -> (Option<String>, Option<String>, Option<String>) {    
+  pub fn sign_data_update(
+    data: &Post,
+    name_data: Option<String>,
+    url_data: Option<DbUrl>,
+    body_data: Option<String>,
+  ) -> (Option<String>, Option<String>, Option<String>) {
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    let meta_data = format!("{};{};{};{};{:?};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.community_id.clone().0.simple(), 
-    url_data.clone(), name_data.to_owned().unwrap_or(data.name.clone()), data.published.clone().to_string());
+    let meta_data = format!(
+      "{};{};{};{};{:?};{};{}",
+      data.id.clone().0.simple(),
+      data.ap_id.clone().to_string(),
+      data.creator_id.clone().0.simple(),
+      data.community_id.clone().0.simple(),
+      url_data.clone(),
+      name_data.to_owned().unwrap_or(data.name.clone()),
+      data.published.clone().to_string()
+    );
 
     sha_meta.update(format!("{}", meta_data));
-    let meta:  String = format!("{:x}", sha_meta.finalize());
+    let meta: String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(body_data.clone().unwrap_or_default());
-    let content_data:  String = format!("{:x}", sha_content.finalize());
+    let content_data: String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
     sha256.update(content_data.clone());
@@ -255,18 +250,13 @@ impl Post {
     let signature = lemmy_utils::utils::web3::eth_sign_message(message);
     return (signature, Some(meta), Some(content_data));
   }
-
 }
 
 #[async_trait]
 impl Signable for Post {
   type Form = Post;
   type IdType = PostId;
-  async fn update_srv_sign(
-    pool: &DbPool,
-    post_id: PostId,
-    sig: &str,
-  ) -> Result<Self, Error> {
+  async fn update_srv_sign(pool: &DbPool, post_id: PostId, sig: &str) -> Result<Self, Error> {
     use crate::schema::post::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(post.find(post_id))
@@ -284,27 +274,32 @@ impl Signable for Post {
     use crate::schema::post::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(post.find(post_id))
-      .set((
-        tx.eq(txlink),
-        pipayid.eq(identifier)
-      ))
+      .set((tx.eq(txlink), pipayid.eq(identifier)))
       .get_result::<Self>(conn)
       .await
   }
 
-  async fn sign_data(data: &Post) -> (Option<String>, Option<String>, Option<String>) {    
+  async fn sign_data(data: &Post) -> (Option<String>, Option<String>, Option<String>) {
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    let meta_data = format!("{};{};{};{};{:?};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.community_id.clone().0.simple(), 
-    data.url.clone(), data.name.clone(), data.published.clone().to_string());
+    let meta_data = format!(
+      "{};{};{};{};{:?};{};{}",
+      data.id.clone().0.simple(),
+      data.ap_id.clone().to_string(),
+      data.creator_id.clone().0.simple(),
+      data.community_id.clone().0.simple(),
+      data.url.clone(),
+      data.name.clone(),
+      data.published.clone().to_string()
+    );
 
     sha_meta.update(format!("{}", meta_data));
-    let meta:  String = format!("{:x}", sha_meta.finalize());
+    let meta: String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(data.body.clone().unwrap_or_default());
-    let content_data:  String = format!("{:x}", sha_content.finalize());
+    let content_data: String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
     sha256.update(content_data.clone());
@@ -398,20 +393,6 @@ impl Readable for PostRead {
   }
 }
 
-impl DeleteableOrRemoveable for Post {
-  fn blank_out_deleted_or_removed_info(mut self) -> Self {
-    self.name = String::new();
-    self.url = None;
-    self.body = None;
-    self.embed_title = None;
-    self.embed_description = None;
-    self.embed_video_url = None;
-    self.thumbnail_url = None;
-
-    self
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use crate::{
@@ -420,15 +401,8 @@ mod tests {
       instance::Instance,
       person::{Person, PersonInsertForm},
       post::{
-        Post,
-        PostInsertForm,
-        PostLike,
-        PostLikeForm,
-        PostRead,
-        PostReadForm,
-        PostSaved,
-        PostSavedForm,
-        PostUpdateForm,
+        Post, PostInsertForm, PostLike, PostLikeForm, PostRead, PostReadForm, PostSaved,
+        PostSavedForm, PostUpdateForm,
       },
     },
     traits::{Crud, Likeable, Readable, Saveable},
@@ -441,7 +415,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let new_person = PersonInsertForm::builder()
       .name("jim".into())
@@ -490,7 +466,7 @@ mod tests {
       language_id: Default::default(),
       featured_community: false,
       featured_local: false,
-      auth_sign: None, 
+      auth_sign: None,
       srv_sign: None,
       pipayid: None,
       tx: None,

@@ -2,45 +2,68 @@ use crate::newtypes::{CommunityId, DbUrl, InstanceId, PersonId, *};
 #[cfg(feature = "full")]
 use crate::schema::{community, community_follower, community_moderator, community_person_ban};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
+#[cfg(feature = "full")]
+use ts_rs::TS;
 use typed_builder::TypedBuilder;
 
+#[skip_serializing_none]
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-#[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
+#[cfg_attr(feature = "full", derive(Queryable, Identifiable, TS))]
 #[cfg_attr(feature = "full", diesel(table_name = community))]
+#[cfg_attr(feature = "full", ts(export))]
+/// A community.
 pub struct Community {
   pub id: CommunityId,
   pub name: String,
+  /// A longer title, that can contain other characters, and doesn't have to be unique.
   pub title: String,
+  /// A sidebar / markdown description.
   pub description: Option<String>,
+  /// Whether the community is removed by a mod.
   pub removed: bool,
   pub published: chrono::NaiveDateTime,
   pub updated: Option<chrono::NaiveDateTime>,
+  /// Whether the community has been deleted by its creator.
   pub deleted: bool,
+  /// Whether its an NSFW community.
   pub nsfw: bool,
+  /// The federated actor_id.
   pub actor_id: DbUrl,
+  /// Whether the community is local.
   pub local: bool,
+  #[serde(skip)]
   pub private_key: Option<String>,
+  #[serde(skip)]
   pub public_key: String,
+  #[serde(skip)]
   pub last_refreshed_at: chrono::NaiveDateTime,
+  /// A URL for an icon.
   pub icon: Option<DbUrl>,
+  /// A URL for a banner.
   pub banner: Option<DbUrl>,
+  #[serde(skip_serializing)]
   pub followers_url: DbUrl,
+  #[serde(skip_serializing)]
   pub inbox_url: DbUrl,
+  #[serde(skip)]
   pub shared_inbox_url: Option<DbUrl>,
+  /// Whether the community is hidden.
+  pub hidden: bool,
+  /// Whether posting is restricted to mods only.
+  pub posting_restricted_to_mods: bool,
+  pub instance_id: InstanceId,
   /// Url where moderators collection is served over Activitypub
   #[serde(skip)]
   pub moderators_url: Option<DbUrl>,
   /// Url where featured posts collection is served over Activitypub
   #[serde(skip)]
   pub featured_url: Option<DbUrl>,
-  pub hidden: bool,
-  pub posting_restricted_to_mods: bool,
-  pub instance_id: InstanceId,
   pub is_home: bool,
   pub person_id: Option<PersonId>,
   pub srv_sign: Option<String>,
   pub pipayid: Option<String>,
-  pub tx : Option<String>,  
+  pub tx: Option<String>,
 }
 
 /// A safe representation of community, without the sensitive info
@@ -67,7 +90,7 @@ pub struct CommunitySafe {
   pub is_home: bool,
   pub person_id: Option<PersonId>,
   pub srv_sign: Option<String>,
-  pub tx : Option<String>,
+  pub tx: Option<String>,
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -104,7 +127,7 @@ pub struct CommunityInsertForm {
   pub is_home: Option<bool>,
   pub person_id: Option<PersonId>,
   pub srv_sign: Option<String>,
-  pub tx : Option<String>,
+  pub tx: Option<String>,
 }
 
 #[derive(Debug, Clone, TypedBuilder)]
@@ -134,7 +157,7 @@ pub struct CommunityUpdateForm {
   pub hidden: Option<bool>,
   pub posting_restricted_to_mods: Option<bool>,
   pub srv_sign: Option<String>,
-  pub tx : Option<String>,
+  pub tx: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug)]

@@ -3,7 +3,7 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   site::{GetSiteResponse, LeaveAdmin},
-  utils::{get_local_user_view_from_jwt, is_admin},
+  utils::{is_admin, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::{
@@ -15,28 +15,23 @@ use lemmy_db_schema::{
   },
   traits::Crud,
 };
-use lemmy_db_views::structs::SiteView;
-use lemmy_db_views_actor::structs::PersonViewSafe;
-use lemmy_utils::{error::LemmyError, version, ConnectionId};
+use lemmy_db_views::structs::{CustomEmojiView, SiteView};
+use lemmy_db_views_actor::structs::PersonView;
+use lemmy_utils::{error::LemmyError, version};
 
 #[async_trait::async_trait(?Send)]
 impl Perform for LeaveAdmin {
   type Response = GetSiteResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<GetSiteResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<GetSiteResponse, LemmyError> {
     let data: &LeaveAdmin = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     is_admin(&local_user_view)?;
 
     // Make sure there isn't just one admin (so if one leaves, there will still be one left)
-    let admins = PersonViewSafe::admins(context.pool()).await?;
+    let admins = PersonView::admins(context.pool()).await?;
     if admins.len() == 1 {
       return Err(LemmyError::from_message("cannot_leave_admin"));
     }
@@ -60,27 +55,26 @@ impl Perform for LeaveAdmin {
 
     // Reread site and admins
     let site_view = SiteView::read_local(context.pool()).await?;
-    let admins = PersonViewSafe::admins(context.pool()).await?;
+    let admins = PersonView::admins(context.pool()).await?;
 
     let all_languages = Language::read_all(context.pool()).await?;
-    let discussion_languages = SiteLanguage::read_local(context.pool()).await?;
-    let taglines_res = Tagline::get_all(context.pool(), site_view.local_site.id).await?;
-    let taglines = taglines_res.is_empty().then_some(taglines_res);
+    let discussion_languages = SiteLanguage::read_local_raw(context.pool()).await?;
+    let taglines = Tagline::get_all(context.pool(), site_view.local_site.id).await?;
+    let custom_emojis = CustomEmojiView::get_all(context.pool(), site_view.local_site.id).await?;
 
     let signer = context.settings().web3_signer();
     let creator = context.settings().web3_admin();
     Ok(GetSiteResponse {
       site_view,
       admins,
-      online: 0,
       version: version::VERSION.to_string(),
       my_user: None,
-      federated_instances: None,
       all_languages,
       creator,
       signer,
       discussion_languages,
       taglines,
+      custom_emojis,
     })
   }
 }

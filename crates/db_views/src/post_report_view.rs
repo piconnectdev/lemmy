@@ -1,11 +1,6 @@
 use crate::structs::PostReportView;
 use diesel::{
-  dsl::now,
-  result::Error,
-  BoolExpressionMethods,
-  ExpressionMethods,
-  JoinOnDsl,
-  NullableExpressionMethods,
+  result::Error, BoolExpressionMethods, ExpressionMethods, JoinOnDsl, NullableExpressionMethods,
   QueryDsl,
 };
 use diesel_async::RunQueryDsl;
@@ -13,22 +8,16 @@ use lemmy_db_schema::{
   aggregates::structs::PostAggregates,
   newtypes::{CommunityId, PersonId, PostReportId},
   schema::{
-    community,
-    community_moderator,
-    community_person_ban,
-    person,
-    post,
-    post_aggregates,
-    post_like,
+    community, community_moderator, community_person_ban, person, post, post_aggregates, post_like,
     post_report,
   },
   source::{
-    community::{Community, CommunityPersonBan, CommunitySafe},
-    person::{Person, PersonSafe},
+    community::{Community, CommunityPersonBan},
+    person::Person,
     post::Post,
     post_report::PostReport,
   },
-  traits::{ToSafe, ViewToVec},
+  traits::JoinView,
   utils::{get_conn, limit_and_offset, DbPool},
 };
 use typed_builder::TypedBuilder;
@@ -36,13 +25,13 @@ use typed_builder::TypedBuilder;
 type PostReportViewTuple = (
   PostReport,
   Post,
-  CommunitySafe,
-  PersonSafe,
-  PersonSafe,
+  Community,
+  Person,
+  Person,
   Option<CommunityPersonBan>,
   Option<i16>,
   PostAggregates,
-  Option<PersonSafe>,
+  Option<Person>,
 );
 
 impl PostReportView {
@@ -77,12 +66,7 @@ impl PostReportView {
         community_person_ban::table.on(
           post::community_id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(post::creator_id))
-            .and(
-              community_person_ban::expires
-                .is_null()
-                .or(community_person_ban::expires.gt(now)),
-            ),
+            .and(community_person_ban::person_id.eq(post::creator_id)),
         ),
       )
       .left_join(
@@ -99,13 +83,13 @@ impl PostReportView {
       .select((
         post_report::all_columns,
         post::all_columns,
-        Community::safe_columns_tuple(),
-        Person::safe_columns_tuple(),
-        person_alias_1.fields(Person::safe_columns_tuple()),
+        community::all_columns,
+        person::all_columns,
+        person_alias_1.fields(person::all_columns),
         community_person_ban::all_columns.nullable(),
         post_like::score.nullable(),
         post_aggregates::all_columns,
-        person_alias_2.fields(Person::safe_columns_tuple().nullable()),
+        person_alias_2.fields(person::all_columns.nullable()),
       ))
       .first::<PostReportViewTuple>(conn)
       .await?;
@@ -194,12 +178,7 @@ impl<'a> PostReportQuery<'a> {
         community_person_ban::table.on(
           post::community_id
             .eq(community_person_ban::community_id)
-            .and(community_person_ban::person_id.eq(post::creator_id))
-            .and(
-              community_person_ban::expires
-                .is_null()
-                .or(community_person_ban::expires.gt(now)),
-            ),
+            .and(community_person_ban::person_id.eq(post::creator_id)),
         ),
       )
       .left_join(
@@ -216,15 +195,13 @@ impl<'a> PostReportQuery<'a> {
       .select((
         post_report::all_columns,
         post::all_columns,
-        Community::safe_columns_tuple(),
-        Person::safe_columns_tuple(),
-        person_alias_1.fields(Person::safe_columns_tuple()),
+        community::all_columns,
+        person::all_columns,
+        person_alias_1.fields(person::all_columns),
         community_person_ban::all_columns.nullable(),
         post_like::score.nullable(),
         post_aggregates::all_columns,
-        person_alias_2
-          .fields(Person::safe_columns_tuple())
-          .nullable(),
+        person_alias_2.fields(person::all_columns.nullable()),
       ))
       .into_boxed();
 
@@ -232,7 +209,7 @@ impl<'a> PostReportQuery<'a> {
       query = query.filter(post::community_id.eq(community_id));
     }
 
-    if self.unresolved_only.unwrap_or(true) {
+    if self.unresolved_only.unwrap_or(false) {
       query = query.filter(post_report::resolved.eq(false));
     }
 
@@ -259,27 +236,24 @@ impl<'a> PostReportQuery<'a> {
       query.load::<PostReportViewTuple>(conn).await?
     };
 
-    Ok(PostReportView::from_tuple_to_vec(res))
+    Ok(res.into_iter().map(PostReportView::from_tuple).collect())
   }
 }
 
-impl ViewToVec for PostReportView {
-  type DbTuple = PostReportViewTuple;
-  fn from_tuple_to_vec(items: Vec<Self::DbTuple>) -> Vec<Self> {
-    items
-      .into_iter()
-      .map(|a| Self {
-        post_report: a.0,
-        post: a.1,
-        community: a.2,
-        creator: a.3,
-        post_creator: a.4,
-        creator_banned_from_community: a.5.is_some(),
-        my_vote: a.6,
-        counts: a.7,
-        resolver: a.8,
-      })
-      .collect::<Vec<Self>>()
+impl JoinView for PostReportView {
+  type JoinTuple = PostReportViewTuple;
+  fn from_tuple(a: Self::JoinTuple) -> Self {
+    Self {
+      post_report: a.0,
+      post: a.1,
+      community: a.2,
+      creator: a.3,
+      post_creator: a.4,
+      creator_banned_from_community: a.5.is_some(),
+      my_vote: a.6,
+      counts: a.7,
+      resolver: a.8,
+    }
   }
 }
 
@@ -289,15 +263,9 @@ mod tests {
   use lemmy_db_schema::{
     aggregates::structs::PostAggregates,
     source::{
-      community::{
-        Community,
-        CommunityInsertForm,
-        CommunityModerator,
-        CommunityModeratorForm,
-        CommunitySafe,
-      },
+      community::{Community, CommunityInsertForm, CommunityModerator, CommunityModeratorForm},
       instance::Instance,
-      person::{Person, PersonInsertForm, PersonSafe},
+      person::{Person, PersonInsertForm},
       post::{Post, PostInsertForm},
       post_report::{PostReport, PostReportForm},
     },
@@ -311,7 +279,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let new_person = PersonInsertForm::builder()
       .name("timmy_prv".into())
@@ -400,7 +370,7 @@ mod tests {
     let expected_jessica_report_view = PostReportView {
       post_report: inserted_jessica_report.clone(),
       post: inserted_post.clone(),
-      community: CommunitySafe {
+      community: Community {
         id: inserted_community.id,
         name: inserted_community.name,
         icon: None,
@@ -417,12 +387,21 @@ mod tests {
         posting_restricted_to_mods: false,
         published: inserted_community.published,
         instance_id: inserted_instance.id,
+        private_key: inserted_community.private_key.clone(),
+        public_key: inserted_community.public_key.clone(),
+        last_refreshed_at: inserted_community.last_refreshed_at,
+        followers_url: inserted_community.followers_url.clone(),
+        inbox_url: inserted_community.inbox_url.clone(),
+        shared_inbox_url: inserted_community.shared_inbox_url.clone(),
+        moderators_url: inserted_community.moderators_url.clone(),
+        featured_url: inserted_community.featured_url.clone(),
         is_home: false,
         person_id: None,
         srv_sign: None,
+        pipayid: None,
         tx: None,
       },
-      creator: PersonSafe {
+      creator: Person {
         id: inserted_jessica.id,
         name: inserted_jessica.name,
         display_name: None,
@@ -442,9 +421,13 @@ mod tests {
         matrix_user_id: None,
         ban_expires: None,
         instance_id: inserted_instance.id,
+        private_key: inserted_jessica.private_key,
+        public_key: inserted_jessica.public_key,
+        last_refreshed_at: inserted_jessica.last_refreshed_at,
         home: None,
-        //external_id: None,
-        //external_name: None,
+        external_id: None,
+        external_name: None,
+        pipayid: None,
         verified: false,
         dap_address: None,
         pi_address: None,
@@ -456,7 +439,7 @@ mod tests {
         srv_sign: None,
         tx: None,
       },
-      post_creator: PersonSafe {
+      post_creator: Person {
         id: inserted_timmy.id,
         name: inserted_timmy.name.clone(),
         display_name: None,
@@ -476,9 +459,12 @@ mod tests {
         matrix_user_id: None,
         ban_expires: None,
         instance_id: inserted_instance.id,
+        private_key: inserted_timmy.private_key.clone(),
+        public_key: inserted_timmy.public_key.clone(),
+        last_refreshed_at: inserted_timmy.last_refreshed_at,
         home: None,
-        //external_id: None,
-        //external_name: None,
+        external_id: None,
+        external_name: None,
         verified: false,
         dap_address: None,
         pi_address: None,
@@ -488,6 +474,7 @@ mod tests {
         sui_address: None,
         auth_sign: None,
         srv_sign: None,
+        pipayid: None,
         tx: None,
       },
       creator_banned_from_community: false,
@@ -504,6 +491,8 @@ mod tests {
         newest_comment_time: inserted_post.published,
         featured_community: false,
         featured_local: false,
+        hot_rank: 1728,
+        hot_rank_active: 1728,
       },
       resolver: None,
     };
@@ -513,7 +502,7 @@ mod tests {
     let mut expected_sara_report_view = expected_jessica_report_view.clone();
     expected_sara_report_view.post_report = inserted_sara_report;
     expected_sara_report_view.my_vote = None;
-    expected_sara_report_view.creator = PersonSafe {
+    expected_sara_report_view.creator = Person {
       id: inserted_sara.id,
       name: inserted_sara.name,
       display_name: None,
@@ -533,9 +522,13 @@ mod tests {
       matrix_user_id: None,
       ban_expires: None,
       instance_id: inserted_instance.id,
+      private_key: inserted_sara.private_key,
+      public_key: inserted_sara.public_key,
+      last_refreshed_at: inserted_sara.last_refreshed_at,
       home: None,
-      //external_id: None,
-      //external_name: None,
+      external_id: None,
+      external_name: None,
+      pipayid: None,
       verified: false,
       dap_address: None,
       pi_address: None,
@@ -591,7 +584,7 @@ mod tests {
     expected_jessica_report_view_after_resolve
       .post_report
       .updated = read_jessica_report_view_after_resolve.post_report.updated;
-    expected_jessica_report_view_after_resolve.resolver = Some(PersonSafe {
+    expected_jessica_report_view_after_resolve.resolver = Some(Person {
       id: inserted_timmy.id,
       name: inserted_timmy.name.clone(),
       display_name: None,
@@ -611,9 +604,13 @@ mod tests {
       matrix_user_id: None,
       ban_expires: None,
       instance_id: inserted_instance.id,
+      private_key: inserted_timmy.private_key.clone(),
+      public_key: inserted_timmy.public_key.clone(),
+      last_refreshed_at: inserted_timmy.last_refreshed_at,
       home: None,
-      //external_id: None,
-      //external_name: None,
+      external_id: None,
+      external_name: None,
+      pipayid: None,
       verified: false,
       dap_address: None,
       pi_address: None,
@@ -637,6 +634,7 @@ mod tests {
       .pool(pool)
       .my_person_id(inserted_timmy.id)
       .admin(false)
+      .unresolved_only(Some(true))
       .build()
       .list()
       .await

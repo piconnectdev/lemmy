@@ -1,13 +1,10 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::{build_comment_response, send_local_notifs},
   comment::{CommentResponse, RemoveComment},
   context::LemmyContext,
-  utils::{check_community_ban, get_local_user_view_from_jwt, is_mod_or_admin},
-  websocket::{
-    send::{send_comment_ws_message, send_local_notifs},
-    UserOperationCrud,
-  },
+  utils::{check_community_ban, is_mod_or_admin, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::{
@@ -18,21 +15,16 @@ use lemmy_db_schema::{
   traits::Crud,
 };
 use lemmy_db_views::structs::CommentView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for RemoveComment {
   type Response = CommentResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<CommentResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<CommentResponse, LemmyError> {
     let data: &RemoveComment = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let comment_id = data.comment_id;
     let orig_comment = CommentView::read(context.pool(), comment_id, None).await?;
@@ -83,17 +75,13 @@ impl PerformCrud for RemoveComment {
     )
     .await?;
 
-    let res = send_comment_ws_message(
-      data.comment_id,
-      UserOperationCrud::RemoveComment,
-      websocket_id,
-      None, // TODO maybe this might clear other forms
-      Some(local_user_view.person.id),
-      recipient_ids,
+    build_comment_response(
       context,
+      updated_comment.id,
+      Some(local_user_view),
+      None,
+      recipient_ids,
     )
-    .await?;
-
-    Ok(res)
+    .await
   }
 }

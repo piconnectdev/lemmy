@@ -3,12 +3,11 @@ use crate::{
   community::CommunityResponse,
   context::LemmyContext,
   post::PostResponse,
-  private_message::PrivateMessageResponse,
-  utils::{check_person_block, get_interface_language, send_email_to_user},
-  websocket::OperationType,
+  utils::{check_person_block, get_interface_language, is_mod_or_admin, send_email_to_user},
 };
+use actix_web::web::Data;
 use lemmy_db_schema::{
-  newtypes::{CommentId, CommunityId, LocalUserId, PersonId, PostId, PrivateMessageId},
+  newtypes::{CommentId, CommunityId, LocalUserId, PersonId, PostId},
   source::{
     actor_language::CommunityLanguage,
     comment::Comment,
@@ -17,138 +16,72 @@ use lemmy_db_schema::{
     person_mention::{PersonMention, PersonMentionInsertForm},
     post::Post,
   },
-  traits::{Crud, DeleteableOrRemoveable},
-  SubscribedType,
+  traits::Crud,
 };
-use lemmy_db_views::structs::{CommentView, LocalUserView, PostView, PrivateMessageView};
+use lemmy_db_views::structs::{CommentView, LocalUserView, PostView};
 use lemmy_db_views_actor::structs::CommunityView;
-use lemmy_utils::{error::LemmyError, utils::mention::MentionData, ConnectionId};
+use lemmy_utils::{error::LemmyError, utils::mention::MentionData};
 
-#[tracing::instrument(skip_all)]
-pub async fn send_post_ws_message<OP: ToString + Send + OperationType + 'static>(
-  post_id: PostId,
-  op: OP,
-  websocket_id: Option<ConnectionId>,
-  person_id: Option<PersonId>,
-  context: &LemmyContext,
-) -> Result<PostResponse, LemmyError> {
-  let post_view = PostView::read(context.pool(), post_id, person_id).await?;
-
-  let res = PostResponse { post_view };
-
-  context
-    .chat_server()
-    .send_post(&op, &res, websocket_id)
-    .await?;
-
-  Ok(res)
-}
-
-// TODO: in many call sites in apub crate, we are setting an empty vec for recipient_ids,
-//       we should get the actual recipient actors from somewhere
-#[tracing::instrument(skip_all)]
-pub async fn send_comment_ws_message_simple<OP: ToString + Send + OperationType + 'static>(
+pub async fn build_comment_response(
+  context: &Data<LemmyContext>,
   comment_id: CommentId,
-  op: OP,
-  context: &LemmyContext,
-) -> Result<CommentResponse, LemmyError> {
-  send_comment_ws_message(comment_id, op, None, None, None, vec![], context).await
-}
-
-#[tracing::instrument(skip_all)]
-pub async fn send_comment_ws_message<OP: ToString + Send + OperationType + 'static>(
-  comment_id: CommentId,
-  op: OP,
-  websocket_id: Option<ConnectionId>,
+  local_user_view: Option<LocalUserView>,
   form_id: Option<String>,
-  person_id: Option<PersonId>,
   recipient_ids: Vec<LocalUserId>,
-  context: &LemmyContext,
 ) -> Result<CommentResponse, LemmyError> {
-  let mut view = CommentView::read(context.pool(), comment_id, person_id).await?;
-
-  if view.comment.deleted || view.comment.removed {
-    view.comment = view.comment.blank_out_deleted_or_removed_info();
-  }
-
-  let mut res = CommentResponse {
-    comment_view: view,
+  let person_id = local_user_view.map(|l| l.person.id);
+  let comment_view = CommentView::read(context.pool(), comment_id, person_id).await?;
+  Ok(CommentResponse {
+    comment_view,
     recipient_ids,
-    // The sent out form id should be null
-    form_id: None,
-  };
-
-  context
-    .chat_server()
-    .send_comment(&op, &res, websocket_id)
-    .await?;
-
-  // The recipient_ids should be empty for returns
-  res.recipient_ids = Vec::new();
-  res.form_id = form_id;
-
-  Ok(res)
+    form_id,
+  })
 }
 
-#[tracing::instrument(skip_all)]
-pub async fn send_community_ws_message<OP: ToString + Send + OperationType + 'static>(
+pub async fn build_community_response(
+  context: &Data<LemmyContext>,
+  local_user_view: LocalUserView,
   community_id: CommunityId,
-  op: OP,
-  websocket_id: Option<ConnectionId>,
-  person_id: Option<PersonId>,
-  context: &LemmyContext,
 ) -> Result<CommunityResponse, LemmyError> {
-  let community_view = CommunityView::read(context.pool(), community_id, person_id).await?;
+  let is_mod_or_admin = is_mod_or_admin(context.pool(), local_user_view.person.id, community_id)
+    .await
+    .is_ok();
+  let person_id = local_user_view.person.id;
+  let community_view = CommunityView::read(
+    context.pool(),
+    community_id,
+    Some(person_id),
+    Some(is_mod_or_admin),
+  )
+  .await?;
   let discussion_languages = CommunityLanguage::read(context.pool(), community_id).await?;
 
-  let mut res = CommunityResponse {
+  Ok(CommunityResponse {
     community_view,
     discussion_languages,
-  };
-
-  // Strip out the person id and subscribed when sending to others
-  res.community_view.subscribed = SubscribedType::NotSubscribed;
-
-  context
-    .chat_server()
-    .send_community_room_message(&op, &res, res.community_view.community.id, websocket_id)
-    .await?;
-
-  Ok(res)
+  })
 }
 
-#[tracing::instrument(skip_all)]
-pub async fn send_pm_ws_message<OP: ToString + Send + OperationType + 'static>(
-  private_message_id: PrivateMessageId,
-  op: OP,
-  websocket_id: Option<ConnectionId>,
-  context: &LemmyContext,
-) -> Result<PrivateMessageResponse, LemmyError> {
-  let mut view = PrivateMessageView::read(context.pool(), private_message_id).await?;
-
-  // Blank out deleted or removed info
-  if view.private_message.deleted {
-    view.private_message = view.private_message.blank_out_deleted_or_removed_info();
-  }
-
-  let res = PrivateMessageResponse {
-    private_message_view: view,
-  };
-
-  // Send notifications to the local recipient, if one exists
-  if res.private_message_view.recipient.local {
-    let recipient_id = res.private_message_view.recipient.id;
-    let local_recipient = LocalUserView::read_person(context.pool(), recipient_id).await?;
-
-    context
-      .chat_server()
-      .send_user_room_message(&op, &res, local_recipient.local_user.id, websocket_id)
-      .await?;
-  }
-
-  Ok(res)
+pub async fn build_post_response(
+  context: &Data<LemmyContext>,
+  community_id: CommunityId,
+  person_id: PersonId,
+  post_id: PostId,
+) -> Result<PostResponse, LemmyError> {
+  let is_mod_or_admin = is_mod_or_admin(context.pool(), person_id, community_id)
+    .await
+    .is_ok();
+  let post_view = PostView::read(
+    context.pool(),
+    post_id,
+    Some(person_id),
+    Some(is_mod_or_admin),
+  )
+  .await?;
+  Ok(PostResponse { post_view })
 }
 
+// TODO: this function is a mess and should be split up to handle email seperately
 #[tracing::instrument(skip_all)]
 pub async fn send_local_notifs(
   mentions: Vec<MentionData>,

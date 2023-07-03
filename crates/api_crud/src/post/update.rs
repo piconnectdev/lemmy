@@ -1,11 +1,11 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::build_post_response,
   context::LemmyContext,
   post::{EditPost, PostResponse},
   request::fetch_site_data,
-  utils::{check_community_ban, get_local_user_view_from_jwt, local_site_to_slur_regex},
-  websocket::{send::send_post_ws_message, UserOperationCrud},
+  utils::{check_community_ban, local_site_to_slur_regex, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   source::{
@@ -13,31 +13,25 @@ use lemmy_db_schema::{
     local_site::LocalSite,
     post::{Post, PostUpdateForm},
   },
-  traits::{Crud, Signable}, 
+  traits::{Crud, Signable},
   utils::{diesel_option_overwrite, naive_now},
 };
 use lemmy_utils::{
   error::LemmyError,
   utils::{
     slurs::check_slurs_opt,
-    validation::{clean_url_params, is_valid_post_title},
+    validation::{clean_url_params, is_valid_body_field, is_valid_post_title},
   },
-  ConnectionId,
 };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditPost {
   type Response = PostResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<PostResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PostResponse, LemmyError> {
     let data: &EditPost = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     let data_url = data.url.as_ref();
@@ -53,10 +47,10 @@ impl PerformCrud for EditPost {
     check_slurs_opt(&data.body, &slur_regex)?;
 
     if let Some(name) = &data.name {
-      if !is_valid_post_title(name) {
-        return Err(LemmyError::from_message("invalid_post_title"));
-      }
+      is_valid_post_title(name)?;
     }
+
+    is_valid_body_field(&data.body)?;
 
     let post_id = data.post_id;
     let orig_post = Post::read(context.pool(), post_id).await?;
@@ -106,7 +100,6 @@ impl PerformCrud for EditPost {
       //.srv_sign(Some(signature))
       .build();
 
-    
     let post_id = data.post_id;
     let res = Post::update(context.pool(), post_id, &post_form).await;
     if let Err(e) = res {
@@ -118,19 +111,24 @@ impl PerformCrud for EditPost {
 
       return Err(LemmyError::from_error_message(e, err_type));
     }
+
     if context.settings().sign_enabled {
       let updated_post = res.unwrap();
-      let (signature, _meta, _content)  = Post::sign_data(&updated_post.clone()).await;
-      let updated_post = Post::update_srv_sign(context.pool(), updated_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
+      let (signature, _meta, _content) = Post::sign_data(&updated_post.clone()).await;
+      let updated_post = Post::update_srv_sign(
+        context.pool(),
+        updated_post.id.clone(),
+        signature.clone().unwrap_or_default().as_str(),
+      )
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
     }
-    
-    send_post_ws_message(
-      data.post_id,
-      UserOperationCrud::EditPost,
-      websocket_id,
-      Some(local_user_view.person.id),
+
+    build_post_response(
       context,
+      orig_post.community_id,
+      local_user_view.person.id,
+      post_id,
     )
     .await
   }

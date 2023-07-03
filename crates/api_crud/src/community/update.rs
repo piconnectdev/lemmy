@@ -1,10 +1,10 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::build_community_response,
   community::{CommunityResponse, EditCommunity},
   context::LemmyContext,
-  utils::{get_local_user_view_from_jwt, local_site_to_slur_regex},
-  websocket::{send::send_community_ws_message, UserOperationCrud},
+  utils::{local_site_to_slur_regex, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{
   newtypes::PersonId,
@@ -17,21 +17,19 @@ use lemmy_db_schema::{
   utils::{diesel_option_overwrite, diesel_option_overwrite_to_url, naive_now},
 };
 use lemmy_db_views_actor::structs::CommunityModeratorView;
-use lemmy_utils::{error::LemmyError, utils::slurs::check_slurs_opt, ConnectionId};
+use lemmy_utils::{
+  error::LemmyError,
+  utils::{slurs::check_slurs_opt, validation::is_valid_body_field},
+};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for EditCommunity {
   type Response = CommunityResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<CommunityResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<CommunityResponse, LemmyError> {
     let data: &EditCommunity = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     let icon = diesel_option_overwrite_to_url(&data.icon)?;
@@ -41,6 +39,7 @@ impl PerformCrud for EditCommunity {
     let slur_regex = local_site_to_slur_regex(&local_site);
     check_slurs_opt(&data.title, &slur_regex)?;
     check_slurs_opt(&data.description, &slur_regex)?;
+    is_valid_body_field(&data.description)?;
 
     // Verify its a mod (only mods can edit it)
     let community_id = data.community_id;
@@ -53,7 +52,7 @@ impl PerformCrud for EditCommunity {
 
     let community_id = data.community_id;
     if let Some(languages) = data.discussion_languages.clone() {
-      let site_languages = SiteLanguage::read_local(context.pool()).await?;
+      let site_languages = SiteLanguage::read_local_raw(context.pool()).await?;
       // check that community languages are a subset of site languages
       // https://stackoverflow.com/a/64227550
       let is_subset = languages.iter().all(|item| site_languages.contains(item));
@@ -78,13 +77,17 @@ impl PerformCrud for EditCommunity {
       .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
 
-    if context.settings().sign_enabled {      
-      let (signature, _meta, _content)  = Community::sign_data(&updated_community.clone()).await;
-      let updated_community = Community::update_srv_sign(context.pool(), updated_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;  
+    if context.settings().sign_enabled {
+      let (signature, _meta, _content) = Community::sign_data(&updated_community.clone()).await;
+      let updated_community = Community::update_srv_sign(
+        context.pool(),
+        updated_community.id.clone(),
+        signature.clone().unwrap_or_default().as_str(),
+      )
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
     }
 
-    let op = UserOperationCrud::EditCommunity;
-    send_community_ws_message(data.community_id, op, websocket_id, None, context).await
+    build_community_response(context, local_user_view, community_id).await
   }
 }

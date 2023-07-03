@@ -30,22 +30,21 @@ pub fn send_email(
 
   let (smtp_server, smtp_port) = {
     let email_and_port = email_config.smtp_server.split(':').collect::<Vec<&str>>();
-    if email_and_port.len() == 1 {
-      return Err(LemmyError::from_message(
-        "email.smtp_server needs a port, IE smtp.xxx.com:465",
-      ));
-    }
+    let email = *email_and_port
+      .first()
+      .ok_or_else(|| LemmyError::from_message("missing an email"))?;
+    let port = email_and_port
+      .get(1)
+      .ok_or_else(|| {
+        LemmyError::from_message("email.smtp_server needs a port, IE smtp.xxx.com:465")
+      })?
+      .parse::<u16>()?;
 
-    (
-      email_and_port[0],
-      email_and_port[1]
-        .parse::<u16>()
-        .expect("email needs a port"),
-    )
+    (email, port)
   };
 
-  // the message length before wrap, 78, is somewhat arbritary but looks good to me
-  let plain_text = html2text::from_read(html.as_bytes(), 78);
+  // use usize::MAX as the line wrap length, since lettre handles the wrapping for us
+  let plain_text = html2text::from_read(html.as_bytes(), usize::MAX);
 
   let email = Message::builder()
     .from(
@@ -79,7 +78,11 @@ pub fn send_email(
   };
 
   // Set the creds if they exist
-  if let (Some(username), Some(password)) = (email_config.smtp_login, email_config.smtp_password) {
+  let smtp_password = std::env::var("LEMMY_SMTP_PASSWORD")
+    .ok()
+    .or(email_config.smtp_password);
+
+  if let (Some(username), Some(password)) = (email_config.smtp_login, smtp_password) {
     builder = builder.credentials(Credentials::new(username, password));
   }
 

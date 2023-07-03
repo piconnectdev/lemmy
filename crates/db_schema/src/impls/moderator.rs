@@ -550,7 +550,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let new_mod = PersonInsertForm::builder()
       .name("the mod".into())
@@ -613,7 +615,7 @@ mod tests {
       post_id: inserted_post.id,
       mod_person_id: inserted_mod.id,
       reason: None,
-      removed: Some(true),
+      removed: true,
       when_: inserted_mod_remove_post.when_,
     };
 
@@ -634,7 +636,7 @@ mod tests {
       id: inserted_mod_lock_post.id,
       post_id: inserted_post.id,
       mod_person_id: inserted_mod.id,
-      locked: Some(true),
+      locked: true,
       when_: inserted_mod_lock_post.when_,
     };
 
@@ -680,7 +682,7 @@ mod tests {
       comment_id: inserted_comment.id,
       mod_person_id: inserted_mod.id,
       reason: None,
-      removed: Some(true),
+      removed: true,
       when_: inserted_mod_remove_comment.when_,
     };
 
@@ -706,7 +708,7 @@ mod tests {
       community_id: inserted_community.id,
       mod_person_id: inserted_mod.id,
       reason: None,
-      removed: Some(true),
+      removed: true,
       expires: None,
       when_: inserted_mod_remove_community.when_,
     };
@@ -735,7 +737,7 @@ mod tests {
       mod_person_id: inserted_mod.id,
       other_person_id: inserted_person.id,
       reason: None,
-      banned: Some(true),
+      banned: true,
       expires: None,
       when_: inserted_mod_ban_from_community.when_,
     };
@@ -756,7 +758,7 @@ mod tests {
       mod_person_id: inserted_mod.id,
       other_person_id: inserted_person.id,
       reason: None,
-      banned: Some(true),
+      banned: true,
       expires: None,
       when_: inserted_mod_ban.when_,
     };
@@ -780,7 +782,7 @@ mod tests {
       community_id: inserted_community.id,
       mod_person_id: inserted_mod.id,
       other_person_id: inserted_person.id,
-      removed: Some(false),
+      removed: false,
       when_: inserted_mod_add_community.when_,
     };
 
@@ -797,7 +799,7 @@ mod tests {
       id: inserted_mod_add.id,
       mod_person_id: inserted_mod.id,
       other_person_id: inserted_person.id,
-      removed: Some(false),
+      removed: false,
       when_: inserted_mod_add.when_,
     };
 

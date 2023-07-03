@@ -1,5 +1,5 @@
 use crate::protocol::Source;
-use activitypub_federation::deser::values::MediaTypeMarkdownOrHtml;
+use activitypub_federation::protocol::values::MediaTypeMarkdownOrHtml;
 use anyhow::anyhow;
 use html2md::parse_html;
 use lemmy_utils::{error::LemmyError, settings::structs::Settings};
@@ -54,21 +54,16 @@ pub(crate) fn verify_is_remote_object(id: &Url, settings: &Settings) -> Result<(
 
 #[cfg(test)]
 pub(crate) mod tests {
+  use activitypub_federation::config::{Data, FederationConfig};
   use anyhow::anyhow;
-  use lemmy_api_common::{
-    context::LemmyContext,
-    request::build_user_agent,
-    websocket::chat_server::ChatServer,
-  };
+  use lemmy_api_common::{context::LemmyContext, request::build_user_agent};
   use lemmy_db_schema::{source::secret::Secret, utils::build_db_pool_for_tests, newtypes::SecretId};
   use lemmy_utils::{
-    error::LemmyError,
     rate_limit::{RateLimitCell, RateLimitConfig},
     settings::SETTINGS,
   };
   use reqwest::{Client, Request, Response};
   use reqwest_middleware::{ClientBuilder, Middleware, Next};
-  use std::sync::Arc;
   use task_local_extensions::Extensions;
 
   struct BlockedMiddleware;
@@ -87,10 +82,7 @@ pub(crate) mod tests {
   }
 
   // TODO: would be nice if we didnt have to use a full context for tests.
-  pub(crate) async fn init_context() -> LemmyContext {
-    async fn x() -> Result<String, LemmyError> {
-      Ok(String::new())
-    }
+  pub(crate) async fn init_context() -> Data<LemmyContext> {
     // call this to run migrations
     let pool = build_db_pool_for_tests().await;
 
@@ -109,14 +101,13 @@ pub(crate) mod tests {
     let rate_limit_config = RateLimitConfig::builder().build();
     let rate_limit_cell = RateLimitCell::new(rate_limit_config).await;
 
-    let chat_server = Arc::new(ChatServer::startup());
-    LemmyContext::create(
-      pool,
-      chat_server,
-      client,
-      settings,
-      secret,
-      rate_limit_cell.clone(),
-    )
+    let context = LemmyContext::create(pool, client, secret, rate_limit_cell.clone());
+    let config = FederationConfig::builder()
+      .domain("example.com")
+      .app_data(context)
+      .build()
+      .await
+      .unwrap();
+    config.to_request_data()
   }
 }

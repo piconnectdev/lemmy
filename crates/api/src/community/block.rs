@@ -3,7 +3,7 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   community::{BlockCommunity, BlockCommunityResponse},
   context::LemmyContext,
-  utils::get_local_user_view_from_jwt,
+  utils::local_user_view_from_jwt,
 };
 use lemmy_db_schema::{
   source::{
@@ -13,21 +13,19 @@ use lemmy_db_schema::{
   traits::{Blockable, Followable},
 };
 use lemmy_db_views_actor::structs::CommunityView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for BlockCommunity {
   type Response = BlockCommunityResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
+  #[tracing::instrument(skip(context))]
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
   ) -> Result<BlockCommunityResponse, LemmyError> {
     let data: &BlockCommunity = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let community_id = data.community_id;
     let person_id = local_user_view.person.id;
@@ -57,7 +55,8 @@ impl Perform for BlockCommunity {
         .map_err(|e| LemmyError::from_error_message(e, "community_block_already_exists"))?;
     }
 
-    let community_view = CommunityView::read(context.pool(), community_id, Some(person_id)).await?;
+    let community_view =
+      CommunityView::read(context.pool(), community_id, Some(person_id), None).await?;
 
     Ok(BlockCommunityResponse {
       blocked: data.block,

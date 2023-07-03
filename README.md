@@ -40,13 +40,13 @@ A **Web3 Social Network**:
 <div align="center">
 
 ![GitHub tag (latest SemVer)](https://img.shields.io/github/tag/LemmyNet/lemmy.svg)
-[![Build Status](https://drone.join-lemmy.org/api/badges/LemmyNet/lemmy/status.svg)](https://drone.join-lemmy.org/LemmyNet/lemmy/)
+[![Build Status](https://woodpecker.join-lemmy.org/api/badges/LemmyNet/lemmy/status.svg)](https://woodpecker.join-lemmy.org/LemmyNet/lemmy)
 [![GitHub issues](https://img.shields.io/github/issues-raw/LemmyNet/lemmy.svg)](https://github.com/LemmyNet/lemmy/issues)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dessalines/lemmy.svg)](https://cloud.docker.com/repository/docker/dessalines/lemmy/)
 [![Translation status](http://weblate.join-lemmy.org/widgets/lemmy/-/lemmy/svg-badge.svg)](http://weblate.join-lemmy.org/engage/lemmy/)
 [![License](https://img.shields.io/github/license/LemmyNet/lemmy.svg)](LICENSE)
 ![GitHub stars](https://img.shields.io/github/stars/LemmyNet/lemmy?style=social)
-[![Awesome Humane Tech](https://raw.githubusercontent.com/humanetech-community/awesome-humane-tech/main/humane-tech-badge.svg?sanitize=true)](https://github.com/humanetech-community/awesome-humane-tech)
+[![Delightful Humane Tech](https://codeberg.org/teaserbot-labs/delightful-humane-design/raw/branch/main/humane-tech-badge.svg)](https://codeberg.org/teaserbot-labs/delightful-humane-design)
 
 </div>
 
@@ -69,7 +69,7 @@ A **Web3 Social Network**:
     <br />
     <a href="https://join-lemmy.org">Join Lemmy</a>
     ·
-    <a href="https://join-lemmy.org/docs/en/index.html">Documentation</a>
+    <a href="https://join-lemmy.org/docs/index.html">Documentation</a>
     ·
     <a href="https://matrix.to/#/#lemmy-space:matrix.org">Matrix Chat</a>
     ·
@@ -79,7 +79,7 @@ A **Web3 Social Network**:
     ·
     <a href="https://github.com/LemmyNet/lemmy/blob/main/RELEASES.md">Releases</a>
     ·
-    <a href="https://join-lemmy.org/docs/en/code_of_conduct.html">Code of Conduct</a>
+    <a href="https://join-lemmy.org/docs/code_of_conduct.html">Code of Conduct</a>
   </p>
 </p>
 
@@ -100,7 +100,7 @@ Each Lemmy server can set its own moderation policy; appointing site-wide admins
 
 ### Why's it called Lemmy?
 
-- Lead singer from [Motörhead](https://invidio.us/watch?v=pWB5JZRGl0U).
+- Lead singer from [Motörhead](https://invidio.us/watch?v=3mbvWn1EY6g).
 - The old school [video game](<https://en.wikipedia.org/wiki/Lemmings_(video_game)>).
 - The [Koopa from Super Mario](https://www.mariowiki.com/Lemmy_Koopa).
 - The [furry rodents](http://sunchild.fpwc.org/lemming-the-little-giant-of-the-north/).
@@ -117,7 +117,7 @@ Each Lemmy server can set its own moderation policy; appointing site-wide admins
 
 - Open source, [AGPL License](/LICENSE).
 - Self hostable, easy to deploy.
-  - Comes with [Docker](https://join-lemmy.org/docs/en/administration/install_docker.html) and [Ansible](https://join-lemmy.org/docs/en/administration/install_ansible.html).
+  - Comes with [Docker](https://join-lemmy.org/docs/administration/install_docker.html) and [Ansible](https://join-lemmy.org/docs/administration/install_ansible.html).
 - Clean, mobile-friendly interface.
   - Only a minimum of a username and password is required to sign up!
   - User avatar support.
@@ -151,8 +151,8 @@ Each Lemmy server can set its own moderation policy; appointing site-wide admins
 
 ## Installation
 
-- [Docker](https://join-lemmy.org/docs/en/administration/install_docker.html)
-- [Ansible](https://join-lemmy.org/docs/en/administration/install_ansible.html)
+- [Docker](https://join-lemmy.org/docs/administration/install_docker.html)
+- [Ansible](https://join-lemmy.org/docs/administration/install_ansible.html)
 
 ## Lemmy Projects
 
@@ -161,7 +161,8 @@ Each Lemmy server can set its own moderation policy; appointing site-wide admins
 - [lemmy-ui - The official web app for lemmy](https://github.com/LemmyNet/lemmy-ui)
 - [lemmyBB - A Lemmy forum UI based on phpBB](https://github.com/LemmyNet/lemmyBB)
 - [Jerboa - A native Android app made by Lemmy's developers](https://github.com/dessalines/jerboa)
-- [Remmel - A native iOS app](https://github.com/uuttff8/Lemmy-iOS)
+- [Mlem - A Lemmy client for iOS](https://github.com/buresdv/Mlem)
+- [Lemoa - A Gtk client for Lemmy on Linux](https://github.com/lemmy-gtk/lemoa)
 
 ### Libraries
 
@@ -169,7 +170,11 @@ Each Lemmy server can set its own moderation policy; appointing site-wide admins
 - [lemmy-rust-client](https://github.com/LemmyNet/lemmy/tree/main/crates/api_common)
 - [go-lemmy](https://gitea.arsenm.dev/Arsen6331/go-lemmy)
 - [Dart API client](https://github.com/LemmurOrg/lemmy_api_client)
+- [Lemmy-Swift-Client](https://github.com/rrainn/Lemmy-Swift-Client)
 - [Reddit -> Lemmy Importer](https://github.com/rileynull/RedditLemmyImporter)
+- [lemmy-bot - Typescript library to make it easier to make bots for Lemmy](https://github.com/SleeplessOne1917/lemmy-bot)
+- [Reddit API wrapper for Lemmy](https://github.com/derivator/tafkars)
+- [Pythörhead - Python package for integrating with the Lemmy API](https://pypi.org/project/pythorhead/)
 
 ## Support / Donate
 
@@ -178,7 +183,7 @@ Lemmy is free, open-source software, meaning no advertising, monetizing, or vent
 - [Support on Liberapay](https://liberapay.com/Lemmy).
 - [Support on Patreon](https://www.patreon.com/dessalines).
 - [Support on OpenCollective](https://opencollective.com/lemmy).
-- [List of Sponsors](https://join-lemmy.org/sponsors).
+- [List of Sponsors](https://join-lemmy.org/donate).
 
 ### Crypto
 
@@ -189,13 +194,13 @@ Lemmy is free, open-source software, meaning no advertising, monetizing, or vent
 
 ## Contributing
 
-- [Contributing instructions](https://join-lemmy.org/docs/en/contributing/contributing.html)
-- [Docker Development](https://join-lemmy.org/docs/en/contributing/docker_development.html)
-- [Local Development](https://join-lemmy.org/docs/en/contributing/local_development.html)
+- [Contributing instructions](https://join-lemmy.org/docs/contributors/01-overview.html)
+- [Docker Development](https://join-lemmy.org/docs/contributors/03-docker-development.html)
+- [Local Development](https://join-lemmy.org/docs/contributors/02-local-development.html)
 
 ### Translations
 
-If you want to help with translating, take a look at [Weblate](https://weblate.join-lemmy.org/projects/lemmy/). You can also help by [translating the documentation](https://github.com/LemmyNet/lemmy-docs#adding-a-new-language).
+- If you want to help with translating, take a look at [Weblate](https://weblate.join-lemmy.org/projects/lemmy/). You can also help by [translating the documentation](https://github.com/LemmyNet/lemmy-docs#adding-a-new-language).
 
 ## Contact
 

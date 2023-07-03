@@ -3,27 +3,24 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   comment::{CommentReportResponse, ResolveCommentReport},
   context::LemmyContext,
-  utils::{get_local_user_view_from_jwt, is_mod_or_admin},
-  websocket::UserOperation,
+  utils::{is_mod_or_admin, local_user_view_from_jwt},
 };
 use lemmy_db_schema::{source::comment_report::CommentReport, traits::Reportable};
 use lemmy_db_views::structs::CommentReportView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 /// Resolves or unresolves a comment report and notifies the moderators of the community
 #[async_trait::async_trait(?Send)]
 impl Perform for ResolveCommentReport {
   type Response = CommentReportResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
+  #[tracing::instrument(skip(context))]
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
   ) -> Result<CommentReportResponse, LemmyError> {
     let data: &ResolveCommentReport = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
 
     let report_id = data.report_id;
     let person_id = local_user_view.person.id;
@@ -45,20 +42,8 @@ impl Perform for ResolveCommentReport {
     let report_id = data.report_id;
     let comment_report_view = CommentReportView::read(context.pool(), report_id, person_id).await?;
 
-    let res = CommentReportResponse {
+    Ok(CommentReportResponse {
       comment_report_view,
-    };
-
-    context
-      .chat_server()
-      .send_mod_room_message(
-        UserOperation::ResolveCommentReport,
-        &res,
-        report.community.id,
-        websocket_id,
-      )
-      .await?;
-
-    Ok(res)
+    })
   }
 }

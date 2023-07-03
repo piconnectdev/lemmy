@@ -1,105 +1,43 @@
-use crate::api_routes_websocket::websocket;
 use actix_web::{guard, web, Error, HttpResponse, Result};
 use lemmy_api::Perform;
 use lemmy_api_common::{
   comment::{
-    CreateComment,
-    CreateCommentLike,
-    CreateCommentReport,
-    DeleteComment,
-    DistinguishComment,
-    EditComment,
-    GetComment,
-    GetComments,
-    ListCommentReports,
-    RemoveComment,
-    ResolveCommentReport,
+    CreateComment, CreateCommentLike, CreateCommentReport, DeleteComment, DistinguishComment,
+    EditComment, GetComment, GetComments, ListCommentReports, RemoveComment, ResolveCommentReport,
     SaveComment,
   },
   community::{
-    AddModToCommunity,
-    BanFromCommunity,
-    BlockCommunity,
-    CreateCommunity,
-    DeleteCommunity,
-    EditCommunity,
-    FollowCommunity,
-    GetCommunity,
-    HideCommunity,
-    ListCommunities,
-    RemoveCommunity,
+    AddModToCommunity, BanFromCommunity, BlockCommunity, CreateCommunity, DeleteCommunity,
+    EditCommunity, FollowCommunity, GetCommunity, HideCommunity, ListCommunities, RemoveCommunity,
     TransferCommunity,
   },
   context::LemmyContext,
+  custom_emoji::{CreateCustomEmoji, DeleteCustomEmoji, EditCustomEmoji},
   person::{
-    AddAdmin,
-    BanPerson,
-    BlockPerson,
-    ChangePassword,
-    DeleteAccount,
-    GetBannedPersons,
-    GetCaptcha,
-    GetPersonDetails,
-    GetPersonMentions,
-    GetReplies,
-    GetReportCount,
-    GetUnreadCount,
-    Login,
-    MarkAllAsRead,
-    MarkCommentReplyAsRead,
-    MarkPersonMentionAsRead,
-    PasswordChangeAfterReset,
-    PasswordReset,
-    Register,
-    SaveUserSettings,
-    VerifyEmail,
+    AddAdmin, BanPerson, BlockPerson, ChangePassword, DeleteAccount, GetBannedPersons,
+    GetPersonDetails, GetPersonMentions, GetReplies, GetReportCount, GetUnreadCount, Login,
+    MarkAllAsRead, MarkCommentReplyAsRead, MarkPersonMentionAsRead, PasswordChangeAfterReset,
+    PasswordReset, Register, SaveUserSettings, VerifyEmail,
   },
+  pipayment::*,
   post::{
-    CreatePost,
-    CreatePostLike,
-    CreatePostReport,
-    DeletePost,
-    EditPost,
-    FeaturePost,
-    GetPost,
-    GetPosts,
-    GetSiteMetadata,
-    ListPostReports,
-    LockPost,
-    MarkPostAsRead,
-    RemovePost,
-    ResolvePostReport,
-    SavePost,
+    CreatePost, CreatePostLike, CreatePostReport, DeletePost, EditPost, FeaturePost, GetPost,
+    GetPosts, GetSiteMetadata, ListPostReports, LockPost, MarkPostAsRead, RemovePost,
+    ResolvePostReport, SavePost,
   },
   private_message::{
-    CreatePrivateMessage,
-    CreatePrivateMessageReport,
-    DeletePrivateMessage,
-    EditPrivateMessage,
-    GetPrivateMessages,
-    ListPrivateMessageReports,
-    MarkPrivateMessageAsRead,
+    CreatePrivateMessage, CreatePrivateMessageReport, DeletePrivateMessage, EditPrivateMessage,
+    GetPrivateMessages, ListPrivateMessageReports, MarkPrivateMessageAsRead,
     ResolvePrivateMessageReport,
   },
   site::{
-    ApproveRegistrationApplication,
-    CreateSite,
-    EditSite,
-    GetModlog,
-    GetSite,
-    GetUnreadRegistrationApplicationCount,
-    LeaveAdmin,
-    ListRegistrationApplications,
-    PurgeComment,
-    PurgeCommunity,
-    PurgePerson,
-    PurgePost,
-    ResolveObject,
-    Search, GetMyUserInfo,
+    ApproveRegistrationApplication, CreateSite, EditSite, GetFederatedInstances, GetModlog,
+    GetMyUserInfo, GetSite, GetUnreadRegistrationApplicationCount, LeaveAdmin,
+    ListRegistrationApplications, PurgeComment, PurgeCommunity, PurgePerson, PurgePost,
+    ResolveObject, Search,
   },
-  pipayment::*,
   web3::*,
-  websocket::structs::{CommunityJoin, ModJoin, PostJoin, UserJoin},
+  //websocket::structs::{CommunityJoin, ModJoin, PostJoin, UserJoin},
 };
 use lemmy_api_crud::PerformCrud;
 use lemmy_apub::{api::PerformApub, SendActivity};
@@ -109,8 +47,6 @@ use serde::Deserialize;
 pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
   cfg.service(
     web::scope("/api/v3")
-      // Websocket
-      .service(web::resource("/ws").to(websocket))
       // Site
       .service(
         web::scope("/site")
@@ -162,9 +98,12 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           )
           .route("/transfer", web::post().to(route_post::<TransferCommunity>))
           .route("/ban_user", web::post().to(route_post::<BanFromCommunity>))
-          .route("/mod", web::post().to(route_post::<AddModToCommunity>))
-          .route("/join", web::post().to(route_post::<CommunityJoin>))
-          .route("/mod/join", web::post().to(route_post::<ModJoin>)),
+          .route("/mod", web::post().to(route_post::<AddModToCommunity>)),
+      )
+      .service(
+        web::scope("/federated_instances")
+          .wrap(rate_limit.message())
+          .route("", web::get().to(route_get::<GetFederatedInstances>)),
       )
       // Post
       .service(
@@ -190,7 +129,6 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .route("/list", web::get().to(route_get_apub::<GetPosts>))
           .route("/like", web::post().to(route_post::<CreatePostLike>))
           .route("/save", web::put().to(route_post::<SavePost>))
-          .route("/join", web::post().to(route_post::<PostJoin>))
           .route("/report", web::post().to(route_post::<CreatePostReport>))
           .route(
             "/report/resolve",
@@ -275,12 +213,6 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .wrap(rate_limit.register())
           .route(web::post().to(route_post_crud::<Register>)),
       )
-      .service(
-        // Handle captcha separately
-        web::resource("/user/get_captcha")
-          .wrap(rate_limit.post())
-          .route(web::get().to(route_get::<GetCaptcha>)),
-      )
       // User actions
       .service(
         web::scope("/user")
@@ -293,7 +225,6 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
             web::post().to(route_post::<MarkPersonMentionAsRead>),
           )
           .route("/replies", web::get().to(route_get::<GetReplies>))
-          .route("/join", web::post().to(route_post::<UserJoin>))
           // Admin action. I don't like that it's in /user
           .route("/ban", web::post().to(route_post::<BanPerson>))
           .route("/banned", web::get().to(route_get::<GetBannedPersons>))
@@ -346,15 +277,14 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .route(
             "/registration_application/approve",
             web::put().to(route_post::<ApproveRegistrationApplication>),
+          )
+          .service(
+            web::scope("/purge")
+              .route("/person", web::post().to(route_post::<PurgePerson>))
+              .route("/community", web::post().to(route_post::<PurgeCommunity>))
+              .route("/post", web::post().to(route_post::<PurgePost>))
+              .route("/comment", web::post().to(route_post::<PurgeComment>)),
           ),
-      )
-      .service(
-        web::scope("/admin/purge")
-          .wrap(rate_limit.message())
-          .route("/person", web::post().to(route_post::<PurgePerson>))
-          .route("/community", web::post().to(route_post::<PurgeCommunity>))
-          .route("/post", web::post().to(route_post::<PurgePost>))
-          .route("/comment", web::post().to(route_post::<PurgeComment>)),
       )
       // Web3
       .service(
@@ -370,17 +300,21 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .wrap(rate_limit.message())
           .route("/found", web::post().to(route_post_crud::<PiPaymentFound>))
           .route("/register", web::post().to(route_post_crud::<PiRegister>))
-          .route("/login", web::post().to(route_post_crud::<PiLogin>)) //.route("/payment", web::get().to(route_get_crud::<GetPayment>)),          
-          .route("/agree", web::post().to(route_post_crud::<PiAgreeRegister>))          
+          .route("/login", web::post().to(route_post_crud::<PiLogin>)) //.route("/payment", web::get().to(route_get_crud::<GetPayment>)),
+          .route("/agree", web::post().to(route_post_crud::<PiAgreeRegister>))
           .route(
             "/register_with_fee",
             web::post().to(route_post_crud::<PiRegisterWithFee>),
           )
           .route("/approve", web::post().to(route_post_crud::<PiApprove>))
-          .route("/complete", web::post().to(route_post_crud::<PiPaymentComplete>))
+          .route(
+            "/complete",
+            web::post().to(route_post_crud::<PiPaymentComplete>),
+          )
           .route("/key", web::post().to(route_post_crud::<PiKey>)),
-          //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
-      ).service(
+        //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
+      )
+      .service(
         web::scope("/payment")
           .wrap(rate_limit.message())
           .route("", web::get().to(route_post_crud::<GetPayment>))
@@ -389,7 +323,17 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .route("/send", web::post().to(route_post_crud::<SendPayment>))
           .route("/balance", web::post().to(route_post_crud::<GetPiBalances>))
           .route("/withdraw", web::post().to(route_post_crud::<PiWithdraw>)),
-          //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
+        //.route("/payments", web::get().to(route_get_crud::<GetPayments>)),
+      )
+      .service(
+        web::scope("/custom_emoji")
+          .wrap(rate_limit.message())
+          .route("", web::post().to(route_post_crud::<CreateCustomEmoji>))
+          .route("", web::put().to(route_post_crud::<EditCustomEmoji>))
+          .route(
+            "/delete",
+            web::post().to(route_post_crud::<DeleteCustomEmoji>),
+          ),
       ),
   );
 }
@@ -397,6 +341,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
 async fn perform<'a, Data>(
   data: Data,
   context: web::Data<LemmyContext>,
+  apub_data: activitypub_federation::config::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error>
 where
   Data: Perform
@@ -406,14 +351,15 @@ where
     + Send
     + 'static,
 {
-  let res = data.perform(&context, None).await?;
-  SendActivity::send_activity(&data, &res, &context).await?;
+  let res = data.perform(&context).await?;
+  SendActivity::send_activity(&data, &res, &apub_data).await?;
   Ok(HttpResponse::Ok().json(res))
 }
 
 async fn route_get<'a, Data>(
   data: web::Query<Data>,
   context: web::Data<LemmyContext>,
+  apub_data: activitypub_federation::config::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error>
 where
   Data: Perform
@@ -423,12 +369,12 @@ where
     + Send
     + 'static,
 {
-  perform::<Data>(data.0, context).await
+  perform::<Data>(data.0, context, apub_data).await
 }
 
 async fn route_get_apub<'a, Data>(
   data: web::Query<Data>,
-  context: web::Data<LemmyContext>,
+  context: activitypub_federation::config::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error>
 where
   Data: PerformApub
@@ -438,7 +384,7 @@ where
     + Send
     + 'static,
 {
-  let res = data.perform(&context, None).await?;
+  let res = data.perform(&context).await?;
   SendActivity::send_activity(&data.0, &res, &context).await?;
   Ok(HttpResponse::Ok().json(res))
 }
@@ -446,6 +392,7 @@ where
 async fn route_post<'a, Data>(
   data: web::Json<Data>,
   context: web::Data<LemmyContext>,
+  apub_data: activitypub_federation::config::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error>
 where
   Data: Perform
@@ -455,12 +402,13 @@ where
     + Send
     + 'static,
 {
-  perform::<Data>(data.0, context).await
+  perform::<Data>(data.0, context, apub_data).await
 }
 
 async fn perform_crud<'a, Data>(
   data: Data,
   context: web::Data<LemmyContext>,
+  apub_data: activitypub_federation::config::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error>
 where
   Data: PerformCrud
@@ -470,14 +418,15 @@ where
     + Send
     + 'static,
 {
-  let res = data.perform(&context, None).await?;
-  SendActivity::send_activity(&data, &res, &context).await?;
+  let res = data.perform(&context).await?;
+  SendActivity::send_activity(&data, &res, &apub_data).await?;
   Ok(HttpResponse::Ok().json(res))
 }
 
 async fn route_get_crud<'a, Data>(
   data: web::Query<Data>,
   context: web::Data<LemmyContext>,
+  apub_data: activitypub_federation::config::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error>
 where
   Data: PerformCrud
@@ -487,12 +436,13 @@ where
     + Send
     + 'static,
 {
-  perform_crud::<Data>(data.0, context).await
+  perform_crud::<Data>(data.0, context, apub_data).await
 }
 
 async fn route_post_crud<'a, Data>(
   data: web::Json<Data>,
   context: web::Data<LemmyContext>,
+  apub_data: activitypub_federation::config::Data<LemmyContext>,
 ) -> Result<HttpResponse, Error>
 where
   Data: PerformCrud
@@ -502,5 +452,65 @@ where
     + Send
     + 'static,
 {
-  perform_crud::<Data>(data.0, context).await
+  perform_crud::<Data>(data.0, context, apub_data).await
 }
+
+/*
+    UserOperation::GetToken => do_websocket_operation::<GetToken>(context, id, op, data).await,
+
+
+
+
+    UserOperationCrud::PiRegister => {
+      do_websocket_operation_crud::<PiRegister>(context, id, op, data).await
+    }
+    UserOperationCrud::PiLogin => {
+      do_websocket_operation_crud::<PiLogin>(context, id, op, data).await
+    }
+    UserOperationCrud::PiAgreeRegister => {
+      do_websocket_operation_crud::<PiAgreeRegister>(context, id, op, data).await
+    }
+    UserOperationCrud::PiRegisterWithFee => {
+      do_websocket_operation_crud::<PiRegisterWithFee>(context, id, op, data).await
+    }
+    UserOperationCrud::PiApprove => {
+      do_websocket_operation_crud::<PiApprove>(context, id, op, data).await
+    }
+    UserOperationCrud::PiPaymentComplete => {
+      do_websocket_operation_crud::<PiPaymentComplete>(context, id, op, data).await
+    }
+    UserOperationCrud::PiPaymentFound => {
+      do_websocket_operation_crud::<PiPaymentFound>(context, id, op, data).await
+    }
+    UserOperationCrud::PiKey => {
+      do_websocket_operation_crud::<PiKey>(context, id, op, data).await
+    }
+    UserOperationCrud::Web3Register => {
+      do_websocket_operation_crud::<Web3Register>(context, id, op, data).await
+    }
+    UserOperationCrud::Web3Login => {
+      do_websocket_operation_crud::<Web3Login>(context, id, op, data).await
+    }
+    UserOperationCrud::CreatePayment => {
+      do_websocket_operation_crud::<CreatePayment>(context, id, op, data).await
+    }
+    UserOperationCrud::GetPayment => {
+      do_websocket_operation_crud::<GetPayment>(context, id, op, data).await
+    }
+    UserOperationCrud::GetPayments => {
+      do_websocket_operation_crud::<GetPayments>(context, id, op, data).await
+    }
+    UserOperationCrud::GetPiBalances => {
+      do_websocket_operation_crud::<GetPiBalances>(context, id, op, data).await
+    }
+    UserOperationCrud::PiWithdraw => {
+      do_websocket_operation_crud::<PiWithdraw>(context, id, op, data).await
+    }
+    UserOperationCrud::SendPayment => {
+      do_websocket_operation_crud::<SendPayment>(context, id, op, data).await
+    }
+    UserOperationCrud::GetMyUserInfo => {
+      do_websocket_operation_crud::<GetMyUserInfo>(context, id, op, data).await
+    }
+
+*/

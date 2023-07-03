@@ -1,43 +1,49 @@
 use crate::{
   newtypes::{CommentId, DbUrl, PersonId},
-  schema::comment::dsl::{ap_id, comment, content, creator_id, deleted, path, removed, updated, pipayid},
+  schema::comment::dsl::{
+    ap_id, comment, content, creator_id, deleted, path, pipayid, removed, updated,
+  },
   source::comment::{
-    Comment,
-    CommentInsertForm,
-    CommentLike,
-    CommentLikeForm,
-    CommentSaved,
-    CommentSavedForm,
+    Comment, CommentInsertForm, CommentLike, CommentLikeForm, CommentSaved, CommentSavedForm,
     CommentUpdateForm,
   },
-  traits::{Crud, DeleteableOrRemoveable, Likeable, Saveable, Signable},
+  traits::{Crud, Likeable, Saveable, Signable},
   utils::{get_conn, naive_now, DbPool},
 };
+
 use diesel::{
   dsl::{insert_into, sql_query},
   result::Error,
-  ExpressionMethods,
-  QueryDsl,
+  ExpressionMethods, QueryDsl,
 };
 use diesel_async::RunQueryDsl;
 use diesel_ltree::Ltree;
-use url::Url;
 use sha2::{Digest, Sha256};
+use url::Url;
 
 impl Comment {
-  
-  pub fn sign_data_update(data: &Comment, body: &String) -> (Option<String>, Option<String>, Option<String>) {    
+  pub fn sign_data_update(
+    data: &Comment,
+    body: &String,
+  ) -> (Option<String>, Option<String>, Option<String>) {
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    let meta_data = format!("{};{};{};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.post_id.clone().0.simple(), data.published.clone().to_string());
+    let meta_data = format!(
+      "{};{};{};{};{}",
+      data.id.clone().0.simple(),
+      data.ap_id.clone().to_string(),
+      data.creator_id.clone().0.simple(),
+      data.post_id.clone().0.simple(),
+      data.published.clone().to_string()
+    );
 
-    sha_meta.update(format!("{}",meta_data));
-    let meta:  String = format!("{:x}", sha_meta.finalize());
+    sha_meta.update(format!("{}", meta_data));
+    let meta: String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(body.clone());
-    let content_data:  String = format!("{:x}", sha_content.finalize());
+    let content_data: String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
     sha256.update(content_data.clone());
@@ -136,9 +142,13 @@ impl Comment {
         // left join comment c2 on c2.path <@ c.path and c2.path != c.path
         // group by c.id
 
-        let top_parent = format!("0.{}", parent_path.0.split('.').collect::<Vec<&str>>()[1]);
-        let update_child_count_stmt = format!(
-          "
+        let path_split = parent_path.0.split('.').collect::<Vec<&str>>();
+        let parent_id = path_split.get(1);
+
+        if let Some(parent_id) = parent_id {
+          let top_parent = format!("0.{}", parent_id);
+          let update_child_count_stmt = format!(
+            "
 update comment_aggregates ca set child_count = c.child_count
 from (
   select c.id, c.path, count(c2.id) as child_count from comment c
@@ -147,9 +157,10 @@ from (
   group by c.id
 ) as c
 where ca.comment_id = c.id"
-        );
+          );
 
-        sql_query(update_child_count_stmt).execute(conn).await?;
+          sql_query(update_child_count_stmt).execute(conn).await?;
+        }
       }
       updated_comment
     } else {
@@ -173,10 +184,8 @@ where ca.comment_id = c.id"
     let mut ltree_split: Vec<&str> = self.path.0.split('.').collect();
     ltree_split.remove(0); // The first is always 0
     if ltree_split.len() > 1 {
-      ltree_split[ltree_split.len() - 2]
-        .parse::<uuid::Uuid>()
-        .map(CommentId)
-        .ok()
+      let parent_comment_id = ltree_split.get(ltree_split.len() - 2);
+      parent_comment_id.and_then(|p| p.parse::<uuid::Uuid>().map(CommentId).ok())
     } else {
       None
     }
@@ -188,11 +197,7 @@ impl Signable for Comment {
   type Form = Comment;
   type IdType = CommentId;
 
-  async fn update_srv_sign(
-    pool: &DbPool,
-    comment_id: CommentId,
-    sig: &str,
-  ) -> Result<Self, Error> {
+  async fn update_srv_sign(pool: &DbPool, comment_id: CommentId, sig: &str) -> Result<Self, Error> {
     use crate::schema::comment::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(comment.find(comment_id))
@@ -210,26 +215,30 @@ impl Signable for Comment {
     use crate::schema::comment::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(comment.find(comment_id))
-      .set((
-        tx.eq(txlink),
-        pipayid.eq(identifier)
-      ))
+      .set((tx.eq(txlink), pipayid.eq(identifier)))
       .get_result::<Self>(conn)
       .await
   }
-  
-  async fn sign_data(data: &Comment) -> (Option<String>, Option<String>, Option<String>) {    
+
+  async fn sign_data(data: &Comment) -> (Option<String>, Option<String>, Option<String>) {
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    let meta_data = format!("{};{};{};{};{}", data.id.clone().0.simple(), data.ap_id.clone().to_string(), data.creator_id.clone().0.simple(), data.post_id.clone().0.simple(), data.published.clone().to_string());
+    let meta_data = format!(
+      "{};{};{};{};{}",
+      data.id.clone().0.simple(),
+      data.ap_id.clone().to_string(),
+      data.creator_id.clone().0.simple(),
+      data.post_id.clone().0.simple(),
+      data.published.clone().to_string()
+    );
 
-    sha_meta.update(format!("{}",meta_data));
-    let meta:  String = format!("{:x}", sha_meta.finalize());
+    sha_meta.update(format!("{}", meta_data));
+    let meta: String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(data.content.clone());
-    let content_data:  String = format!("{:x}", sha_content.finalize());
+    let content_data: String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
     sha256.update(content_data.clone());
@@ -332,25 +341,13 @@ impl Saveable for CommentSaved {
   }
 }
 
-impl DeleteableOrRemoveable for Comment {
-  fn blank_out_deleted_or_removed_info(mut self) -> Self {
-    self.content = String::new();
-    self
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use crate::{
     newtypes::LanguageId,
     source::{
       comment::{
-        Comment,
-        CommentInsertForm,
-        CommentLike,
-        CommentLikeForm,
-        CommentSaved,
-        CommentSavedForm,
+        Comment, CommentInsertForm, CommentLike, CommentLikeForm, CommentSaved, CommentSavedForm,
         CommentUpdateForm,
       },
       community::{Community, CommunityInsertForm},
@@ -369,7 +366,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let new_person = PersonInsertForm::builder()
       .name("terry".into())
@@ -420,7 +419,7 @@ mod tests {
       local: true,
       language_id: LanguageId::default(),
       // cert: None,
-      auth_sign: None, 
+      auth_sign: None,
       srv_sign: None,
       pipayid: None,
       tx: None,
@@ -448,7 +447,7 @@ mod tests {
     // if parent_comment_id.is_some() {
     //   println!("parent_comment_id {}", parent_comment_id.unwrap());
     // }
-    
+
     // Comment Like
     let comment_like_form = CommentLikeForm {
       comment_id: inserted_comment.id,
@@ -516,7 +515,11 @@ mod tests {
     assert_eq!(expected_comment_saved, inserted_comment_saved);
     assert_eq!(expected_comment.id, parent_comment_id.unwrap());
     assert_eq!(
-      format!("0.{}.{}", expected_comment.id.0.simple(), inserted_child_comment.id.0.simple()),
+      format!(
+        "0.{}.{}",
+        expected_comment.id.0.simple(),
+        inserted_child_comment.id.0.simple()
+      ),
       inserted_child_comment.path.0,
     );
     assert_eq!(1, like_removed);

@@ -2,6 +2,7 @@ use crate::{
   newtypes::LocalUserId,
   schema::local_user::dsl::{
     accepted_application,
+    email,
     email_verified,
     local_user,
     password_encrypted,
@@ -17,79 +18,6 @@ use crate::{
 use bcrypt::{hash, DEFAULT_COST};
 use diesel::{dsl::insert_into, result::Error, ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
-
-mod safe_settings_type {
-  use crate::{
-    schema::local_user::columns::{
-      accepted_application,
-      default_listing_type,
-      default_sort_type,
-      email,
-      email_verified,
-      id,
-      interface_language,
-      person_id,
-      send_notifications_to_email,
-      show_avatars,
-      show_bot_accounts,
-      show_new_post_notifs,
-      show_nsfw,
-      show_read_posts,
-      show_scores,
-      theme,
-      validator_time,
-    },
-    source::local_user::LocalUser,
-    traits::ToSafeSettings,
-  };
-
-  type Columns = (
-    id,
-    person_id,
-    email,
-    show_nsfw,
-    theme,
-    default_sort_type,
-    default_listing_type,
-    interface_language,
-    show_avatars,
-    send_notifications_to_email,
-    validator_time,
-    show_bot_accounts,
-    show_scores,
-    show_read_posts,
-    show_new_post_notifs,
-    email_verified,
-    accepted_application,
-  );
-
-  impl ToSafeSettings for LocalUser {
-    type SafeSettingsColumns = Columns;
-
-    /// Includes everything but the hashed password
-    fn safe_settings_columns_tuple() -> Self::SafeSettingsColumns {
-      (
-        id,
-        person_id,
-        email,
-        show_nsfw,
-        theme,
-        default_sort_type,
-        default_listing_type,
-        interface_language,
-        show_avatars,
-        send_notifications_to_email,
-        validator_time,
-        show_bot_accounts,
-        show_scores,
-        show_read_posts,
-        show_new_post_notifs,
-        email_verified,
-        accepted_application,
-      )
-    }
-  }
-}
 
 impl LocalUser {
   pub async fn update_password(
@@ -126,6 +54,14 @@ impl LocalUser {
       .get_results::<Self>(conn)
       .await
   }
+
+  pub async fn is_email_taken(pool: &DbPool, email_: &str) -> Result<bool, Error> {
+    use diesel::dsl::{exists, select};
+    let conn = &mut get_conn(pool).await?;
+    select(exists(local_user.filter(email.eq(email_))))
+      .get_result(conn)
+      .await
+  }
 }
 
 #[async_trait]
@@ -153,10 +89,9 @@ impl Crud for LocalUser {
     let local_user_ = insert_into(local_user)
       .values(form_with_encrypted_password)
       .get_result::<Self>(conn)
-      .await
-      .expect("couldnt create local user");
+      .await?;
 
-    let site_languages = SiteLanguage::read_local(pool).await;
+    let site_languages = SiteLanguage::read_local_raw(pool).await;
     if let Ok(langs) = site_languages {
       // if site exists, init user with site languages
       LocalUserLanguage::update(pool, langs, local_user_.id).await?;

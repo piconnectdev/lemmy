@@ -3,25 +3,20 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   site::{ListRegistrationApplications, ListRegistrationApplicationsResponse},
-  utils::{get_local_user_view_from_jwt, is_admin},
+  utils::{is_admin, local_user_view_from_jwt},
 };
 use lemmy_db_schema::source::local_site::LocalSite;
 use lemmy_db_views::registration_application_view::RegistrationApplicationQuery;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 /// Lists registration applications, filterable by undenied only.
 #[async_trait::async_trait(?Send)]
 impl Perform for ListRegistrationApplications {
   type Response = ListRegistrationApplicationsResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<Self::Response, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<Self::Response, LemmyError> {
     let data = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     // Make sure user is an admin
@@ -42,10 +37,8 @@ impl Perform for ListRegistrationApplications {
       .list()
       .await?;
 
-    let res = Self::Response {
+    Ok(Self::Response {
       registration_applications,
-    };
-
-    Ok(res)
+    })
   }
 }

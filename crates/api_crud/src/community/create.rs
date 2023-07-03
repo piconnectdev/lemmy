@@ -1,17 +1,13 @@
 use crate::PerformCrud;
-use activitypub_federation::core::signatures::generate_actor_keypair;
+use activitypub_federation::http_signatures::generate_actor_keypair;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::build_community_response,
   community::{CommunityResponse, CreateCommunity},
   context::LemmyContext,
   utils::{
-    generate_followers_url,
-    generate_inbox_url,
-    generate_local_apub_endpoint,
-    generate_shared_inbox_url,
-    get_local_user_view_from_jwt,
-    is_admin,
-    local_site_to_slur_regex,
+    generate_followers_url, generate_inbox_url, generate_local_apub_endpoint,
+    generate_shared_inbox_url, is_admin, local_site_to_slur_regex, local_user_view_from_jwt,
     EndpointType,
   },
 };
@@ -19,11 +15,7 @@ use lemmy_db_schema::{
   source::{
     actor_language::{CommunityLanguage, SiteLanguage},
     community::{
-      Community,
-      CommunityFollower,
-      CommunityFollowerForm,
-      CommunityInsertForm,
-      CommunityModerator,
+      Community, CommunityFollower, CommunityFollowerForm, CommunityInsertForm, CommunityModerator,
       CommunityModeratorForm,
     },
     person::Person,
@@ -32,33 +24,25 @@ use lemmy_db_schema::{
   utils::diesel_option_overwrite_to_url_create,
 };
 use lemmy_db_views::structs::SiteView;
-use lemmy_db_views_actor::structs::CommunityView;
 use lemmy_utils::{
   error::LemmyError,
   utils::{
     slurs::{check_slurs, check_slurs_opt},
-    validation::is_valid_actor_name,
+    validation::{is_valid_actor_name, is_valid_body_field},
   },
-  ConnectionId,
 };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for CreateCommunity {
   type Response = CommunityResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<CommunityResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<CommunityResponse, LemmyError> {
     let data: &CreateCommunity = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let site_view = SiteView::read_local(context.pool()).await?;
     let local_site = site_view.local_site;
 
-   
     if local_site.community_creation_admin_only && is_admin(&local_user_view).is_err() {
       return Err(LemmyError::from_message(
         "only_admins_can_create_communities",
@@ -78,15 +62,13 @@ impl PerformCrud for CreateCommunity {
       //   ));
       // }
     } else {
-      match Person::read_from_name(context.pool(), &community_name.clone(), true).await
-      {
+      match Person::read_from_name(context.pool(), &community_name.clone(), true).await {
         Ok(p) => {
           return Err(LemmyError::from_message(
             "only_admins_can_create_communities",
           ));
-        },
-        Err(e) => {
         }
+        Err(e) => {}
       };
       if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
         return Err(LemmyError::from_message(
@@ -107,6 +89,8 @@ impl PerformCrud for CreateCommunity {
     if !is_valid_actor_name(&community_name, local_site.actor_name_max_length as usize) {
       return Err(LemmyError::from_message("invalid_community_name"));
     }
+    is_valid_actor_name(&data.name, local_site.actor_name_max_length as usize)?;
+    is_valid_body_field(&data.description)?;
 
     // Double check for duplicate community actor_ids
     let community_actor_id = generate_local_apub_endpoint(
@@ -119,9 +103,8 @@ impl PerformCrud for CreateCommunity {
       if is_home {
         let community_id = community_dupe.unwrap().id;
         let community_view =
-        CommunityView::read(context.pool(), community_id, person_id.clone()).await?;
-        let discussion_languages =
-        CommunityLanguage::read(context.pool(), community_id).await?;
+          CommunityView::read(context.pool(), community_id, person_id.clone()).await?;
+        let discussion_languages = CommunityLanguage::read(context.pool(), community_id).await?;
         return Ok(CommunityResponse {
           community_view,
           discussion_languages,
@@ -158,8 +141,13 @@ impl PerformCrud for CreateCommunity {
       .map_err(|e| LemmyError::from_error_message(e, "community_already_exists"))?;
 
     if context.settings().sign_enabled {
-      let (signature, _meta, _content)  = Community::sign_data(&inserted_community.clone()).await;
-      Community::update_srv_sign(context.pool(), inserted_community.id.clone(), signature.clone().unwrap_or_default().as_str()).await
+      let (signature, _meta, _content) = Community::sign_data(&inserted_community.clone()).await;
+      Community::update_srv_sign(
+        context.pool(),
+        inserted_community.id.clone(),
+        signature.clone().unwrap_or_default().as_str(),
+      )
+      .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_community"))?;
     }
 
@@ -187,7 +175,7 @@ impl PerformCrud for CreateCommunity {
     // Update the discussion_languages if that's provided
     let community_id = inserted_community.id;
     if let Some(languages) = data.discussion_languages.clone() {
-      let site_languages = SiteLanguage::read_local(context.pool()).await?;
+      let site_languages = SiteLanguage::read_local_raw(context.pool()).await?;
       // check that community languages are a subset of site languages
       // https://stackoverflow.com/a/64227550
       let is_subset = languages.iter().all(|item| site_languages.contains(item));
@@ -198,20 +186,21 @@ impl PerformCrud for CreateCommunity {
     }
 
     let person_id = local_user_view.person.id;
-    let community_view =
-      CommunityView::read(context.pool(), inserted_community.id, Some(person_id.clone())).await?;
+    let community_view = CommunityView::read(
+      context.pool(),
+      inserted_community.id,
+      Some(person_id.clone()),
+    )
+    .await?;
     let discussion_languages =
       CommunityLanguage::read(context.pool(), inserted_community.id).await?;
 
     if is_home {
       Person::update_home(context.pool(), person_id, inserted_community.id.clone())
-      .await
-      .map_err(|e| LemmyError::from_error_message(e, "create home error"))?;
+        .await
+        .map_err(|e| LemmyError::from_error_message(e, "create home error"))?;
     }
-  
-    Ok(CommunityResponse {
-      community_view,
-      discussion_languages,
-    })
+
+    build_community_response(context, local_user_view, community_id).await
   }
 }

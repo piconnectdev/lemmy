@@ -1,59 +1,48 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
+  build_response::build_post_response,
   context::LemmyContext,
   post::{CreatePost, PostResponse},
   request::fetch_site_data,
   utils::{
-    check_community_ban,
-    check_community_deleted_or_removed,
-    generate_local_apub_endpoint,
-    get_local_user_view_from_jwt,
-    honeypot_check,
-    local_site_to_slur_regex,
-    mark_post_as_read,
-    is_admin,
-    EndpointType,
+    check_community_ban, check_community_deleted_or_removed, generate_local_apub_endpoint,
+    honeypot_check, is_admin, local_site_to_slur_regex, local_user_view_from_jwt,
+    mark_post_as_read, EndpointType,
   },
-  websocket::{send::send_post_ws_message, UserOperationCrud},
 };
 use lemmy_db_schema::{
   impls::actor_language::default_post_language,
+  newtypes::CommunityId,
   source::{
     actor_language::CommunityLanguage,
     community::Community,
     local_site::LocalSite,
     post::{Post, PostInsertForm, PostLike, PostLikeForm, PostUpdateForm},
   },
-  traits::{Crud, Likeable, Signable}, newtypes::CommunityId,
+  traits::{Crud, Likeable, Signable},
 };
 use lemmy_db_views_actor::structs::CommunityView;
 use lemmy_utils::{
   error::LemmyError,
   utils::{
     slurs::{check_slurs, check_slurs_opt},
-    validation::{clean_url_params, is_valid_post_title},
+    validation::{clean_url_params, is_valid_body_field, is_valid_post_title},
   },
-  ConnectionId,
 };
 use tracing::{warn, Instrument};
 use url::Url;
-use webmention::{Webmention, WebmentionError};
 use uuid::Uuid;
+use webmention::{Webmention, WebmentionError};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for CreatePost {
   type Response = PostResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<PostResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PostResponse, LemmyError> {
     let data: &CreatePost = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     let slur_regex = local_site_to_slur_regex(&local_site);
@@ -63,9 +52,9 @@ impl PerformCrud for CreatePost {
 
     let data_url = data.url.as_ref();
     let url = data_url.map(clean_url_params).map(Into::into); // TODO no good way to handle a "clear"
-    if !is_valid_post_title(&data.name) {
-      return Err(LemmyError::from_message("invalid_post_title"));
-    }
+
+    is_valid_post_title(&data.name)?;
+    is_valid_body_field(&data.body)?;
 
     check_community_ban(local_user_view.person.id, data.community_id, context.pool()).await?;
     check_community_deleted_or_removed(data.community_id, context.pool()).await?;
@@ -90,9 +79,9 @@ impl PerformCrud for CreatePost {
       }
       if community.person_id.unwrap_or_default() != local_user_view.person.id {
         if !local_user_view.person.verified && is_admin(&local_user_view).is_err() {
-            return Err(LemmyError::from_message(
-              "only_admins_or_verified_user_can_create_post_on_other_home",
-            ));
+          return Err(LemmyError::from_message(
+            "only_admins_or_verified_user_can_create_post_on_other_home",
+          ));
         }
       }
     } else {
@@ -150,9 +139,14 @@ impl PerformCrud for CreatePost {
       }
     };
     if context.settings().sign_enabled {
-      let (signature, _meta, _content)  = Post::sign_data(&inserted_post.clone()).await;
-      let inserted_post = Post::update_srv_sign(context.pool(), inserted_post.id.clone(), signature.clone().unwrap_or_default().as_str()).await
-          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
+      let (signature, _meta, _content) = Post::sign_data(&inserted_post.clone()).await;
+      let inserted_post = Post::update_srv_sign(
+        context.pool(),
+        inserted_post.id.clone(),
+        signature.clone().unwrap_or_default().as_str(),
+      )
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_post"))?;
     }
     let inserted_post_id = inserted_post.id;
     let protocol_and_hostname = context.settings().get_protocol_and_hostname();
@@ -200,13 +194,6 @@ impl PerformCrud for CreatePost {
       }
     }
 
-    send_post_ws_message(
-      inserted_post.id,
-      UserOperationCrud::CreatePost,
-      websocket_id,
-      Some(local_user_view.person.id),
-      context,
-    )
-    .await
+    build_post_response(context, community_id, person_id, post_id).await
   }
 }

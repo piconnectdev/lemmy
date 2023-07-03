@@ -1,35 +1,27 @@
 use crate::structs::RegistrationApplicationView;
 use diesel::{
-  dsl::count,
-  result::Error,
-  ExpressionMethods,
-  JoinOnDsl,
-  NullableExpressionMethods,
-  QueryDsl,
+  dsl::count, result::Error, ExpressionMethods, JoinOnDsl, NullableExpressionMethods, QueryDsl,
 };
 use diesel_async::RunQueryDsl;
 use lemmy_db_schema::{
+  newtypes::RegistrationApplicationId,
   schema::{local_user, person, registration_application},
   source::{
-    local_user::{LocalUser, LocalUserSettings},
-    person::{Person, PersonSafe},
-    registration_application::RegistrationApplication,
+    local_user::LocalUser, person::Person, registration_application::RegistrationApplication,
   },
-  traits::{ToSafe, ToSafeSettings, ViewToVec},
+  traits::JoinView,
   utils::{get_conn, limit_and_offset, DbPool},
-  newtypes::RegistrationApplicationId,
 };
 use typed_builder::TypedBuilder;
 
-type RegistrationApplicationViewTuple = (
-  RegistrationApplication,
-  LocalUserSettings,
-  PersonSafe,
-  Option<PersonSafe>,
-);
+type RegistrationApplicationViewTuple =
+  (RegistrationApplication, LocalUser, Person, Option<Person>);
 
 impl RegistrationApplicationView {
-  pub async fn read(pool: &DbPool, registration_application_id: RegistrationApplicationId) -> Result<Self, Error> {
+  pub async fn read(
+    pool: &DbPool,
+    registration_application_id: RegistrationApplicationId,
+  ) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
     let person_alias_1 = diesel::alias!(person as person1);
 
@@ -47,11 +39,9 @@ impl RegistrationApplicationView {
         .order_by(registration_application::published.desc())
         .select((
           registration_application::all_columns,
-          LocalUser::safe_settings_columns_tuple(),
-          Person::safe_columns_tuple(),
-          person_alias_1
-            .fields(Person::safe_columns_tuple())
-            .nullable(),
+          local_user::all_columns,
+          person::all_columns,
+          person_alias_1.fields(person::all_columns).nullable(),
         ))
         .first::<RegistrationApplicationViewTuple>(conn)
         .await?;
@@ -116,11 +106,9 @@ impl<'a> RegistrationApplicationQuery<'a> {
       .order_by(registration_application::published.desc())
       .select((
         registration_application::all_columns,
-        LocalUser::safe_settings_columns_tuple(),
-        Person::safe_columns_tuple(),
-        person_alias_1
-          .fields(Person::safe_columns_tuple())
-          .nullable(),
+        local_user::all_columns,
+        person::all_columns,
+        person_alias_1.fields(person::all_columns).nullable(),
       ))
       .into_boxed();
 
@@ -141,39 +129,39 @@ impl<'a> RegistrationApplicationQuery<'a> {
 
     let res = query.load::<RegistrationApplicationViewTuple>(conn).await?;
 
-    Ok(RegistrationApplicationView::from_tuple_to_vec(res))
+    Ok(
+      res
+        .into_iter()
+        .map(RegistrationApplicationView::from_tuple)
+        .collect(),
+    )
   }
 }
 
-impl ViewToVec for RegistrationApplicationView {
-  type DbTuple = RegistrationApplicationViewTuple;
-  fn from_tuple_to_vec(items: Vec<Self::DbTuple>) -> Vec<Self> {
-    items
-      .into_iter()
-      .map(|a| Self {
-        registration_application: a.0,
-        creator_local_user: a.1,
-        creator: a.2,
-        admin: a.3,
-      })
-      .collect::<Vec<Self>>()
+impl JoinView for RegistrationApplicationView {
+  type JoinTuple = RegistrationApplicationViewTuple;
+  fn from_tuple(a: Self::JoinTuple) -> Self {
+    Self {
+      registration_application: a.0,
+      creator_local_user: a.1,
+      creator: a.2,
+      admin: a.3,
+    }
   }
 }
 
 #[cfg(test)]
 mod tests {
   use crate::registration_application_view::{
-    RegistrationApplicationQuery,
-    RegistrationApplicationView,
+    RegistrationApplicationQuery, RegistrationApplicationView,
   };
   use lemmy_db_schema::{
     source::{
       instance::Instance,
-      local_user::{LocalUser, LocalUserInsertForm, LocalUserSettings, LocalUserUpdateForm},
-      person::{Person, PersonInsertForm, PersonSafe},
+      local_user::{LocalUser, LocalUserInsertForm, LocalUserUpdateForm},
+      person::{Person, PersonInsertForm},
       registration_application::{
-        RegistrationApplication,
-        RegistrationApplicationInsertForm,
+        RegistrationApplication, RegistrationApplicationInsertForm,
         RegistrationApplicationUpdateForm,
       },
     },
@@ -187,7 +175,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let timmy_person_form = PersonInsertForm::builder()
       .name("timmy_rav".into())
@@ -271,7 +261,7 @@ mod tests {
 
     let mut expected_sara_app_view = RegistrationApplicationView {
       registration_application: sara_app.clone(),
-      creator_local_user: LocalUserSettings {
+      creator_local_user: LocalUser {
         id: inserted_sara_local_user.id,
         person_id: inserted_sara_local_user.person_id,
         email: inserted_sara_local_user.email,
@@ -289,8 +279,11 @@ mod tests {
         show_new_post_notifs: inserted_sara_local_user.show_new_post_notifs,
         email_verified: inserted_sara_local_user.email_verified,
         accepted_application: inserted_sara_local_user.accepted_application,
+        totp_2fa_secret: inserted_sara_local_user.totp_2fa_secret,
+        totp_2fa_url: inserted_sara_local_user.totp_2fa_url,
+        password_encrypted: inserted_sara_local_user.password_encrypted,
       },
-      creator: PersonSafe {
+      creator: Person {
         id: inserted_sara_person.id,
         name: inserted_sara_person.name.clone(),
         display_name: None,
@@ -310,16 +303,20 @@ mod tests {
         shared_inbox_url: None,
         matrix_user_id: None,
         instance_id: inserted_instance.id,
+        private_key: inserted_sara_person.private_key,
+        public_key: inserted_sara_person.public_key,
+        last_refreshed_at: inserted_sara_person.last_refreshed_at,
         home: None,
-        //external_id: None,
-        //external_name: None,
+        external_id: None,
+        external_name: None,
+        pipayid: None,
         verified: false,
         pi_address: inserted_sara_person.pi_address.clone(),
         web3_address: inserted_sara_person.web3_address.clone(),
         pol_address: inserted_sara_person.pol_address.clone(),
-        dap_address:inserted_sara_person.dap_address.clone(),
-        cosmos_address:inserted_sara_person.cosmos_address.clone(),
-        sui_address:inserted_sara_person.sui_address.clone(),
+        dap_address: inserted_sara_person.dap_address.clone(),
+        cosmos_address: inserted_sara_person.cosmos_address.clone(),
+        sui_address: inserted_sara_person.sui_address.clone(),
         auth_sign: inserted_sara_person.auth_sign.clone(),
         srv_sign: inserted_sara_person.srv_sign.clone(),
         tx: inserted_sara_person.tx.clone(),
@@ -378,7 +375,7 @@ mod tests {
       .accepted_application = true;
     expected_sara_app_view.registration_application.admin_id = Some(inserted_timmy_person.id);
 
-    expected_sara_app_view.admin = Some(PersonSafe {
+    expected_sara_app_view.admin = Some(Person {
       id: inserted_timmy_person.id,
       name: inserted_timmy_person.name.clone(),
       display_name: None,
@@ -398,18 +395,22 @@ mod tests {
       shared_inbox_url: None,
       matrix_user_id: None,
       instance_id: inserted_instance.id,
+      private_key: inserted_timmy_person.private_key,
+      public_key: inserted_timmy_person.public_key,
+      last_refreshed_at: inserted_timmy_person.last_refreshed_at,
       home: None,
-      //external_id: None,
-      //external_name: None,
+      external_id: None,
+      external_name: None,
+      pipayid: None,
       verified: false,
       pi_address: inserted_timmy_person.pi_address.clone(),
       web3_address: inserted_timmy_person.web3_address.clone(),
       pol_address: inserted_timmy_person.pol_address.clone(),
-      dap_address:inserted_timmy_person.dap_address.clone(),
-      cosmos_address:inserted_timmy_person.cosmos_address.clone(),
-      sui_address:inserted_timmy_person.sui_address.clone(),
+      dap_address: inserted_timmy_person.dap_address.clone(),
+      cosmos_address: inserted_timmy_person.cosmos_address.clone(),
+      sui_address: inserted_timmy_person.sui_address.clone(),
       auth_sign: inserted_timmy_person.auth_sign.clone(),
-      srv_sign: inserted_timmy_person.srv_sign.clone(),      
+      srv_sign: inserted_timmy_person.srv_sign.clone(),
       tx: inserted_timmy_person.tx.clone(),
     });
     assert_eq!(read_sara_app_view_after_approve, expected_sara_app_view);

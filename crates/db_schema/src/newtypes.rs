@@ -1,5 +1,8 @@
 #[cfg(feature = "full")]
-use activitypub_federation::{core::object_id::ObjectId, traits::ApubObject};
+use activitypub_federation::{
+  fetch::collection_id::CollectionId, fetch::object_id::ObjectId, traits::Collection,
+  traits::Object,
+};
 #[cfg(feature = "full")]
 use diesel_ltree::Ltree;
 use serde::{Deserialize, Serialize};
@@ -8,7 +11,8 @@ use std::{
   fmt::{Display, Formatter},
   ops::Deref,
 };
-
+#[cfg(feature = "full")]
+use ts_rs::TS;
 use url::Url;
 use uuid::Uuid;
 
@@ -146,6 +150,7 @@ impl fmt::Display for PostReportId {
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType, TS))]
 #[cfg_attr(feature = "full", ts(export))]
+/// The private message report id.
 pub struct PrivateMessageReportId(pub Uuid);
 
 impl fmt::Display for PrivateMessageReportId {
@@ -157,6 +162,7 @@ impl fmt::Display for PrivateMessageReportId {
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType, TS))]
 #[cfg_attr(feature = "full", ts(export))]
+/// The site id.
 pub struct SiteId(pub Uuid);
 impl fmt::Display for SiteId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -202,6 +208,7 @@ impl fmt::Display for CommunityLanguageId {
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Default, Serialize, Deserialize)]
 #[cfg_attr(feature = "full", derive(DieselNewType, TS))]
 #[cfg_attr(feature = "full", ts(export))]
+/// The comment reply id.
 pub struct CommentReplyId(pub Uuid);
 
 impl fmt::Display for CommentReplyId {
@@ -213,6 +220,7 @@ impl fmt::Display for CommentReplyId {
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType, TS))]
 #[cfg_attr(feature = "full", ts(export))]
+/// The instance id.
 pub struct InstanceId(pub Uuid);
 impl fmt::Display for InstanceId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -223,6 +231,7 @@ impl fmt::Display for InstanceId {
 #[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "full", derive(DieselNewType, TS))]
 #[cfg_attr(feature = "full", ts(export))]
+/// The local site id.
 pub struct LocalSiteId(pub Uuid);
 impl fmt::Display for LocalSiteId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -236,6 +245,17 @@ impl fmt::Display for LocalSiteId {
 /// The custom emoji id.
 pub struct CustomEmojiId(pub Uuid);
 impl fmt::Display for CustomEmojiId {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "full", derive(DieselNewType, TS))]
+#[cfg_attr(feature = "full", ts(export))]
+/// The custom emoji id.
+pub struct CustomEmojiKeywordId(pub Uuid);
+impl fmt::Display for CustomEmojiKeywordId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}", self.0)
   }
@@ -716,17 +736,23 @@ impl fmt::Display for SecretId {
   }
 }
 
+#[cfg(feature = "full")]
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "Ltree")]
+/// Do remote derivation for the Ltree struct
+pub struct LtreeDef(pub String);
+
 #[repr(transparent)]
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "full", derive(AsExpression, FromSqlRow))]
 #[cfg_attr(feature = "full", diesel(sql_type = diesel::sql_types::Text))]
 pub struct DbUrl(pub(crate) Box<Url>);
 
-#[cfg(feature = "full")]
-#[derive(Serialize, Deserialize)]
-#[serde(remote = "Ltree")]
-/// Do remote derivation for the Ltree struct
-pub struct LtreeDef(pub String);
+impl DbUrl {
+  pub fn inner(&self) -> &Url {
+    &self.0
+  }
+}
 
 impl Display for DbUrl {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -747,14 +773,40 @@ impl Into<Url> for DbUrl {
     *self.0
   }
 }
+
 #[cfg(feature = "full")]
 impl<T> From<DbUrl> for ObjectId<T>
 where
-  T: ApubObject + Send,
-  for<'de2> <T as ApubObject>::ApubType: Deserialize<'de2>,
+  T: Object + Send + 'static,
+  for<'de2> <T as Object>::Kind: Deserialize<'de2>,
 {
   fn from(value: DbUrl) -> Self {
-    ObjectId::new(value)
+    let url: Url = value.into();
+    ObjectId::from(url)
+  }
+}
+
+#[cfg(feature = "full")]
+impl<T> From<DbUrl> for CollectionId<T>
+where
+  T: Collection + Send + 'static,
+  for<'de2> <T as Collection>::Kind: Deserialize<'de2>,
+{
+  fn from(value: DbUrl) -> Self {
+    let url: Url = value.into();
+    CollectionId::from(url)
+  }
+}
+
+#[cfg(feature = "full")]
+impl<T> From<CollectionId<T>> for DbUrl
+where
+  T: Collection,
+  for<'de2> <T as Collection>::Kind: Deserialize<'de2>,
+{
+  fn from(value: CollectionId<T>) -> Self {
+    let url: Url = value.into();
+    url.into()
   }
 }
 
@@ -763,5 +815,18 @@ impl Deref for DbUrl {
 
   fn deref(&self) -> &Self::Target {
     &self.0
+  }
+}
+
+#[cfg(feature = "full")]
+impl TS for DbUrl {
+  fn name() -> String {
+    "string".to_string()
+  }
+  fn dependencies() -> Vec<ts_rs::Dependency> {
+    Vec::new()
+  }
+  fn transparent() -> bool {
+    true
   }
 }

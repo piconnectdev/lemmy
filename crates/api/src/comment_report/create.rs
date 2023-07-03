@@ -3,8 +3,7 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   comment::{CommentReportResponse, CreateCommentReport},
   context::LemmyContext,
-  utils::{check_community_ban, get_local_user_view_from_jwt, send_new_report_email_to_admins},
-  websocket::UserOperation,
+  utils::{check_community_ban, local_user_view_from_jwt, send_new_report_email_to_admins},
 };
 use lemmy_db_schema::{
   source::{
@@ -14,22 +13,20 @@ use lemmy_db_schema::{
   traits::Reportable,
 };
 use lemmy_db_views::structs::{CommentReportView, CommentView};
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 /// Creates a comment report and notifies the moderators of the community
 #[async_trait::async_trait(?Send)]
 impl Perform for CreateCommentReport {
   type Response = CommentReportResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
+  #[tracing::instrument(skip(context))]
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
   ) -> Result<CommentReportResponse, LemmyError> {
     let data: &CreateCommentReport = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     let reason = self.reason.trim();
@@ -65,20 +62,8 @@ impl Perform for CreateCommentReport {
       .await?;
     }
 
-    let res = CommentReportResponse {
+    Ok(CommentReportResponse {
       comment_report_view,
-    };
-
-    context
-      .chat_server()
-      .send_mod_room_message(
-        UserOperation::CreateCommentReport,
-        &res,
-        comment_view.community.id,
-        websocket_id,
-      )
-      .await?;
-
-    Ok(res)
+    })
   }
 }

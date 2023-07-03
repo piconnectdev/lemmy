@@ -3,11 +3,9 @@ use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   private_message::{CreatePrivateMessageReport, PrivateMessageReportResponse},
-  utils::{get_local_user_view_from_jwt, send_new_report_email_to_admins},
-  websocket::UserOperation,
+  utils::{local_user_view_from_jwt, send_new_report_email_to_admins},
 };
 use lemmy_db_schema::{
-  newtypes::CommunityId,
   source::{
     local_site::LocalSite,
     private_message::PrivateMessage,
@@ -16,20 +14,15 @@ use lemmy_db_schema::{
   traits::{Crud, Reportable},
 };
 use lemmy_db_views::structs::PrivateMessageReportView;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::error::LemmyError;
 
 #[async_trait::async_trait(?Send)]
 impl Perform for CreatePrivateMessageReport {
   type Response = PrivateMessageReportResponse;
 
-  #[tracing::instrument(skip(context, websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<Self::Response, LemmyError> {
-    let local_user_view =
-      get_local_user_view_from_jwt(&self.auth, context.pool(), context.secret()).await?;
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<Self::Response, LemmyError> {
+    let local_user_view = local_user_view_from_jwt(&self.auth, context).await?;
     let local_site = LocalSite::read(context.pool()).await?;
 
     let reason = self.reason.trim();
@@ -64,23 +57,10 @@ impl Perform for CreatePrivateMessageReport {
       .await?;
     }
 
-    let res = PrivateMessageReportResponse {
-      private_message_report_view,
-    };
-
-    let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-    context
-      .chat_server()
-      .send_mod_room_message(
-        UserOperation::CreatePrivateMessageReport,
-        &res,
-        CommunityId(uuid),
-        websocket_id,
-      )
-      .await?;
-
     // TODO: consider federating this
 
-    Ok(res)
+    Ok(PrivateMessageReportResponse {
+      private_message_report_view,
+    })
   }
 }

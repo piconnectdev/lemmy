@@ -1,5 +1,5 @@
 use crate::PerformCrud;
-use activitypub_federation::core::signatures::generate_actor_keypair;
+use activitypub_federation::http_signatures::generate_actor_keypair;
 use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
@@ -19,14 +19,13 @@ use lemmy_api_common::{
 use lemmy_db_schema::{
   aggregates::structs::PersonAggregates,
   source::{
-    local_site::RegistrationMode,
     local_user::{LocalUser, LocalUserInsertForm},
     person::{Person, PersonInsertForm},
     registration_application::{RegistrationApplication, RegistrationApplicationInsertForm},
     site::Site,
     community::*,
   },
-  traits::{Crud, ApubActor, },  
+  traits::{Crud, RegistrationMode, ApubActor, },  
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 use lemmy_utils::{
@@ -36,19 +35,14 @@ use lemmy_utils::{
     slurs::{check_slurs, check_slurs_opt},
     validation::is_valid_actor_name,
   },
-  ConnectionId,
 };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for Register {
   type Response = LoginResponse;
 
-  #[tracing::instrument(skip(self, context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  #[tracing::instrument(skip(self, context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<LoginResponse, LemmyError> {
     let data: &Register = self;
 
     let site_view = SiteView::read_local(context.pool()).await?;
@@ -102,14 +96,18 @@ impl PerformCrud for Register {
     check_slurs_opt(&data.answer, &slur_regex)?;
 
     let actor_keypair = generate_actor_keypair()?;
-    if !is_valid_actor_name(&data.username, local_site.actor_name_max_length as usize) {
-      return Err(LemmyError::from_message("invalid_username"));
-    }
+    is_valid_actor_name(&data.username, local_site.actor_name_max_length as usize)?;
     let actor_id = generate_local_apub_endpoint(
       EndpointType::Person,
       &data.username,
       &context.settings().get_protocol_and_hostname(),
     )?;
+
+    if let Some(email) = &data.email {
+      if LocalUser::is_email_taken(context.pool(), email).await? {
+        return Err(LemmyError::from_message("email_already_exists"));
+      }
+    }
 
     // We have to create both a person, and local_user
 
@@ -131,31 +129,20 @@ impl PerformCrud for Register {
       .await
       .map_err(|e| LemmyError::from_error_message(e, "user_already_exists"))?;
 
+    // Automatically set their application as accepted, if they created this with open registration.
+    // Also fixes a bug which allows users to log in when registrations are changed to closed.
+    let accepted_application = Some(!require_registration_application);
+
     // Create the local user
     let local_user_form = LocalUserInsertForm::builder()
       .person_id(inserted_person.id)
       .email(data.email.as_deref().map(str::to_lowercase))
       .password_encrypted(data.password.to_string())
       .show_nsfw(Some(data.show_nsfw))
+      .accepted_application(accepted_application)
       .build();
 
-    let inserted_local_user = match LocalUser::create(context.pool(), &local_user_form).await {
-      Ok(lu) => lu,
-      Err(e) => {
-        let err_type = if e.to_string()
-          == "duplicate key value violates unique constraint \"local_user_email_key\""
-        {
-          "email_already_exists"
-        } else {
-          "user_already_exists"
-        };
-
-        // If the local user creation errored, then delete that person
-        Person::delete(context.pool(), inserted_person.id).await?;
-
-        return Err(LemmyError::from_error_message(e, err_type));
-      }
-    };
+    let inserted_local_user = LocalUser::create(context.pool(), &local_user_form).await?;
 
     if local_site.site_setup && require_registration_application {
       // Create the registration application

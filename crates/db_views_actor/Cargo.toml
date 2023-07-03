@@ -12,12 +12,14 @@ repository.workspace = true
 doctest = false
 
 [features]
-full = ["lemmy_db_schema/full", "diesel", "diesel-async"]
+full = ["lemmy_db_schema/full", "diesel", "diesel-async", "ts-rs"]
 
 [dependencies]
 lemmy_db_schema = { workspace = true }
 diesel = { workspace = true, features = ["postgres","chrono","serde_json","uuid"], optional = true }
-diesel-async = { workspace = true, features = ["postgres", "bb8"], optional = true }
+diesel-async = { workspace = true, features = ["postgres", "deadpool"], optional = true }
 serde = { workspace = true }
+serde_with = { workspace = true }
 typed-builder = { workspace = true }
-uuid = { workspace = true, features = ["serde", "v4"] }
+ts-rs = { workspace = true, optional = true } 
+#uuid = { workspace = true, features = ["serde", "v4"] }

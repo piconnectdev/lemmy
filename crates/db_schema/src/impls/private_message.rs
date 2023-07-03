@@ -2,14 +2,14 @@ use crate::{
   newtypes::{DbUrl, PersonId, PrivateMessageId},
   schema::private_message::dsl::{ap_id, private_message, read, recipient_id},
   source::private_message::{PrivateMessage, PrivateMessageInsertForm, PrivateMessageUpdateForm},
-  traits::{Crud, DeleteableOrRemoveable, Signable},
+  traits::{Crud, Signable},
   utils::{get_conn, DbPool},
 };
 use diesel::{dsl::insert_into, result::Error, ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use lemmy_utils::error::LemmyError;
-use url::Url;
 use sha2::{Digest, Sha256};
+use url::Url;
 
 #[async_trait]
 impl Crud for PrivateMessage {
@@ -88,7 +88,7 @@ impl PrivateMessage {
 }
 
 #[async_trait]
-impl Signable for PrivateMessage { 
+impl Signable for PrivateMessage {
   type Form = PrivateMessage;
   type IdType = PrivateMessageId;
   async fn update_srv_sign(
@@ -113,26 +113,28 @@ impl Signable for PrivateMessage {
     use crate::schema::private_message::dsl::*;
     let conn = &mut get_conn(pool).await?;
     diesel::update(private_message.find(private_message_id))
-      .set((
-        tx.eq(txlink),
-        pipayid.eq(identifier)
-      ))
+      .set((tx.eq(txlink), pipayid.eq(identifier)))
       .get_result::<Self>(conn)
       .await
   }
 
-  async fn sign_data(updated_message: &PrivateMessage) -> (Option<String>, Option<String>, Option<String>) {    
+  async fn sign_data(
+    updated_message: &PrivateMessage,
+  ) -> (Option<String>, Option<String>, Option<String>) {
     let mut sha_meta = Sha256::new();
     let mut sha_content = Sha256::new();
     let mut sha256 = Sha256::new();
 
-    sha_meta.update(format!("{}",updated_message.id.clone().0.simple()));
-    sha_meta.update(format!("{}",updated_message.creator_id.clone().0.simple()));
-    sha_meta.update(format!("{}",updated_message.recipient_id.clone().0.simple()));
-    let meta:  String = format!("{:x}", sha_meta.finalize());
+    sha_meta.update(format!("{}", updated_message.id.clone().0.simple()));
+    sha_meta.update(format!("{}", updated_message.creator_id.clone().0.simple()));
+    sha_meta.update(format!(
+      "{}",
+      updated_message.recipient_id.clone().0.simple()
+    ));
+    let meta: String = format!("{:x}", sha_meta.finalize());
 
     sha_content.update(updated_message.secured.clone().unwrap_or_default().clone());
-    let content:  String = format!("{:x}", sha_content.finalize());
+    let content: String = format!("{:x}", sha_content.finalize());
 
     sha256.update(meta.clone());
     sha256.update(content.clone());
@@ -145,12 +147,12 @@ impl Signable for PrivateMessage {
   }
 }
 
-impl DeleteableOrRemoveable for PrivateMessage {
-  fn blank_out_deleted_or_removed_info(mut self) -> Self {
-    self.content = String::new();
-    self
-  }
-}
+// impl DeleteableOrRemoveable for PrivateMessage {
+//   fn blank_out_deleted_or_removed_info(mut self) -> Self {
+//     self.content = String::new();
+//     self
+//   }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -170,7 +172,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let creator_form = PersonInsertForm::builder()
       .name("creator_pm".into())
@@ -210,7 +214,7 @@ mod tests {
       ap_id: inserted_private_message.ap_id.clone(),
       local: true,
       secured: None,
-      auth_sign: None, 
+      auth_sign: None,
       srv_sign: None,
       pipayid: None,
       tx: None,

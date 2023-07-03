@@ -1,15 +1,15 @@
 use crate::{site::check_application_question, PerformCrud};
-use activitypub_federation::core::signatures::generate_actor_keypair;
+use activitypub_federation::http_signatures::generate_actor_keypair;
 use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
   site::{CreateSite, SiteResponse},
   utils::{
     generate_site_inbox_url,
-    get_local_user_view_from_jwt,
     is_admin,
     local_site_rate_limit_to_rate_limit_config,
     local_site_to_slur_regex,
+    local_user_view_from_jwt,
     site_description_length_check,
   },
 };
@@ -19,6 +19,7 @@ use lemmy_db_schema::{
     local_site::{LocalSite, LocalSiteUpdateForm},
     local_site_rate_limit::{LocalSiteRateLimit, LocalSiteRateLimitUpdateForm},
     site::{Site, SiteUpdateForm},
+    tagline::Tagline,
   },
   traits::Crud,
   utils::{diesel_option_overwrite, diesel_option_overwrite_to_url, naive_now},
@@ -26,8 +27,10 @@ use lemmy_db_schema::{
 use lemmy_db_views::structs::SiteView;
 use lemmy_utils::{
   error::LemmyError,
-  utils::slurs::{check_slurs, check_slurs_opt},
-  ConnectionId,
+  utils::{
+    slurs::{check_slurs, check_slurs_opt},
+    validation::{check_site_visibility_valid, is_valid_body_field},
+  },
 };
 use url::Url;
 
@@ -35,12 +38,8 @@ use url::Url;
 impl PerformCrud for CreateSite {
   type Response = SiteResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<SiteResponse, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<SiteResponse, LemmyError> {
     let data: &CreateSite = self;
 
     let local_site = LocalSite::read(context.pool()).await?;
@@ -49,8 +48,17 @@ impl PerformCrud for CreateSite {
       return Err(LemmyError::from_message("site_already_exists"));
     };
 
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
+
+    // Make sure user is an admin
+    is_admin(&local_user_view)?;
+
+    check_site_visibility_valid(
+      local_site.private_instance,
+      local_site.federation_enabled,
+      &data.private_instance,
+      &data.federation_enabled,
+    )?;
 
     let sidebar = diesel_option_overwrite(&data.sidebar);
     let description = diesel_option_overwrite(&data.description);
@@ -61,12 +69,11 @@ impl PerformCrud for CreateSite {
     check_slurs(&data.name, &slur_regex)?;
     check_slurs_opt(&data.description, &slur_regex)?;
 
-    // Make sure user is an admin
-    is_admin(&local_user_view)?;
-
     if let Some(Some(desc)) = &description {
       site_description_length_check(desc)?;
     }
+
+    is_valid_body_field(&data.sidebar)?;
 
     let application_question = diesel_option_overwrite(&data.application_question);
     check_application_question(
@@ -107,7 +114,7 @@ impl PerformCrud for CreateSite {
       .application_question(application_question)
       .private_instance(data.private_instance)
       .default_theme(data.default_theme.clone())
-      .default_post_listing_type(data.default_post_listing_type.clone())
+      .default_post_listing_type(data.default_post_listing_type)
       .legal_information(diesel_option_overwrite(&data.legal_information))
       .application_email_admins(data.application_email_admins)
       .hide_modlog_mod_names(data.hide_modlog_mod_names)
@@ -115,7 +122,6 @@ impl PerformCrud for CreateSite {
       .slur_filter_regex(diesel_option_overwrite(&data.slur_filter_regex))
       .actor_name_max_length(data.actor_name_max_length)
       .federation_enabled(data.federation_enabled)
-      .federation_debug(data.federation_debug)
       .federation_worker_count(data.federation_worker_count)
       .captcha_enabled(data.captcha_enabled)
       .captcha_difficulty(data.captcha_difficulty.clone())
@@ -142,6 +148,9 @@ impl PerformCrud for CreateSite {
 
     let site_view = SiteView::read_local(context.pool()).await?;
 
+    let new_taglines = data.taglines.clone();
+    let taglines = Tagline::replace(context.pool(), local_site.id, new_taglines).await?;
+
     let rate_limit_config =
       local_site_rate_limit_to_rate_limit_config(&site_view.local_site_rate_limit);
     context
@@ -149,6 +158,9 @@ impl PerformCrud for CreateSite {
       .send(rate_limit_config)
       .await?;
 
-    Ok(SiteResponse { site_view })
+    Ok(SiteResponse {
+      site_view,
+      taglines,
+    })
   }
 }
