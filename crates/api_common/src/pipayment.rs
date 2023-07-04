@@ -1,5 +1,8 @@
-use crate::{person::*, web3::ExternalAccount, sensitive::Sensitive};
-use lemmy_db_schema::{newtypes::{PiPaymentId, PiUserId, PersonBalanceId, PersonId}, source::pipayment::PiPaymentSafe};
+use crate::{person::*, sensitive::Sensitive, web3::ExternalAccount};
+use lemmy_db_schema::{
+  newtypes::{PersonBalanceId, PersonId, PiPaymentId, PiUserId},
+  source::pipayment::*,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -45,7 +48,7 @@ pub struct PiAgreeResponse {
 
 #[derive(Clone, Deserialize)]
 pub struct PiRegisterWithFee {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
   pub ea: ExternalAccount,
   pub paymentid: String,
   pub txid: String,
@@ -54,7 +57,7 @@ pub struct PiRegisterWithFee {
 
 #[derive(Clone, Deserialize)]
 pub struct PiRegister {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
   pub ea: ExternalAccount,
   pub info: Register,
 }
@@ -68,14 +71,14 @@ pub struct PiRegisterResponse {
 
 #[derive(Clone, Deserialize)]
 pub struct PiLogin {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
   pub ea: ExternalAccount,
   pub info: Option<Login>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiApprove {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
   //pub pi_username: String,
   //pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
@@ -96,7 +99,7 @@ pub struct PiApproveResponse {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiPaymentComplete {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
   //pub pi_username: String,
   //pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
@@ -115,7 +118,7 @@ pub struct PiPaymentCompleteResponse {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PiKey {
-  pub domain: Option<String>,  
+  pub domain: Option<String>,
   //pub pi_username: String,
   //pub pi_uid: Option<PiUserId>,
   pub pi_token: Option<String>,
@@ -176,11 +179,9 @@ pub struct PiPaymentMeta {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
-pub struct IncompleteServerPayments
-{
+pub struct IncompleteServerPayments {
   pub incomplete_server_payments: Vec<PiPaymentDto>,
 }
-
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PiPaymentDto {
@@ -270,7 +271,7 @@ pub struct GetPayment {
 pub struct GetPaymentResponse {
   //pub pid: String,
   //pub dto: PiPaymentDto,
-  pub payment: Option<PiPaymentSafe>,
+  pub payment: Option<PiPayment>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -285,19 +286,18 @@ pub struct GetPayments {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetPaymentsResponse {
-  pub pipayments: Option<Vec<PiPaymentSafe>>,
+  pub pipayments: Option<Vec<PiPayment>>,
 }
-
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SendPayment {
-  pub id: Option<PiPaymentId>, 
+  pub id: Option<PiPaymentId>,
   pub auth: Sensitive<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SendPaymentResponse {
   pub success: bool,
-  pub id: Option<PiPaymentId>, 
-  pub payment: Option<PiPaymentSafe>,
+  pub id: Option<PiPaymentId>,
+  pub payment: Option<PiPayment>,
 }

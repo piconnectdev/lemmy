@@ -19,10 +19,7 @@ use lemmy_utils::{
   claims::Claims,
   error::LemmyError,
   utils::validation::{
-    build_totp_2fa,
-    generate_totp_2fa_secret,
-    is_valid_bio_field,
-    is_valid_display_name,
+    build_totp_2fa, generate_totp_2fa_secret, is_valid_bio_field, is_valid_display_name,
     is_valid_matrix_id,
   },
 };
@@ -100,7 +97,7 @@ impl Perform for SaveUserSettings {
       .dap_address(dap_address)
       .cosmos_address(cosmos_address)
       .sui_address(sui_address)
-      .pol_address(pol_address)      
+      .pol_address(pol_address)
       .auth_sign(auth_sign)
       .build();
 
@@ -110,9 +107,13 @@ impl Perform for SaveUserSettings {
 
     if context.settings().sign_enabled {
       let (signature, _meta, _content) = Person::sign_data(&person.clone()).await;
-      let person = Person::update_srv_sign(context.pool(), person_id.clone(), signature.clone().unwrap_or_default().as_str())
-          .await
-          .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_srv_sign"))?;
+      let person = Person::update_srv_sign(
+        context.pool(),
+        person_id.clone(),
+        signature.clone().unwrap_or_default().as_str(),
+      )
+      .await
+      .map_err(|e| LemmyError::from_error_message(e, "couldnt_update_srv_sign"))?;
     }
     if let Some(discussion_languages) = data.discussion_languages.clone() {
       LocalUserLanguage::update(context.pool(), discussion_languages, local_user_id).await?;
@@ -147,6 +148,7 @@ impl Perform for SaveUserSettings {
       .interface_language(data.interface_language.clone())
       .totp_2fa_secret(totp_2fa_secret)
       .totp_2fa_url(totp_2fa_url)
+      .open_links_in_new_tab(data.open_links_in_new_tab)
       //.sign_data(data.sign_data)
       .build();
 

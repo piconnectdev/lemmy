@@ -1,12 +1,11 @@
 use crate::SendActivity;
 use lemmy_api_common::{
   comment::{
-    CommentReportResponse, CommentResponse, DistinguishComment, GetComment, GetComments,
-    GetCommentsResponse, ListCommentReports, ListCommentReportsResponse, ResolveCommentReport,
-    SaveComment,
+    CommentReportResponse, CommentResponse, DistinguishComment, GetComment, ListCommentReports,
+    ListCommentReportsResponse, ResolveCommentReport, SaveComment,
   },
   community::{
-    CommunityResponse, CreateCommunity, GetCommunity, GetCommunityResponse, ListCommunities,
+    CommunityResponse, CreateCommunity, GetCommunityResponse, ListCommunities,
     ListCommunitiesResponse, TransferCommunity,
   },
   custom_emoji::{
@@ -16,12 +15,11 @@ use lemmy_api_common::{
   person::{
     AddAdmin, AddAdminResponse, BannedPersonsResponse, BlockPerson, BlockPersonResponse,
     ChangePassword, CommentReplyResponse, GetBannedPersons, GetCaptcha, GetCaptchaResponse,
-    GetPersonDetails, GetPersonDetailsResponse, GetPersonMentions, GetPersonMentionsResponse,
-    GetReplies, GetRepliesResponse, GetReportCount, GetReportCountResponse, GetToken,
-    GetTokenResponse, GetUnreadCount, GetUnreadCountResponse, Login, LoginResponse, MarkAllAsRead,
-    MarkCommentReplyAsRead, MarkPersonMentionAsRead, PasswordChangeAfterReset, PasswordReset,
-    PasswordResetResponse, PersonMentionResponse, Register, SaveUserSettings, VerifyEmail,
-    VerifyEmailResponse,
+    GetPersonMentions, GetPersonMentionsResponse, GetReplies, GetRepliesResponse, GetReportCount,
+    GetReportCountResponse, GetUnreadCount, GetUnreadCountResponse, Login, LoginResponse,
+    MarkAllAsRead, MarkCommentReplyAsRead, MarkPersonMentionAsRead, PasswordChangeAfterReset,
+    PasswordReset, PasswordResetResponse, PersonMentionResponse, Register, SaveUserSettings,
+    VerifyEmail, VerifyEmailResponse,
   },
   pipayment::{
     CreatePayment, CreatePaymentResponse, GetPayment, GetPaymentResponse, GetPayments,
@@ -31,9 +29,9 @@ use lemmy_api_common::{
     PiRegisterWithFee, PiWithdraw, PiWithdrawResponse, SendPayment, SendPaymentResponse,
   },
   post::{
-    GetPost, GetPostResponse, GetPosts, GetPostsResponse, GetSiteMetadata, GetSiteMetadataResponse,
-    ListPostReports, ListPostReportsResponse, MarkPostAsRead, PostReportResponse, PostResponse,
-    ResolvePostReport, SavePost,
+    GetPost, GetPostResponse, GetSiteMetadata, GetSiteMetadataResponse, ListPostReports,
+    ListPostReportsResponse, MarkPostAsRead, PostReportResponse, PostResponse, ResolvePostReport,
+    SavePost,
   },
   private_message::{
     CreatePrivateMessageReport, GetPrivateMessages, ListPrivateMessageReports,
@@ -42,22 +40,17 @@ use lemmy_api_common::{
   },
   site::{
     ApproveRegistrationApplication, CreateSite, EditSite, GetFederatedInstances,
-    GetFederatedInstancesResponse, GetModlog, GetModlogResponse, GetMyUserInfo,
-    GetMyUserInfoResponse, GetSite, GetSiteResponse, GetUnreadRegistrationApplicationCount,
-    GetUnreadRegistrationApplicationCountResponse, LeaveAdmin, ListRegistrationApplications,
-    ListRegistrationApplicationsResponse, PurgeComment, PurgeCommunity, PurgeItemResponse,
-    PurgePerson, PurgePost, RegistrationApplicationResponse, ResolveObject, ResolveObjectResponse,
-    Search, SearchResponse, SiteResponse,
+    GetFederatedInstancesResponse, GetModlog, GetModlogResponse, GetSite, GetSiteResponse,
+    GetUnreadRegistrationApplicationCount, GetUnreadRegistrationApplicationCountResponse,
+    LeaveAdmin, ListRegistrationApplications, ListRegistrationApplicationsResponse, PurgeComment,
+    PurgeCommunity, PurgeItemResponse, PurgePerson, PurgePost, RegistrationApplicationResponse,
+    SiteResponse,
   },
   web3::{Web3Login, Web3Register},
 };
 
 impl SendActivity for Register {
   type Response = LoginResponse;
-}
-
-impl SendActivity for GetPersonDetails {
-  type Response = GetPersonDetailsResponse;
 }
 
 impl SendActivity for GetPrivateMessages {
@@ -76,10 +69,6 @@ impl SendActivity for GetSite {
   type Response = GetSiteResponse;
 }
 
-impl SendActivity for GetCommunity {
-  type Response = GetCommunityResponse;
-}
-
 impl SendActivity for ListCommunities {
   type Response = ListCommunitiesResponse;
 }
@@ -92,16 +81,8 @@ impl SendActivity for GetPost {
   type Response = GetPostResponse;
 }
 
-impl SendActivity for GetPosts {
-  type Response = GetPostsResponse;
-}
-
 impl SendActivity for GetComment {
   type Response = CommentResponse;
-}
-
-impl SendActivity for GetComments {
-  type Response = GetCommentsResponse;
 }
 
 impl SendActivity for Login {
@@ -222,14 +203,6 @@ impl SendActivity for PurgePost {
 
 impl SendActivity for PurgeComment {
   type Response = PurgeItemResponse;
-}
-
-impl SendActivity for Search {
-  type Response = SearchResponse;
-}
-
-impl SendActivity for ResolveObject {
-  type Response = ResolveObjectResponse;
 }
 
 impl SendActivity for TransferCommunity {

@@ -14,9 +14,9 @@ dependencies = [
 
 [[package]]
 name = "activitypub_federation"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27540f6c4b72c91176610ed5279061a021387f972c7c6f42c41032b78a808267"
+checksum = "4ab3ac148d9c0b4163a6d41040c17de7558a42224b9ecbd4e8f033aef6c254d9"
 dependencies = [
  "activitystreams-kinds",
  "actix-web",
@@ -122,10 +122,12 @@ dependencies = [
  "ahash 0.8.3",
  "base64 0.21.2",
  "bitflags 1.3.2",
+ "brotli",
  "bytes",
  "bytestring",
  "derive_more",
  "encoding_rs",
+ "flate2",
  "futures-core",
  "h2",
  "http",
@@ -143,6 +145,7 @@ dependencies = [
  "tokio",
  "tokio-util 0.7.4",
  "tracing",
+ "zstd",
 ]
 
 [[package]]
@@ -215,7 +218,7 @@ dependencies = [
  "futures-util",
  "mio",
  "num_cpus",
- "socket2",
+ "socket2 0.4.9",
  "tokio",
  "tracing",
 ]
@@ -297,7 +300,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "smallvec",
- "socket2",
+ "socket2 0.4.9",
  "time 0.3.15",
  "url",
 ]
@@ -405,6 +408,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloc-no-stdlib"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc7bb162ec39d46ab1ca8c77bf72e890535becd1751bb45f64c597edb4c8c6b3"
+
+[[package]]
+name = "alloc-stdlib"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94fb8275041c72129eb51b7d0322c29b8387a0386127718b096429201a5d6ece"
+dependencies = [
+ "alloc-no-stdlib",
+]
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -424,6 +442,9 @@ name = "anyhow"
 version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
+dependencies = [
+ "backtrace",
+]
 
 [[package]]
 name = "argparse"
@@ -802,6 +823,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "brotli"
+version = "3.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1a0b1dbcc8ae29329621f8d4f0d835787c1c38bb1401979b49d13b0b305ff68"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+ "brotli-decompressor",
+]
+
+[[package]]
+name = "brotli-decompressor"
+version = "2.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b6561fd3f895a11e8f72af2cb7d22e08366bebc2b6b57f7744c4bda27034744"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -859,6 +901,9 @@ name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fff2a6927b3bb87f9595d67196a70493f627687a71d87a0d692242c33f58c11"
+dependencies = [
+ "jobserver",
+]
 
 [[package]]
 name = "cesu8"
@@ -1454,9 +1499,8 @@ dependencies = [
  "diesel_derives",
  "itoa",
  "pq-sys",
- "r2d2",
  "serde_json",
- "uuid",
+ "uuid 1.3.4",
 ]
 
 [[package]]
@@ -2510,7 +2554,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2",
+ "socket2 0.4.9",
  "tokio",
  "tower-service",
  "tracing",
@@ -2770,6 +2814,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8eaf4bc02d17cbdd7ff4c7438cafcdf7fb9a4613313ad11b4f8fefe7d3fa0130"
 
 [[package]]
+name = "jobserver"
+version = "0.1.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "936cfd212a0155903bcbc060e316fb6cc7cbf2e1907329391ebadc1fe0ce77c2"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2841,7 +2894,7 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "lemmy_api"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -2849,6 +2902,7 @@ dependencies = [
  "base64 0.13.1",
  "bcrypt",
  "captcha",
+ "chrono",
  "lemmy_api_common",
  "lemmy_db_schema",
  "lemmy_db_views",
@@ -2859,14 +2913,14 @@ dependencies = [
  "serial_test",
  "tokio",
  "tracing",
- "uuid",
+ "uuid 1.3.4",
+ "wav",
 ]
 
 [[package]]
 name = "lemmy_api_common"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
- "actix-rt",
  "actix-web",
  "anyhow",
  "chrono",
@@ -2885,16 +2939,17 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "tokio",
  "tracing",
  "ts-rs",
  "url",
- "uuid",
+ "uuid 1.3.4",
  "webpage",
 ]
 
 [[package]]
 name = "lemmy_api_crud"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "activitypub_federation",
  "actix-web",
@@ -2910,15 +2965,15 @@ dependencies = [
  "sha2 0.10.6",
  "tracing",
  "url",
+ "uuid 1.3.4",
  "webmention",
 ]
 
 [[package]]
 name = "lemmy_apub"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "activitypub_federation",
- "actix-rt",
  "actix-web",
  "anyhow",
  "assert-json-diff",
@@ -2946,14 +3001,15 @@ dependencies = [
  "sha2 0.10.6",
  "strum_macros",
  "task-local-extensions",
+ "tokio",
  "tracing",
  "url",
- "uuid",
+ "uuid 1.3.4",
 ]
 
 [[package]]
 name = "lemmy_db_schema"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "activitypub_federation",
  "async-trait",
@@ -2966,9 +3022,11 @@ dependencies = [
  "diesel-derive-newtype",
  "diesel_ltree",
  "diesel_migrations",
+ "futures-util",
  "lemmy_utils",
  "once_cell",
  "regex",
+ "rustls 0.21.2",
  "serde",
  "serde_json",
  "serde_with",
@@ -2977,16 +3035,18 @@ dependencies = [
  "strum",
  "strum_macros",
  "tokio",
+ "tokio-postgres",
+ "tokio-postgres-rustls",
  "tracing",
  "ts-rs",
  "typed-builder",
  "url",
- "uuid",
+ "uuid 1.3.4",
 ]
 
 [[package]]
 name = "lemmy_db_views"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "diesel",
  "diesel-async",
@@ -3003,7 +3063,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_db_views_actor"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "diesel",
  "diesel-async",
@@ -3016,7 +3076,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_db_views_moderator"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "diesel",
  "diesel-async",
@@ -3028,7 +3088,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_routes"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "activitypub_federation",
  "actix-web",
@@ -3053,16 +3113,18 @@ dependencies = [
 
 [[package]]
 name = "lemmy_server"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "activitypub_federation",
  "actix-cors",
  "actix-web",
+ "chrono",
  "clokwerk",
  "console-subscriber",
  "diesel",
  "diesel-async",
  "doku",
+ "futures-util",
  "lemmy_api",
  "lemmy_api_common",
  "lemmy_api_crud",
@@ -3076,9 +3138,12 @@ dependencies = [
  "reqwest",
  "reqwest-middleware",
  "reqwest-tracing",
+ "rustls 0.21.2",
  "serde",
  "serde_json",
  "tokio",
+ "tokio-postgres",
+ "tokio-postgres-rustls",
  "tracing",
  "tracing-actix-web 0.6.2",
  "tracing-error",
@@ -3090,7 +3155,7 @@ dependencies = [
 
 [[package]]
 name = "lemmy_utils"
-version = "0.18.0"
+version = "0.18.1-rc.9"
 dependencies = [
  "actix-web",
  "anyhow",
@@ -3128,7 +3193,7 @@ dependencies = [
  "tracing-error",
  "typed-builder",
  "url",
- "uuid",
+ "uuid 1.3.4",
  "web3",
 ]
 
@@ -3151,7 +3216,7 @@ dependencies = [
  "nom 7.1.1",
  "once_cell",
  "quoted_printable",
- "socket2",
+ "socket2 0.4.9",
 ]
 
 [[package]]
@@ -4250,7 +4315,7 @@ dependencies = [
  "tracing-opentelemetry 0.19.0",
  "tracing-subscriber",
  "url",
- "uuid",
+ "uuid 1.3.4",
 ]
 
 [[package]]
@@ -4330,11 +4395,11 @@ dependencies = [
 
 [[package]]
 name = "postgres-protocol"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "878c6cbf956e03af9aa8204b407b9cbf47c072164800aa918c516cd4b056c50c"
+checksum = "78b7fa9f396f51dffd61546fd8573ee20592287996568e6175ceb0f8699ad75d"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.2",
  "byteorder",
  "bytes",
  "fallible-iterator",
@@ -4564,17 +4629,6 @@ name = "quoted_printable"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fee2dce59f7a43418e3382c766554c614e06a552d53a8f07ef499ea4b332c0f"
-
-[[package]]
-name = "r2d2"
-version = "0.8.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51de85fb3fb6524929c8a2eb85e6b6d363de4e8c48f9e2c2eac4944abc181c93"
-dependencies = [
- "log",
- "parking_lot 0.12.1",
- "scheduled-thread-pool",
-]
 
 [[package]]
 name = "radium"
@@ -4824,6 +4878,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "riff"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9b1a3d5f46d53f4a3478e2be4a5a5ce5108ea58b100dcd139830eae7f79a3a1"
+
+[[package]]
 name = "ring"
 version = "0.16.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5059,15 +5119,6 @@ checksum = "88d6731146462ea25d9244b2ed5fd1d716d25c52e4d54aa4fb0f3c4e9854dbe2"
 dependencies = [
  "lazy_static",
  "windows-sys 0.36.1",
-]
-
-[[package]]
-name = "scheduled-thread-pool"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cbc66816425a074528352f5789333ecff06ca41b36b0b0efdfbb29edc391a19"
-dependencies = [
- "parking_lot 0.12.1",
 ]
 
 [[package]]
@@ -5448,6 +5499,16 @@ checksum = "64a4a911eed85daf18834cfaa86a79b7d266ff93ff5ba14005426219480ed662"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "socket2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2538b18701741680e0322a2302176d3253a35388e2e62f172f64f4f16605f877"
+dependencies = [
+ "libc",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -5919,7 +5980,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "pin-project-lite",
  "signal-hook-registry",
- "socket2",
+ "socket2 0.4.9",
  "tokio-macros",
  "tracing",
  "windows-sys 0.48.0",
@@ -5958,9 +6019,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-postgres"
-version = "0.7.7"
+version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29a12c1b3e0704ae7dfc25562629798b29c72e6b1d0a681b6f29ab4ae5e7f7bf"
+checksum = "6e89f6234aa8fd43779746012fcf53603cdb91fdd8399aa0de868c2d56b6dde1"
 dependencies = [
  "async-trait",
  "byteorder",
@@ -5975,9 +6036,23 @@ dependencies = [
  "pin-project-lite",
  "postgres-protocol",
  "postgres-types",
- "socket2",
+ "socket2 0.5.3",
  "tokio",
  "tokio-util 0.7.4",
+]
+
+[[package]]
+name = "tokio-postgres-rustls"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd5831152cb0d3f79ef5523b357319ba154795d64c7078b2daa95a803b54057f"
+dependencies = [
+ "futures",
+ "ring",
+ "rustls 0.21.2",
+ "tokio",
+ "tokio-postgres",
+ "tokio-rustls 0.24.1",
 ]
 
 [[package]]
@@ -6276,7 +6351,7 @@ dependencies = [
  "actix-web",
  "pin-project",
  "tracing",
- "uuid",
+ "uuid 1.3.4",
 ]
 
 [[package]]
@@ -6290,7 +6365,7 @@ dependencies = [
  "pin-project",
  "tracing",
  "tracing-opentelemetry 0.19.0",
- "uuid",
+ "uuid 1.3.4",
 ]
 
 [[package]]
@@ -6460,6 +6535,7 @@ dependencies = [
  "dprint-plugin-typescript",
  "thiserror",
  "ts-rs-macros",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -6623,6 +6699,12 @@ checksum = "5190c9442dcdaf0ddd50f37420417d219ae5261bbf5db120d0f9bab996c9cba1"
 
 [[package]]
 name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+
+[[package]]
+name = "uuid"
 version = "1.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa2982af2eec27de306107c027578ff7f423d65f7250e40ce0fea8f45248b81"
@@ -6771,6 +6853,15 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "wav"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a65e199c799848b4f997072aa4d673c034f80f40191f97fe2f0a23f410be1609"
+dependencies = [
+ "riff",
 ]
 
 [[package]]
@@ -7144,3 +7235,33 @@ name = "zeroize"
 version = "1.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c394b5bd0c6f669e7275d9c20aa90ae064cb22e75a1cad54e1b34088034b149f"
+
+[[package]]
+name = "zstd"
+version = "0.12.3+zstd.1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76eea132fb024e0e13fd9c2f5d5d595d8a967aa72382ac2f9d39fcc95afd0806"
+dependencies = [
+ "zstd-safe",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "6.0.5+zstd.1.5.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d56d9e60b4b1758206c238a10165fbcae3ca37b01744e394c463463f6529d23b"
+dependencies = [
+ "libc",
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-sys"
+version = "2.0.8+zstd.1.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5556e6ee25d32df2586c098bbfa278803692a20d0ab9565e049480d52707ec8c"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
+]

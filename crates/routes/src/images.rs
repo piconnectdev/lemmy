@@ -5,10 +5,7 @@ use actix_web::{
     header::{HeaderName, ACCEPT_ENCODING, HOST},
     StatusCode,
   },
-  web,
-  Error,
-  HttpRequest,
-  HttpResponse,
+  web, Error, HttpRequest, HttpResponse,
 };
 use futures::stream::{Stream, StreamExt};
 use lemmy_api_common::{context::LemmyContext, utils::local_user_view_from_jwt};
@@ -20,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Clone)]
 struct Info {
-    jwt: Option<String>,
+  jwt: Option<String>,
 }
 
 pub fn config(
@@ -145,28 +142,22 @@ async fn full_res(
   let local_site = LocalSite::read(context.pool())
     .await
     .map_err(error::ErrorBadRequest)?;
-<<<<<<< HEAD
-  if local_site.private_instance {    
+  if local_site.private_instance {
     let jwt: String;
     if params.jwt.is_some() {
       jwt = params.jwt.as_ref().unwrap().to_string();
     } else {
       let cookie = req
         .cookie("jwt")
-        .expect("No auth header for picture upload");
+        .expect("No auth header for picture access");
       jwt = cookie.value().to_string();
     }
-    if get_local_user_view_from_jwt(&jwt, context.pool(), context.secret())
-=======
-  if local_site.private_instance {
-    let jwt = req
-      .cookie("jwt")
-      .expect("No auth header for picture access");
-    if local_user_view_from_jwt(jwt.value(), &context)
->>>>>>> upstream/main
-      .await
-      .is_err()
-    {
+
+    // let jwt = req
+    //   .cookie("jwt")
+    //   .expect("No auth header for picture access");
+
+    if local_user_view_from_jwt(jwt, &context).await.is_err() {
       return Ok(HttpResponse::Unauthorized().finish());
     };
   }

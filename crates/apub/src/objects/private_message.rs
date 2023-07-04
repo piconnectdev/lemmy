@@ -191,7 +191,7 @@ mod tests {
     Site::delete(context.pool(), data.2.id).await.unwrap();
   }
 
-  #[actix_rt::test]
+  #[tokio::test]
   #[serial]
   async fn test_parse_lemmy_pm() {
     let context = init_context().await;
@@ -217,7 +217,7 @@ mod tests {
     cleanup(data, &context).await;
   }
 
-  #[actix_rt::test]
+  #[tokio::test]
   #[serial]
   async fn test_parse_pleroma_pm() {
     let context = init_context().await;

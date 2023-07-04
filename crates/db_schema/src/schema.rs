@@ -1,10 +1,5 @@
 // @generated automatically by Diesel CLI.
 
-use uuid::Uuid;
-//use crate::schema::Uuid;
-//use diesel::sql_types::Uuid;
-//use diesel::pg::sql_types::Uuid;
-
 pub mod sql_types {
   #[derive(diesel::sql_types::SqlType)]
   #[diesel(postgres_type(name = "listing_type_enum"))]
@@ -20,6 +15,7 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     activity (id) {
         id -> Uuid,
         data -> Jsonb,
@@ -32,6 +28,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   admin_purge_comment (id) {
     id -> Uuid,
     admin_person_id -> Uuid,
@@ -42,6 +39,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   admin_purge_community (id) {
     id -> Uuid,
     admin_person_id -> Uuid,
@@ -51,6 +49,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   admin_purge_person (id) {
     id -> Uuid,
     admin_person_id -> Uuid,
@@ -60,6 +59,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   admin_purge_post (id) {
     id -> Uuid,
     admin_person_id -> Uuid,
@@ -73,6 +73,17 @@ diesel::table! {
   use diesel::sql_types::{Bool, Int4, Nullable, Text, Timestamp, Varchar};
   use diesel_ltree::sql_types::Ltree;
   use diesel::sql_types::*;
+    captcha_answer (id) {
+        id -> Int4,
+        uuid -> Uuid,
+        answer -> Text,
+        published -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use diesel_ltree::sql_types::Ltree;
 
     comment (id) {
         id -> Uuid,
@@ -98,6 +109,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     comment_aggregates (id) {
         id -> Uuid,
         comment_id -> Uuid,
@@ -111,6 +123,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     comment_like (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -122,6 +135,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     comment_reply (id) {
         id -> Uuid,
         recipient_id -> Uuid,
@@ -132,6 +146,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     comment_report (id) {
         id -> Uuid,
         creator_id -> Uuid,
@@ -146,6 +161,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     comment_saved (id) {
         id -> Uuid,
         comment_id -> Uuid,
@@ -155,6 +171,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     community (id) {
         id -> Uuid,
         #[max_length = 255]
@@ -198,6 +215,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     community_aggregates (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -214,6 +232,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     community_block (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -223,6 +242,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     community_follower (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -233,6 +253,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     community_language(id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -241,6 +262,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     community_moderator (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -250,6 +272,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     community_person_ban (id) {
         id -> Uuid,
         community_id -> Uuid,
@@ -260,6 +283,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     custom_emoji (id) {
         id -> Uuid,
         local_site_id -> Uuid,
@@ -274,6 +298,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     custom_emoji_keyword (id) {
         id -> Uuid,
         custom_emoji_id -> Uuid,
@@ -283,6 +308,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   email_verification (id) {
     id -> Uuid,
     local_user_id -> Uuid,
@@ -293,6 +319,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   federation_allowlist(id) {
     id -> Uuid,
     instance_id -> Uuid,
@@ -302,6 +329,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   federation_blocklist(id) {
     id -> Uuid,
     instance_id -> Uuid,
@@ -311,6 +339,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   instance(id) {
     id -> Uuid,
     #[max_length = 255]
@@ -325,6 +354,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     language (id) {
         id -> Int4,
         #[max_length = 3]
@@ -334,41 +364,40 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::{Bool, Int4, Nullable, Text, Timestamp, Varchar};
+    use diesel::sql_types::*;
     use super::sql_types::ListingTypeEnum;
     use super::sql_types::RegistrationModeEnum;
 
-  local_site(id) {
-    id -> Uuid,
-    site_id -> Uuid,
-    site_setup -> Bool,
-    enable_downvotes -> Bool,
-    enable_nsfw -> Bool,
-    community_creation_admin_only -> Bool,
-    require_email_verification -> Bool,
-    application_question -> Nullable<Text>,
-    private_instance -> Bool,
-    default_theme -> Text,
-    default_post_listing_type -> ListingTypeEnum,
-    legal_information -> Nullable<Text>,
-    hide_modlog_mod_names -> Bool,
-    application_email_admins -> Bool,
-    slur_filter_regex -> Nullable<Text>,
-    actor_name_max_length -> Int4,
-    federation_enabled -> Bool,
-    federation_debug -> Bool,
-    federation_worker_count -> Int4,
-    captcha_enabled -> Bool,
-    #[max_length = 255]
-    captcha_difficulty -> Varchar,
-    published -> Timestamp,
-    updated -> Nullable<Timestamp>,
-    registration_mode -> RegistrationModeEnum,
-    reports_email_admins -> Bool,
-  }
+    local_site (id) {
+        id -> Uuid,
+        site_id -> Uuid,
+        site_setup -> Bool,
+        enable_downvotes -> Bool,
+        enable_nsfw -> Bool,
+        community_creation_admin_only -> Bool,
+        require_email_verification -> Bool,
+        application_question -> Nullable<Text>,
+        private_instance -> Bool,
+        default_theme -> Text,
+        default_post_listing_type -> ListingTypeEnum,
+        legal_information -> Nullable<Text>,
+        hide_modlog_mod_names -> Bool,
+        application_email_admins -> Bool,
+        slur_filter_regex -> Nullable<Text>,
+        actor_name_max_length -> Int4,
+        federation_enabled -> Bool,
+        captcha_enabled -> Bool,
+        #[max_length = 255]
+        captcha_difficulty -> Varchar,
+        published -> Timestamp,
+        updated -> Nullable<Timestamp>,
+        registration_mode -> RegistrationModeEnum,
+        reports_email_admins -> Bool,
+    }
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   local_site_rate_limit(id) {
     id -> Uuid,
     local_site_id -> Uuid,
@@ -390,7 +419,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::{Bool, Int4, Nullable, Text, Timestamp, Varchar};
+    use diesel::sql_types::*;
     use super::sql_types::SortTypeEnum;
     use super::sql_types::ListingTypeEnum;
 
@@ -400,8 +429,7 @@ diesel::table! {
         password_encrypted -> Text,
         email -> Nullable<Text>,
         show_nsfw -> Bool,
-        #[max_length = 20]
-        theme -> Varchar,
+        theme -> Text,
         default_sort_type -> SortTypeEnum,
         default_listing_type -> ListingTypeEnum,
         #[max_length = 20]
@@ -417,6 +445,7 @@ diesel::table! {
         accepted_application -> Bool,
         totp_2fa_secret -> Nullable<Text>,
         totp_2fa_url -> Nullable<Text>,
+        open_links_in_new_tab -> Bool,
         //private_seeds -> Nullable<Text>,
         //signing_data -> Bool,
         //extras -> Nullable<Jsonb>,
@@ -424,6 +453,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     local_user_language(id) {
         id -> Uuid,
         local_user_id -> Uuid,
@@ -432,6 +462,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_add (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -442,6 +473,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_add_community (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -453,6 +485,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_ban (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -465,6 +498,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_ban_from_community (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -478,6 +512,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_feature_post (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -489,17 +524,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_hide_community (id) {
         id -> Uuid,
         community_id -> Uuid,
         mod_person_id -> Uuid,
+        when_ -> Timestamp,
         reason -> Nullable<Text>,
         hidden -> Bool,
-        when_ -> Timestamp,
     }
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_lock_post (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -510,6 +547,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_remove_comment (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -521,6 +559,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_remove_community (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -533,6 +572,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_remove_post (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
@@ -544,17 +584,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     mod_transfer_community (id) {
         id -> Uuid,
         mod_person_id -> Uuid,
         other_person_id -> Uuid,
         community_id -> Uuid,
-        removed -> Bool,
         when_ -> Timestamp,
     }
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     password_reset_request (id) {
         id -> Uuid,
         token_encrypted -> Text,
@@ -564,6 +605,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person (id) {
         id -> Uuid,
         #[max_length = 255]
@@ -612,6 +654,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person_aggregates (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -623,6 +666,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person_ban (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -631,6 +675,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person_block (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -640,6 +685,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person_follower (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -650,6 +696,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person_mention (id) {
         id -> Uuid,
         recipient_id -> Uuid,
@@ -660,18 +707,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person_post_aggregates (id) {
         id -> Uuid,
         person_id -> Uuid,
         post_id -> Uuid,
         read_comments -> Int8,
         published -> Timestamp,
-        hot_rank -> Int4,
-        hot_rank_active -> Int4,
     }
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     post (id) {
         id -> Uuid,
         #[max_length = 200]
@@ -689,11 +736,11 @@ diesel::table! {
         nsfw -> Bool,
         embed_title -> Nullable<Text>,
         embed_description -> Nullable<Text>,
-        embed_video_url -> Nullable<Text>,
         thumbnail_url -> Nullable<Text>,
         #[max_length = 255]
         ap_id -> Varchar,
         local -> Bool,
+        embed_video_url -> Nullable<Text>,
         language_id -> Int4,
         featured_community -> Bool,
         featured_local -> Bool,
@@ -707,6 +754,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     post_aggregates (id) {
         id -> Uuid,
         post_id -> Uuid,
@@ -725,6 +773,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     post_like (id) {
         id -> Uuid,
         post_id -> Uuid,
@@ -735,6 +784,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     post_read (id) {
         id -> Uuid,
         post_id -> Uuid,
@@ -744,6 +794,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     post_report (id) {
         id -> Uuid,
         creator_id -> Uuid,
@@ -761,6 +812,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     post_saved (id) {
         id -> Uuid,
         post_id -> Uuid,
@@ -770,6 +822,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     private_message (id) {
         id -> Uuid,
         creator_id -> Uuid,
@@ -792,6 +845,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     private_message_report (id) {
         id -> Uuid,
         creator_id -> Uuid,
@@ -806,6 +860,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     registration_application (id) {
         id -> Uuid,
         local_user_id -> Uuid,
@@ -817,13 +872,15 @@ diesel::table! {
 }
 
 diesel::table! {
-  secret(id) {
-    id -> Uuid,
-    jwt_secret -> Varchar,
-  }
+    use diesel::sql_types::*;
+    secret(id) {
+        id -> Uuid,
+        jwt_secret -> Varchar,
+    }
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     site (id) {
         id -> Uuid,
         #[max_length = 20]
@@ -851,6 +908,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     site_aggregates (id) {
         id -> Uuid,
         site_id -> Uuid,
@@ -866,6 +924,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     site_language(id) {
         id -> Uuid,
         site_id -> Uuid,
@@ -874,6 +933,7 @@ diesel::table! {
 }
 
 diesel::table! {
+  use diesel::sql_types::*;
   tagline(id) {
     id -> Uuid,
     local_site_id -> Uuid,
@@ -884,6 +944,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     pipayment (id) {
         id -> Uuid,
         domain -> Nullable<Text>,      //
@@ -929,6 +990,7 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
     person_balance (id) {
         id -> Uuid,
         person_id -> Uuid,
@@ -1065,39 +1127,54 @@ joinable!(person_balance -> person (person_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
   activity,
+  admin_purge_comment,
+  admin_purge_community,
+  admin_purge_person,
+  admin_purge_post,
+  captcha_answer,
   comment,
   comment_aggregates,
-  community_block,
   comment_like,
+  comment_reply,
   comment_report,
   comment_saved,
   community,
   community_aggregates,
+  community_block,
   community_follower,
+  community_language,
   community_moderator,
   community_person_ban,
   custom_emoji,
   custom_emoji_keyword,
+  email_verification,
+  federation_allowlist,
+  federation_blocklist,
+  instance,
+  language,
+  local_site,
+  local_site_rate_limit,
   local_user,
+  local_user_language,
   mod_add,
   mod_add_community,
-  mod_transfer_community,
   mod_ban,
   mod_ban_from_community,
+  mod_feature_post,
+  mod_hide_community,
   mod_lock_post,
   mod_remove_comment,
   mod_remove_community,
   mod_remove_post,
-  mod_feature_post,
-  mod_hide_community,
+  mod_transfer_community,
   password_reset_request,
   person,
   person_aggregates,
   person_ban,
   person_block,
+  person_follower,
   person_mention,
   person_post_aggregates,
-  comment_reply,
   post,
   post_aggregates,
   post_like,
@@ -1106,25 +1183,12 @@ diesel::allow_tables_to_appear_in_same_query!(
   post_saved,
   private_message,
   private_message_report,
+  registration_application,
+  secret,
   site,
   site_aggregates,
-  admin_purge_comment,
-  admin_purge_community,
-  admin_purge_person,
-  admin_purge_post,
-  email_verification,
-  registration_application,
-  language,
-  tagline,
-  local_user_language,
   site_language,
-  community_language,
-  instance,
-  federation_allowlist,
-  federation_blocklist,
-  local_site,
-  local_site_rate_limit,
-  person_follower,
+  tagline,
   pipayment,
   person_balance,
 );

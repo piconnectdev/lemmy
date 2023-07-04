@@ -3,27 +3,26 @@ use lemmy_api::Perform;
 use lemmy_api_common::{
   comment::{
     CreateComment, CreateCommentLike, CreateCommentReport, DeleteComment, DistinguishComment,
-    EditComment, GetComment, GetComments, ListCommentReports, RemoveComment, ResolveCommentReport,
-    SaveComment,
+    EditComment, GetComment, ListCommentReports, RemoveComment, ResolveCommentReport, SaveComment,
   },
   community::{
     AddModToCommunity, BanFromCommunity, BlockCommunity, CreateCommunity, DeleteCommunity,
-    EditCommunity, FollowCommunity, GetCommunity, HideCommunity, ListCommunities, RemoveCommunity,
+    EditCommunity, FollowCommunity, HideCommunity, ListCommunities, RemoveCommunity,
     TransferCommunity,
   },
   context::LemmyContext,
   custom_emoji::{CreateCustomEmoji, DeleteCustomEmoji, EditCustomEmoji},
   person::{
-    AddAdmin, BanPerson, BlockPerson, ChangePassword, DeleteAccount, GetBannedPersons,
-    GetPersonDetails, GetPersonMentions, GetReplies, GetReportCount, GetUnreadCount, Login,
-    MarkAllAsRead, MarkCommentReplyAsRead, MarkPersonMentionAsRead, PasswordChangeAfterReset,
-    PasswordReset, Register, SaveUserSettings, VerifyEmail,
+    AddAdmin, BanPerson, BlockPerson, ChangePassword, DeleteAccount, GetBannedPersons, GetCaptcha,
+    GetPersonMentions, GetReplies, GetReportCount, GetUnreadCount, Login, MarkAllAsRead,
+    MarkCommentReplyAsRead, MarkPersonMentionAsRead, PasswordChangeAfterReset, PasswordReset,
+    Register, SaveUserSettings, VerifyEmail,
   },
   pipayment::*,
   post::{
     CreatePost, CreatePostLike, CreatePostReport, DeletePost, EditPost, FeaturePost, GetPost,
-    GetPosts, GetSiteMetadata, ListPostReports, LockPost, MarkPostAsRead, RemovePost,
-    ResolvePostReport, SavePost,
+    GetSiteMetadata, ListPostReports, LockPost, MarkPostAsRead, RemovePost, ResolvePostReport,
+    SavePost,
   },
   private_message::{
     CreatePrivateMessage, CreatePrivateMessageReport, DeletePrivateMessage, EditPrivateMessage,
@@ -32,15 +31,20 @@ use lemmy_api_common::{
   },
   site::{
     ApproveRegistrationApplication, CreateSite, EditSite, GetFederatedInstances, GetModlog,
-    GetMyUserInfo, GetSite, GetUnreadRegistrationApplicationCount, LeaveAdmin,
-    ListRegistrationApplications, PurgeComment, PurgeCommunity, PurgePerson, PurgePost,
-    ResolveObject, Search,
+    GetSite, GetUnreadRegistrationApplicationCount, LeaveAdmin, ListRegistrationApplications,
+    PurgeComment, PurgeCommunity, PurgePerson, PurgePost,
   },
   web3::*,
   //websocket::structs::{CommunityJoin, ModJoin, PostJoin, UserJoin},
 };
 use lemmy_api_crud::PerformCrud;
-use lemmy_apub::{api::PerformApub, SendActivity};
+use lemmy_apub::{
+  api::{
+    list_comments::list_comments, list_posts::list_posts, read_community::read_community,
+    read_person::read_person, resolve_object::resolve_object, search::search,
+  },
+  SendActivity,
+};
 use lemmy_utils::rate_limit::RateLimitCell;
 use serde::Deserialize;
 
@@ -64,12 +68,12 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
       .service(
         web::resource("/search")
           .wrap(rate_limit.search())
-          .route(web::get().to(route_get_apub::<Search>)),
+          .route(web::get().to(search)),
       )
       .service(
         web::resource("/resolve_object")
           .wrap(rate_limit.message())
-          .route(web::get().to(route_get_apub::<ResolveObject>)),
+          .route(web::get().to(resolve_object)),
       )
       // Community
       .service(
@@ -81,7 +85,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
       .service(
         web::scope("/community")
           .wrap(rate_limit.message())
-          .route("", web::get().to(route_get_apub::<GetCommunity>))
+          .route("", web::get().to(read_community))
           .route("", web::put().to(route_post_crud::<EditCommunity>))
           .route("/hide", web::put().to(route_post::<HideCommunity>))
           .route("/list", web::get().to(route_get_crud::<ListCommunities>))
@@ -126,7 +130,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           )
           .route("/lock", web::post().to(route_post::<LockPost>))
           .route("/feature", web::post().to(route_post::<FeaturePost>))
-          .route("/list", web::get().to(route_get_apub::<GetPosts>))
+          .route("/list", web::get().to(list_posts))
           .route("/like", web::post().to(route_post::<CreatePostLike>))
           .route("/save", web::put().to(route_post::<SavePost>))
           .route("/report", web::post().to(route_post::<CreatePostReport>))
@@ -165,7 +169,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           )
           .route("/like", web::post().to(route_post::<CreateCommentLike>))
           .route("/save", web::put().to(route_post::<SaveComment>))
-          .route("/list", web::get().to(route_get_apub::<GetComments>))
+          .route("/list", web::get().to(list_comments))
           .route("/report", web::post().to(route_post::<CreateCommentReport>))
           .route(
             "/report/resolve",
@@ -213,11 +217,17 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .wrap(rate_limit.register())
           .route(web::post().to(route_post_crud::<Register>)),
       )
+      .service(
+        // Handle captcha separately
+        web::resource("/user/get_captcha")
+          .wrap(rate_limit.post())
+          .route(web::get().to(route_get::<GetCaptcha>)),
+      )
       // User actions
       .service(
         web::scope("/user")
           .wrap(rate_limit.message())
-          .route("", web::get().to(route_get_apub::<GetPersonDetails>))
+          .route("", web::get().to(read_person))
           .route("/mention", web::get().to(route_get::<GetPersonMentions>))
           .route("/myinfo", web::get().to(route_get_crud::<GetMyUserInfo>))
           .route(
@@ -370,23 +380,6 @@ where
     + 'static,
 {
   perform::<Data>(data.0, context, apub_data).await
-}
-
-async fn route_get_apub<'a, Data>(
-  data: web::Query<Data>,
-  context: activitypub_federation::config::Data<LemmyContext>,
-) -> Result<HttpResponse, Error>
-where
-  Data: PerformApub
-    + SendActivity<Response = <Data as PerformApub>::Response>
-    + Clone
-    + Deserialize<'a>
-    + Send
-    + 'static,
-{
-  let res = data.perform(&context).await?;
-  SendActivity::send_activity(&data.0, &res, &context).await?;
-  Ok(HttpResponse::Ok().json(res))
 }
 
 async fn route_post<'a, Data>(

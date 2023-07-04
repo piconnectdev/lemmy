@@ -30,7 +30,7 @@ serde_json = { workspace = true}
 activitypub_federation = { workspace = true, optional = true }
 lemmy_utils = { workspace = true, optional = true }
 bcrypt = { workspace = true, optional = true }
-diesel = { workspace = true, features = ["postgres","chrono", "serde_json","r2d2","uuid","64-column-tables"], optional = true }
+diesel = { workspace = true, features = ["postgres","chrono", "serde_json", "uuid","64-column-tables"], optional = true }
 diesel-derive-newtype = { workspace = true, optional = true }
 diesel-derive-enum = { workspace = true, optional = true }
 diesel_migrations = { workspace = true, optional = true }
@@ -44,10 +44,12 @@ async-trait = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 deadpool = { version = "0.9.5", features = ["rt_tokio_1"], optional = true }
-ts-rs = { workspace = true, optional = true } 
-
-uuid = { workspace = true, features = ["v4"]}
+ts-rs = { workspace = true, optional = true }
+rustls = { workspace = true }
+futures-util = { workspace = true }
+tokio-postgres = { workspace = true }
+tokio-postgres-rustls = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 serial_test = { workspace = true }
-

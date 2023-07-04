@@ -70,9 +70,9 @@ pub struct GetCaptchaResponse {
 #[cfg_attr(feature = "full", ts(export))]
 /// A captcha response.
 pub struct CaptchaResponse {
-  /// A Base64 encoded png  
+  /// A Base64 encoded png
   pub png: String,
-  /// A Base64 encoded wav audio  
+  /// A Base64 encoded wav audio
   pub wav: String,
   /// The UUID for the captcha item.
   pub uuid: String,
@@ -122,7 +122,7 @@ pub struct SaveUserSettings {
   pub email: Option<Sensitive<String>>,
   /// Your bio / info, in markdown.
   pub bio: Option<String>,
-  /// Your matrix user id. Ex: @my_user:matrix.org  
+  /// Your matrix user id. Ex: @my_user:matrix.org
   pub matrix_user_id: Option<String>,
   /// Whether to show or hide avatars.
   pub show_avatars: Option<bool>,
@@ -144,6 +144,8 @@ pub struct SaveUserSettings {
   /// None leaves it as is, true will generate or regenerate it, false clears it out.
   pub generate_totp_2fa: Option<bool>,
   pub auth: Sensitive<String>,
+  /// Open links in a new tab
+  pub open_links_in_new_tab: Option<bool>,
 
   pub pi_address: Option<String>,
   pub web3_address: Option<String>,

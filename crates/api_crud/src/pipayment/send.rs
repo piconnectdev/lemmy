@@ -7,7 +7,7 @@ use lemmy_api_common::pipayment::*;
 
 use lemmy_db_schema::newtypes::{PersonId, PiUserId, PiPaymentId};
 use lemmy_db_schema::source::person::Person;
-use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentSafe, PiPaymentUpdatePending, PiPaymentUpdateForm};
+use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentUpdatePending, PiPaymentUpdateForm};
 use lemmy_db_schema::utils::naive_now;
 use lemmy_utils::{error::LemmyError, ConnectionId};
 use lemmy_db_schema::traits::Crud;

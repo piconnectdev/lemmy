@@ -111,19 +111,19 @@ mod safe_type {
 }
 */
 
-impl PiPaymentSafe {
-  pub async fn find_by_person(pool: &DbPool, pid: &PersonId) -> Result<Vec<Self>, Error> {
-    use crate::schema::pipayment::dsl::*;
-    let conn = &mut get_conn(pool).await?;
-    pipayment
-      .filter(person_id.eq(pid))
-      .select(PiPayment::safe_columns_tuple())
-      .order_by(published.desc())
-      .limit(50)
-      .get_results::<Self>(conn)
-      .await
-  }
-}
+// impl PiPaymentSafe {
+//   pub async fn find_by_person(pool: &DbPool, pid: &PersonId) -> Result<Vec<Self>, Error> {
+//     use crate::schema::pipayment::dsl::*;
+//     let conn = &mut get_conn(pool).await?;
+//     pipayment
+//       .filter(person_id.eq(pid))
+//       .select(PiPayment::safe_columns_tuple())
+//       .order_by(published.desc())
+//       .limit(50)
+//       .get_results::<Self>(conn)
+//       .await
+//   }
+// }
 
 #[async_trait]
 impl Crud for PiPayment {

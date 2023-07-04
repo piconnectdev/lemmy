@@ -5,27 +5,22 @@ use lemmy_api_common::{
   context::LemmyContext,
   person::{LoginResponse, Register},
   utils::{
-    generate_inbox_url,
-    generate_local_apub_endpoint,
-    generate_shared_inbox_url,
-    honeypot_check,
-    local_site_to_slur_regex,
-    password_length_check,
-    send_new_applicant_email_to_admins,
-    send_verification_email,
-    EndpointType,
+    generate_inbox_url, generate_local_apub_endpoint, generate_shared_inbox_url, honeypot_check,
+    local_site_to_slur_regex, password_length_check, send_new_applicant_email_to_admins,
+    send_verification_email, EndpointType,
   },
 };
 use lemmy_db_schema::{
   aggregates::structs::PersonAggregates,
   source::{
+    captcha_answer::{CaptchaAnswer, CheckCaptchaAnswer},
+    community::*,
     local_user::{LocalUser, LocalUserInsertForm},
     person::{Person, PersonInsertForm},
     registration_application::{RegistrationApplication, RegistrationApplicationInsertForm},
     site::Site,
-    community::*,
   },
-  traits::{Crud, RegistrationMode, ApubActor, },  
+  traits::{ApubActor, Crud, RegistrationMode},
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 use lemmy_utils::{
@@ -78,15 +73,22 @@ impl PerformCrud for Register {
         return Err(LemmyError::from_message("registration_disabled").into());
       }
     }
-    println!("Check captcha_enabled {}", &data.username.clone());
-    
-    // If the site is set up, check the captcha
+
     if local_site.site_setup && local_site.captcha_enabled {
-      let check = context.chat_server().check_captcha(
-        data.captcha_uuid.clone().unwrap_or_default(),
-        data.captcha_answer.clone().unwrap_or_default(),
-      )?;
-      if !check {
+      if let Some(captcha_uuid) = &data.captcha_uuid {
+        let uuid = uuid::Uuid::parse_str(captcha_uuid)?;
+        let check = CaptchaAnswer::check_captcha(
+          context.pool(),
+          CheckCaptchaAnswer {
+            uuid,
+            answer: data.captcha_answer.clone().unwrap_or_default(),
+          },
+        )
+        .await?;
+        if !check {
+          return Err(LemmyError::from_message("captcha_incorrect"));
+        }
+      } else {
         return Err(LemmyError::from_message("captcha_incorrect"));
       }
     }
