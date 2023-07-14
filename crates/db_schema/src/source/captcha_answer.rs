@@ -9,7 +9,7 @@ use uuid::Uuid;
 #[cfg_attr(feature = "full", derive(Queryable))]
 #[cfg_attr(feature = "full", diesel(table_name = captcha_answer))]
 pub struct CaptchaAnswer {
-  pub id: i32,
+  pub id: i64,
   pub uuid: Uuid,
   pub answer: String,
   pub published: chrono::NaiveDateTime,

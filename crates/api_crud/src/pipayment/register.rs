@@ -1,30 +1,20 @@
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{context::LemmyContext};
-use lemmy_api_common::{
-  person::LoginResponse,
-  pipayment::*,
-};
-use lemmy_db_schema::source::local_site::RegistrationMode;
-use lemmy_db_views::structs::{SiteView};
+use lemmy_api_common::context::LemmyContext;
+use lemmy_api_common::{person::LoginResponse, pipayment::*};
+use lemmy_db_schema::RegistrationMode;
+use lemmy_db_views::structs::SiteView;
 
-use lemmy_utils::{
-  error::LemmyError,
-  ConnectionId,
-};
+use lemmy_utils::{error::LemmyError, };
 
+use super::client::pi_me;
 use crate::web3::ext::*;
-use super::client::{pi_me};
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegister {
   type Response = LoginResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<LoginResponse, LemmyError> {
     let data: &PiRegister = &self;
     let mut ext_account = data.ea.clone();
 
@@ -67,14 +57,21 @@ impl PerformCrud for PiRegister {
     };
 
     //ext_account.extra = _pi_uid.to_string();
-    let login_response = match create_external_account(context, &_pi_username.clone(), &ext_account, &data.info, false).await
+    let login_response = match create_external_account(
+      context,
+      &_pi_username.clone(),
+      &ext_account,
+      &data.info,
+      false,
+    )
+    .await
     {
       Ok(c) => c,
       Err(_e) => {
         return Err(LemmyError::from_message("registration_disabled"));
-      },
+      }
     };
-    
+
     Ok(login_response)
   }
 }

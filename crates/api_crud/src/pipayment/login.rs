@@ -2,39 +2,25 @@ use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
-  person::*,
-  pipayment::*,
-  sensitive::Sensitive,
-  utils::{password_length_check},
+  person::*, pipayment::*, sensitive::Sensitive, utils::password_length_check,
 };
 use lemmy_db_schema::{
-  newtypes::{ PersonId, PiUserId},  
-  source::{
-    local_user::{LocalUser, },
-    person::*,
-    local_site::RegistrationMode,
-  },
+  newtypes::{PersonId, PiUserId},
+  source::{local_user::LocalUser, person::*},
+  RegistrationMode,
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 
-use lemmy_utils::{
-  claims::Claims,
-  error::LemmyError,
-  ConnectionId,
-};
+use lemmy_utils::{claims::Claims, error::LemmyError, };
 
-use lemmy_api_common::{context::LemmyContext};
+use lemmy_api_common::context::LemmyContext;
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiLogin {
   type Response = LoginResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<LoginResponse, LemmyError> {
     // Call login from client after Pi.authenticate
 
     let data: &PiLogin = &self;
@@ -66,7 +52,7 @@ impl PerformCrud for PiLogin {
       Ok(dto) => {
         _pi_username = dto.username.clone();
         _pi_uid = Some(dto.uid.clone());
-        new_external_id = format!("{}",dto.uid.0);
+        new_external_id = format!("{}", dto.uid.0);
         Some(dto)
       }
       Err(_e) => {
@@ -129,8 +115,7 @@ impl PerformCrud for PiLogin {
     }
 
     // Find user exist ?
-    let person = match Person::find_by_extra_name(context.pool(), &_pi_alias).await
-    {
+    let person = match Person::find_by_extra_name(context.pool(), &_pi_alias).await {
       Ok(c) => Some(c),
       Err(_e) => None,
     };
@@ -145,13 +130,21 @@ impl PerformCrud for PiLogin {
         external_id = p.external_id;
         external_name = p.external_name;
         if external_id.clone().unwrap_or_default() != new_external_id {
-          println!("Person::update_external_id {} {} {}", person_id.clone().0, external_id.clone().unwrap_or_default(), new_external_id.clone());
+          println!(
+            "Person::update_external_id {} {} {}",
+            person_id.clone().0,
+            external_id.clone().unwrap_or_default(),
+            new_external_id.clone()
+          );
           //Person::update_external_id(context.pool(), person_id.clone(), &new_external_id).await?;
         }
       }
       None => {
         if !_change_passwd {
-          let err_type = format!("Hi {}, you must register before login (use Pi Browser).", &username.clone());
+          let err_type = format!(
+            "Hi {}, you must register before login (use Pi Browser).",
+            &username.clone()
+          );
           return Err(LemmyError::from_message(&err_type));
         }
       }
@@ -170,25 +163,26 @@ impl PerformCrud for PiLogin {
             _e.to_string()
           );
           return Err(LemmyError::from_error_message(_e, &err_type));
-
         }
       };
 
       local_user_id = _local_user.id.clone();
 
       if _change_passwd {
-        let updated_local_user = match LocalUser::update_password(context.pool(), local_user_id.clone(), &_new_password).await
-        {
-          Ok(lcu) => lcu,
-          Err(_e) => {
-            let err_type = format!(
-              "PiLogin: Update local user password error {} {}",
-              &username.clone(),
-              _e.to_string()
-            );
-            return Err(LemmyError::from_message(&err_type));
-          }
-        };
+        let updated_local_user =
+          match LocalUser::update_password(context.pool(), local_user_id.clone(), &_new_password)
+            .await
+          {
+            Ok(lcu) => lcu,
+            Err(_e) => {
+              let err_type = format!(
+                "PiLogin: Update local user password error {} {}",
+                &username.clone(),
+                _e.to_string()
+              );
+              return Err(LemmyError::from_message(&err_type));
+            }
+          };
       }
 
       return Ok(LoginResponse {
@@ -207,7 +201,7 @@ impl PerformCrud for PiLogin {
     } // User exist
 
     // We have to create both a person, and local_user
-    //if !create_new 
+    //if !create_new
     {
       let err_type = format!(
         "Auto create new account is disabled {} {}",

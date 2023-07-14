@@ -2,14 +2,16 @@ use crate::pipayment::payment::pi_payment_update;
 use crate::pipayment::{client::*, payment::PiPaymentInfo};
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{pipayment::*, };
+use lemmy_api_common::pipayment::*;
 use lemmy_db_schema::{
-  newtypes::*, source::{pipayment::*, person::*}, traits::Crud,
+  newtypes::*,
+  source::{person::*, pipayment::*},
+  traits::Crud,
   utils::naive_now,
 };
 
-use lemmy_utils::{error::LemmyError, settings::SETTINGS, ConnectionId};
-use lemmy_api_common::{context::LemmyContext};
+use lemmy_api_common::context::LemmyContext;
+use lemmy_utils::{error::LemmyError, settings::SETTINGS, };
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
@@ -19,7 +21,6 @@ impl PerformCrud for PiPaymentFound {
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
   ) -> Result<PiPaymentFoundResponse, LemmyError> {
     let settings = SETTINGS.to_owned();
     let data: &PiPaymentFound = self;
@@ -27,7 +28,7 @@ impl PerformCrud for PiPaymentFound {
     if data.pi_token.is_none() {
       return Err(LemmyError::from_message("Pi token is missing!"));
     }
-    
+
     let _pi_token = data.pi_token.clone().unwrap();
     let mut _pi_username;
     let mut _pi_uid = None;
@@ -65,8 +66,7 @@ impl PerformCrud for PiPaymentFound {
     };
 
     let mut finished = false;
-    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
-    {
+    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await {
       Ok(p) => {
         info.obj_cat = p.obj_cat.clone();
         info.obj_id = p.obj_id.clone();
@@ -82,7 +82,7 @@ impl PerformCrud for PiPaymentFound {
         // TODO: Check PaymentDTO, then insert
         //println!("PiPaymentFound: NOT FOUND IN LOCAL DATABASE {} {}", _pi_username.clone(), data.paymentid.clone());
         return Err(LemmyError::from_message("Payment not approved "));
-      },
+      }
     };
 
     //println!("PiPaymentFound update: {} {}, finished: {}", _pi_username.clone(), data.paymentid.clone(), finished);
@@ -99,7 +99,5 @@ impl PerformCrud for PiPaymentFound {
       id: payment.id,
       paymentid: payment.identifier.unwrap_or_default(),
     });
-
-    
   }
 }

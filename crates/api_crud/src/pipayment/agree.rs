@@ -1,32 +1,23 @@
-use crate::pipayment::payment::{pi_payment_create};
+use crate::pipayment::payment::pi_payment_create;
 use crate::pipayment::{client::*, payment::PiPaymentInfo};
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{
-  pipayment::*,
-  utils::{password_length_check},
-};
+use lemmy_api_common::context::LemmyContext;
+use lemmy_api_common::{pipayment::*, utils::password_length_check};
 use lemmy_db_schema::{
-  source::{person::*, pipayment::*, local_site::RegistrationMode},
+  source::{person::*, pipayment::*},
   traits::Crud,
-};
-use lemmy_utils::{
-  error::LemmyError,
-  ConnectionId,
+  RegistrationMode,
 };
 use lemmy_db_views::structs::SiteView;
-use lemmy_api_common::{context::LemmyContext};
+use lemmy_utils::{error::LemmyError, };
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiAgreeRegister {
   type Response = PiAgreeResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<PiAgreeResponse, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PiAgreeResponse, LemmyError> {
     let data: &PiAgreeRegister = self;
 
     let site_view = SiteView::read_local(context.pool()).await?;
@@ -85,8 +76,7 @@ impl PerformCrud for PiAgreeRegister {
     let mut pid;
     let mut dto: Option<PiPaymentDto> = None;
 
-    let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
-    {
+    let mut _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await {
       Ok(c) => {
         exist = true;
         approved = c.approved;
@@ -114,8 +104,7 @@ impl PerformCrud for PiAgreeRegister {
       Err(_e) => None,
     };
 
-    let person = match Person::find_by_name(context.pool(), &_new_user).await
-    {
+    let person = match Person::find_by_name(context.pool(), &_new_user).await {
       Ok(c) => Some(c),
       Err(_e) => None,
     };
@@ -171,7 +160,6 @@ impl PerformCrud for PiAgreeRegister {
       None => None,
     };
 
-        
     let info = PiPaymentInfo {
       domain: data.domain.clone(),
       pi_token: Some(_pi_token.clone()),

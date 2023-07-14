@@ -1,7 +1,7 @@
 use crate::pipayment::client::*;
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::utils::{get_local_user_view_from_jwt, is_admin};
+use lemmy_api_common::utils::{local_user_view_from_jwt, is_admin};
 use lemmy_api_common::{context::LemmyContext};
 use lemmy_api_common::pipayment::*;
 
@@ -9,7 +9,7 @@ use lemmy_db_schema::newtypes::{PersonId, PiUserId, PiPaymentId};
 use lemmy_db_schema::source::person::Person;
 use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentUpdatePending, PiPaymentUpdateForm};
 use lemmy_db_schema::utils::naive_now;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::{error::LemmyError, };
 use lemmy_db_schema::traits::Crud;
 use stellar_sdk::types::Operation;
 use uuid::Uuid;
@@ -22,11 +22,10 @@ impl PerformCrud for SendPayment {
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
   ) -> Result<SendPaymentResponse, LemmyError> {
     let data: &SendPayment = self;
     let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+      local_user_view_from_jwt(&data.auth, context).await?;
 
     is_admin(&local_user_view)?;
     return Err(LemmyError::from_message("Server send temporary disabled!"));

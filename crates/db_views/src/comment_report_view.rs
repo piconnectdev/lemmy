@@ -616,8 +616,8 @@ mod tests {
       ban_expires: None,
       instance_id: inserted_instance.id,
       home: None,
-      //external_id: None,
-      //external_name: None,
+      external_id: None,
+      external_name: None,
       verified: false,
       pi_address: inserted_timmy.pi_address.clone(),
       web3_address: inserted_timmy.web3_address.clone(),
@@ -628,6 +628,7 @@ mod tests {
       auth_sign: inserted_timmy.auth_sign.clone(),
       srv_sign: inserted_community.srv_sign.clone(),
       tx: inserted_timmy.tx.clone(),
+      pipayid: None,
     });
 
     assert_eq!(

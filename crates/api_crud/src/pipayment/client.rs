@@ -1,16 +1,17 @@
 use chrono::Duration;
 
 use actix_web::web::Data;
+use lemmy_api_common::context::LemmyContext;
 use lemmy_api_common::pipayment::*;
 use lemmy_db_schema::{
   newtypes::{CommentId, *},
-  source::{comment::*, pipayment::*, post::*, person::*},
-  traits::{Crud, Signable } ,
-  utils::naive_now, schema::pipayment::user_cancelled,
+  schema::pipayment::user_cancelled,
+  source::{comment::*, person::*, pipayment::*, post::*},
+  traits::{Crud, Signable},
+  utils::naive_now,
 };
 use lemmy_utils::{error::LemmyError, request::retry, settings::SETTINGS, REQWEST_TIMEOUT};
-use lemmy_api_common::{context::LemmyContext, websocket::structs::PiTokenItem};
-use reqwest_middleware::{ ClientWithMiddleware};
+use reqwest_middleware::ClientWithMiddleware;
 
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -25,7 +26,7 @@ pub fn hide_username(name: &str) -> String {
 }
 
 pub async fn pi_payment(
-  client: &ClientWithMiddleware, 
+  client: &ClientWithMiddleware,
   id: &str,
 ) -> Result<PiPaymentDto, LemmyError> {
   let settings = SETTINGS.to_owned();
@@ -42,22 +43,22 @@ pub async fn pi_payment(
   .await?;
 
   let content = response.text().await?;
-  match serde_json::from_str(&content)
-  {
-    Ok(r) => {
-      Ok(r)
-    }
-    Err( _e )=>{
+  match serde_json::from_str(&content) {
+    Ok(r) => Ok(r),
+    Err(_e) => {
       return Err(LemmyError::from_message(&content));
     }
   }
 }
 
 pub async fn pi_incompleted_server_payments(
-  client: &ClientWithMiddleware, 
+  client: &ClientWithMiddleware,
 ) -> Result<Vec<PiPaymentDto>, LemmyError> {
   let settings = SETTINGS.to_owned();
-  let fetch_url = format!("{}/payments/incomplete_server_payments", settings.pi_api_host());
+  let fetch_url = format!(
+    "{}/payments/incomplete_server_payments",
+    settings.pi_api_host()
+  );
 
   let response = retry(|| {
     client
@@ -70,16 +71,13 @@ pub async fn pi_incompleted_server_payments(
   .await?;
 
   let content = response.text().await?;
-  let res: IncompleteServerPayments = match serde_json::from_str(&content)
-  {
-    Ok(r) => {
-      r
-    }
-    Err( _e )=>{
+  let res: IncompleteServerPayments = match serde_json::from_str(&content) {
+    Ok(r) => r,
+    Err(_e) => {
       return Err(LemmyError::from_message(&content));
     }
   };
-  
+
   Ok(res.incomplete_server_payments)
 }
 
@@ -100,17 +98,13 @@ pub async fn pi_approve(
   .await?;
 
   let content = response.text().await?;
-  match serde_json::from_str(&content)
-  {
-    Ok(r) => {
-      Ok(r)
-    }
-    Err( _e )=>{
+  match serde_json::from_str(&content) {
+    Ok(r) => Ok(r),
+    Err(_e) => {
       return Err(LemmyError::from_message(&content));
     }
   }
 }
-
 
 pub async fn pi_create(
   client: &ClientWithMiddleware,
@@ -128,17 +122,14 @@ pub async fn pi_create(
       .send()
   })
   .await?;
-  
+
   let content = response.text().await?;
-  match serde_json::from_str(&content)
-  {
-    Ok(r) => {
-      Ok(r)
-    }
-    Err( _e )=>{
+  match serde_json::from_str(&content) {
+    Ok(r) => Ok(r),
+    Err(_e) => {
       return Err(LemmyError::from_message(&content));
     }
-  }  
+  }
 }
 
 pub async fn pi_cancel(
@@ -158,12 +149,9 @@ pub async fn pi_cancel(
   .await?;
 
   let content = response.text().await?;
-  match serde_json::from_str(&content)
-  {
-    Ok(r) => {
-      Ok(r)
-    }
-    Err( _e )=>{
+  match serde_json::from_str(&content) {
+    Ok(r) => Ok(r),
+    Err(_e) => {
       return Err(LemmyError::from_message(&content));
     }
   }
@@ -192,32 +180,27 @@ pub async fn pi_complete(
   .await?;
 
   let content = response.text().await?;
-  match serde_json::from_str(&content)
-  {
-    Ok(r) => {
-      Ok(r)
-    }
-    Err( _e )=>{
+  match serde_json::from_str(&content) {
+    Ok(r) => Ok(r),
+    Err(_e) => {
       return Err(LemmyError::from_message(&content));
     }
   }
 }
 
-
 pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto, LemmyError> {
   let settings = SETTINGS.to_owned();
   let fetch_url = format!("{}/me", settings.pi_api_host());
   let client = context.client();
-  
-  match context.chat_server().check_pi_token(key.to_string().clone(), "".to_string())?
+
+  match context
+    .chat_server()
+    .check_pi_token(key.to_string().clone(), "".to_string())?
   {
-    Some(p) => {
-      return Ok(p)
-    },
-    None => {
-    }
+    Some(p) => return Ok(p),
+    None => {}
   }
-      
+
   let response = retry(|| {
     client
       .get(&fetch_url)
@@ -231,14 +214,11 @@ pub async fn pi_me(context: &Data<LemmyContext>, key: &str) -> Result<PiUserDto,
   //   .json::<PiUserDto>()
   //   .await
   //   .map_err(|e| LemmyError::from_error_message(e, "Fetch /me error"))?;
-  
+
   let content = response.text().await?;
-  let mut res: PiUserDto = match serde_json::from_str(&content)
-  {
-    Ok(r) => {
-      r
-    }
-    Err( _e )=>{
+  let mut res: PiUserDto = match serde_json::from_str(&content) {
+    Ok(r) => r,
+    Err(_e) => {
       return Err(LemmyError::from_message(&content));
     }
   };

@@ -1,4 +1,6 @@
-use crate::{fetcher::resolve_actor_identifier, objects::community::ApubCommunity};
+use crate::{
+  fetcher::resolve_actor_identifier, objects::community::ApubCommunity, objects::person::ApubPerson,
+};
 use activitypub_federation::config::Data;
 use actix_web::web::{Json, Query};
 use lemmy_api_common::{
@@ -44,14 +46,55 @@ pub async fn search(
   let listing_type = data.listing_type;
   let search_type = data.type_.unwrap_or(SearchType::All);
   let community_id = if let Some(name) = &data.community_name {
-    resolve_actor_identifier::<ApubCommunity, Community>(name, &context, &local_user_view, false)
-      .await
-      .ok()
-      .map(|c| c.id)
+    Some(
+      resolve_actor_identifier::<ApubCommunity, Community>(name, &context, &local_user_view, false)
+        .await?,
+    )
+    .map(|c| c.id)
   } else {
-    data.community_id
+    //data.community_id
+    let uuid = Uuid::parse_str(&data.community_id.clone().unwrap_or_default());
+    match uuid {
+      Ok(u) => Some(CommunityId(u)),
+      Err(_e) => None,
+    }
   };
-  let creator_id = data.creator_id;
+  //let creator_id = data.creator_id;
+  let creator_id = match &data.creator_id {
+    //Some(id) => id,
+    Some(id) => {
+      let uuid = Uuid::parse_str(&data.creator_id.clone().unwrap_or_default());
+      match uuid {
+        Ok(u) => Some(PersonId(u)),
+        Err(_e) => {
+          None
+          // let name = data
+          //   .creator_id
+          //   .to_owned()
+          //   .unwrap_or_else(|| "main".to_string());
+          // let person: ApubPerson = Person::read_from_name(context.pool(), &name, false)
+          //   .await?
+          //   .into();
+          // person.id
+          // blocking(context.pool(), move |conn| {
+          //   Community::read_from_name(conn, &name, false)
+          // })
+          // .await?
+          // .map_err(|_| LemmyError::from_message("couldnt_find_community"))?
+          // .id
+        }
+      }
+    }
+    None => {
+      None
+      // let name = data.name.clone().unwrap_or_else(|| "main".to_string());
+      // resolve_actor_identifier::<ApubCommunity, Community>(&name, &context, &local_user_view, true)
+      //   .await
+      //   .map_err(|e| e.with_message("couldnt_find_community"))?
+      //   .id
+    }
+  };
+
   let local_user = local_user_view.map(|l| l.local_user);
   match search_type {
     SearchType::Posts => {

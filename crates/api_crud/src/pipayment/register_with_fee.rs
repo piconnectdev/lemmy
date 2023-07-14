@@ -1,31 +1,21 @@
-use crate::PerformCrud;
 use crate::pipayment::payment::PiPaymentInfo;
-use actix_web::web::Data;
-use lemmy_api_common::person::LoginResponse;
-use lemmy_api_common::{context::LemmyContext};
-use lemmy_api_common::{
-  pipayment::*,
-};
-use lemmy_db_schema::source::local_site::RegistrationMode;
-use lemmy_db_schema::source::pipayment::PiPayment;
-use lemmy_db_views::structs::SiteView;
-use lemmy_utils::{
-  error::LemmyError,
-  ConnectionId,
-};
 use crate::web3::ext::*;
+use crate::PerformCrud;
+use actix_web::web::Data;
+use lemmy_api_common::context::LemmyContext;
+use lemmy_api_common::person::LoginResponse;
+use lemmy_api_common::pipayment::*;
+use lemmy_db_schema::{source::pipayment::PiPayment, RegistrationMode};
+use lemmy_db_views::structs::SiteView;
+use lemmy_utils::{error::LemmyError, };
 
-use super::client::{pi_me};
-use super::payment::{pi_payment_update};
+use super::client::pi_me;
+use super::payment::pi_payment_update;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiRegisterWithFee {
   type Response = LoginResponse;
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<LoginResponse, LemmyError> {
     let data: &PiRegisterWithFee = &self;
     let ext_account = data.ea.clone();
 
@@ -83,36 +73,40 @@ impl PerformCrud for PiRegisterWithFee {
       auth: None,
     };
 
-    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
-    {
-      Ok(c) => {
-        Some(c)
-      }
+    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await {
+      Ok(c) => Some(c),
       Err(_e) => {
         return Err(LemmyError::from_message("Not approved payment"));
-      },
+      }
     };
 
-    let payment = match pi_payment_update(context, &info.clone(), _payment, Some(data.txid.clone())).await
-    {
-      Ok(p) => {
-        if !p.completed {
+    let payment =
+      match pi_payment_update(context, &info.clone(), _payment, Some(data.txid.clone())).await {
+        Ok(p) => {
+          if !p.completed {
+            return Err(LemmyError::from_message("registration_disabled"));
+          }
+          Some(p)
+        }
+        Err(_c) => {
           return Err(LemmyError::from_message("registration_disabled"));
         }
-        Some(p)
-      },
-      Err(_c) => {
-        return Err(LemmyError::from_message("registration_disabled"));
-      },
-    };
+      };
 
-    let login_response = match create_external_account(context, &_pi_username.clone(), &ext_account.clone(), &data.info.clone(), true).await
+    let login_response = match create_external_account(
+      context,
+      &_pi_username.clone(),
+      &ext_account.clone(),
+      &data.info.clone(),
+      true,
+    )
+    .await
     {
       Ok(c) => c,
       Err(_e) => {
         return Err(LemmyError::from_message("registration_disabled"));
         //None
-      },
+      }
     };
     Ok(login_response)
   }

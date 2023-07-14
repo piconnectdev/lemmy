@@ -301,3 +301,24 @@ pub struct SendPaymentResponse {
   pub id: Option<PiPaymentId>,
   pub payment: Option<PiPayment>,
 }
+
+#[derive(Debug)]
+pub struct CaptchaItem {
+  pub uuid: String,
+  pub answer: String,
+  pub expires: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct TokenItem {
+  pub uuid: String,
+  pub answer: String,
+  pub expires: chrono::NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct PiTokenItem {
+  pub uuid: String,
+  pub answer: PiUserDto,
+  pub expires: chrono::NaiveDateTime,
+}

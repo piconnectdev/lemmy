@@ -2,8 +2,7 @@ use crate::sensitive::Sensitive;
 use lemmy_db_schema::{
   newtypes::{CommunityId, LanguageId, PersonId},
   source::site::Site,
-  ListingType,
-  SortType,
+  ListingType, SortType,
 };
 use lemmy_db_views_actor::structs::{CommunityModeratorView, CommunityView, PersonView};
 use serde::{Deserialize, Serialize};
@@ -17,7 +16,8 @@ use ts_rs::TS;
 #[cfg_attr(feature = "full", ts(export))]
 /// Get a community. Must provide either an id, or a name.
 pub struct GetCommunity {
-  pub id: Option<CommunityId>,
+  //pub id: Option<CommunityId>,
+  pub id: Option<String>,
   /// Example: star_trek , or star_trek@xyz.tld
   pub name: Option<String>,
   pub auth: Option<Sensitive<String>>,

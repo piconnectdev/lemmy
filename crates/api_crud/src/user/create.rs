@@ -20,7 +20,8 @@ use lemmy_db_schema::{
     registration_application::{RegistrationApplication, RegistrationApplicationInsertForm},
     site::Site,
   },
-  traits::{ApubActor, Crud, RegistrationMode},
+  traits::{ApubActor, Crud, },
+  RegistrationMode,
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 use lemmy_utils::{

@@ -85,11 +85,12 @@ pub fn is_top_mod(
   local_user_view: &LocalUserView,
   community_mods: &[CommunityModeratorView],
 ) -> Result<(), LemmyError> {
+  let uuid = uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
   if local_user_view.person.id
     != community_mods
       .first()
       .map(|cm| cm.moderator.id)
-      .unwrap_or(PersonId(0))
+      .unwrap_or(PersonId(uuid))
   {
     return Err(LemmyError::from_message("not_top_mod"));
   }

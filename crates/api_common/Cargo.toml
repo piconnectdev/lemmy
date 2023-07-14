@@ -22,7 +22,7 @@ full = ["tracing", "rosetta-i18n", "chrono", "lemmy_utils",
 lemmy_db_views = { workspace = true }
 lemmy_db_views_moderator = { workspace = true }
 lemmy_db_views_actor = { workspace = true }
-lemmy_db_schema = { workspace = true }
+lemmy_db_schema = { workspace = true, default-features = false}
 lemmy_utils = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_with = { workspace = true }
@@ -44,4 +44,9 @@ reqwest = { workspace = true }
 ts-rs = { workspace = true, optional = true }
 actix-web = { workspace = true }
 
-#uuid = { workspace = true, features = ["v4", "serde"]}
+actix-ws = { workspace = true }
+rand = { workspace = true }
+diesel = { workspace = true, optional = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+

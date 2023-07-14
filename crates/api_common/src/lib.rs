@@ -16,7 +16,9 @@ pub mod site;
 #[cfg(feature = "full")]
 pub mod utils;
 pub mod web3;
+pub mod websocket;
 
+extern crate strum_macros;
 pub extern crate lemmy_db_schema;
 pub extern crate lemmy_db_views;
 pub extern crate lemmy_db_views_actor;

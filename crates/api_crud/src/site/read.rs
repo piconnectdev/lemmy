@@ -2,6 +2,7 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::{
   context::LemmyContext,
+  sensitive::Sensitive,
   site::{GetMyUserInfo, GetMyUserInfoResponse, GetSite, GetSiteResponse, MyUserInfo},
   utils::{check_user_valid, check_validator_time},
 };
@@ -127,16 +128,15 @@ async fn local_user_settings_view_from_jwt_opt(
 impl PerformCrud for GetMyUserInfo {
   type Response = GetMyUserInfoResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
+  #[tracing::instrument(skip(context))]
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
   ) -> Result<GetMyUserInfoResponse, LemmyError> {
     let data: &GetMyUserInfo = self;
     // Build the local user
     let my_user = if let Some(local_user_view) =
-      local_user_settings_view_from_jwt_opt(data.auth.as_ref(), context).await?
+      local_user_settings_view_from_jwt_opt(data.auth.as_ref(), context).await
     {
       let person_id = local_user_view.person.id;
       let local_user_id = local_user_view.local_user.id;

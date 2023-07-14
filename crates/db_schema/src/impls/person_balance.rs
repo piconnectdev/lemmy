@@ -1,9 +1,12 @@
 use crate::{
-  newtypes::{PersonId, PersonBalanceId},
-  schema::person_balance::{dsl::{person_balance }, person_id, asset, deposited, received, withdrawed, pending, spent, amount, updated},
+  newtypes::{PersonBalanceId, PersonId},
+  schema::person_balance::{
+    amount, asset, deposited, dsl::person_balance, pending, person_id, received, spent, updated,
+    withdrawed,
+  },
   source::person_balance::{PersonBalance, PersonBalanceInsertForm, PersonBalanceUpdateForm},
   traits::Crud,
-  utils::{get_conn, DbPool, naive_now,},
+  utils::{get_conn, naive_now, DbPool},
 };
 
 use diesel::{dsl::insert_into, result::Error, ExpressionMethods, QueryDsl};
@@ -14,7 +17,7 @@ impl Crud for PersonBalance {
   type InsertForm = PersonBalanceInsertForm;
   type UpdateForm = PersonBalanceUpdateForm;
   type IdType = PersonBalanceId;
-  
+
   async fn read(pool: &DbPool, person_balance_id: PersonBalanceId) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
     person_balance
@@ -25,9 +28,11 @@ impl Crud for PersonBalance {
 
   async fn delete(pool: &DbPool, person_balance_id: PersonBalanceId) -> Result<usize, Error> {
     let conn = &mut get_conn(pool).await?;
-    diesel::delete(person_balance.find(person_balance_id)).execute(conn).await
+    diesel::delete(person_balance.find(person_balance_id))
+      .execute(conn)
+      .await
   }
-  
+
   async fn create(pool: &DbPool, form: &Self::InsertForm) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
     // since the return here isnt utilized, we dont need to do an update
@@ -54,8 +59,12 @@ impl Crud for PersonBalance {
   }
 }
 
-impl PersonBalance { 
-  pub async fn find_by_asset(pool: &DbPool, person_balance_id: PersonId, asset_name: &str) -> Result<Self, Error> {
+impl PersonBalance {
+  pub async fn find_by_asset(
+    pool: &DbPool,
+    person_balance_id: PersonId,
+    asset_name: &str,
+  ) -> Result<Self, Error> {
     use crate::schema::person_balance::dsl::*;
     let conn = &mut get_conn(pool).await?;
     person_balance
@@ -64,38 +73,23 @@ impl PersonBalance {
       .first::<Self>(conn)
       .await
   }
-  
-  pub async fn update_deposit(
-    pool: &DbPool,
-    pid: PersonId,
-    amt: f64,
-  ) -> Result<Self, Error> {
+
+  pub async fn update_deposit(pool: &DbPool, pid: PersonId, amt: f64) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
     diesel::update(person_balance)
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
-      .set((
-        deposited.eq(deposited+amt),
-        amount.eq(amount+amt),
-      ))
+      .set((deposited.eq(deposited + amt), amount.eq(amount + amt)))
       .get_result::<Self>(conn)
       .await
   }
 
-
-  pub async fn update_received(
-    pool: &DbPool,
-    pid: PersonId,
-    amt: f64,
-  ) -> Result<Self, Error> {
+  pub async fn update_received(pool: &DbPool, pid: PersonId, amt: f64) -> Result<Self, Error> {
     let conn = &mut get_conn(pool).await?;
     diesel::update(person_balance)
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
-      .set((
-        received.eq(received+amt),
-        amount.eq(amount+amt),
-      ))
+      .set((received.eq(received + amt), amount.eq(amount + amt)))
       .get_result::<Self>(conn)
       .await
   }
@@ -110,10 +104,10 @@ impl PersonBalance {
     diesel::update(person_balance)
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
-      .filter(amount.ge(amt+fee))
+      .filter(amount.ge(amt + fee))
       .set((
-        withdrawed.eq(withdrawed+amt+fee),
-        amount.eq(amount-(amt+fee)),
+        withdrawed.eq(withdrawed + amt + fee),
+        amount.eq(amount - (amt + fee)),
         pending.eq(amt),
         updated.eq(naive_now()),
       ))
@@ -131,9 +125,7 @@ impl PersonBalance {
     diesel::update(person_balance)
       .filter(person_id.eq(pid))
       .filter(asset.eq("PI".to_string()))
-      .set((
-        spent.eq(spent+amt+fee),
-      ))
+      .set((spent.eq(spent + amt + fee),))
       .get_result::<Self>(conn)
       .await
   }
@@ -157,7 +149,9 @@ mod tests {
   async fn test_crud() {
     let pool = &build_db_pool_for_tests().await;
 
-    let inserted_instance = Instance::create(pool, "my_domain.tld").await.unwrap();
+    let inserted_instance = Instance::read_or_create(pool, "my_domain.tld".to_string())
+      .await
+      .unwrap();
 
     let new_person = PersonInsertForm::builder()
       .name("terrylake".into())
@@ -194,7 +188,7 @@ mod tests {
       .spent(0.0)
       .amount(0.0)
       .pending(0.0)
-      .extras(None)      
+      .extras(None)
       .build();
 
     let read_balance = PersonBalance::read(pool, inserted_balance.id)
@@ -215,7 +209,9 @@ mod tests {
         .await
         .unwrap();
     Person::delete(pool, inserted_person.id).await.unwrap();
-    PersonBalance::delete(pool, updated_balance.id).await.unwrap();
+    PersonBalance::delete(pool, updated_balance.id)
+      .await
+      .unwrap();
     Instance::delete(pool, inserted_instance.id).await.unwrap();
 
     assert_eq!(expected_balance, read_balance);

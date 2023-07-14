@@ -15,7 +15,7 @@ doctest = false
 
 [features]
 full = ["diesel", "diesel-derive-newtype", "diesel-derive-enum", "diesel_migrations", "bcrypt", "lemmy_utils",
-    "activitypub_federation", "sha2", "regex", "once_cell", "diesel_ltree",
+    "activitypub_federation", "sha2", "regex", "once_cell", "serde_json", "diesel_ltree",
     "diesel-async", "deadpool", "ts-rs"]
 
 [dependencies]
@@ -26,11 +26,11 @@ serde_with = { workspace = true }
 url = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
-serde_json = { workspace = true}
+serde_json = { workspace = true, optional = true }
 activitypub_federation = { workspace = true, optional = true }
 lemmy_utils = { workspace = true, optional = true }
 bcrypt = { workspace = true, optional = true }
-diesel = { workspace = true, features = ["postgres","chrono", "serde_json", "uuid","64-column-tables"], optional = true }
+diesel = { workspace = true, features = ["postgres","chrono", "serde_json", "uuid", "128-column-tables", "extras", "postgres_backend"], optional = true }
 diesel-derive-newtype = { workspace = true, optional = true }
 diesel-derive-enum = { workspace = true, optional = true }
 diesel_migrations = { workspace = true, optional = true }
@@ -49,7 +49,7 @@ rustls = { workspace = true }
 futures-util = { workspace = true }
 tokio-postgres = { workspace = true }
 tokio-postgres-rustls = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
+uuid = { workspace = true, features = ["serde", "v4"] }
 
 [dev-dependencies]
 serial_test = { workspace = true }

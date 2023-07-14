@@ -4,8 +4,8 @@ use captcha::{gen, Difficulty};
 use chrono::Duration;
 use lemmy_api_common::{
   context::LemmyContext,
-  person::{TokenResponse, GetToken, GetTokenResponse},
-  websocket::structs::TokenItem,
+  person::{GetToken, GetTokenResponse, TokenResponse},
+  pipayment::TokenItem,
 };
 use lemmy_db_schema::utils::naive_now;
 use lemmy_utils::{error::LemmyError, ConnectionId};
@@ -14,12 +14,8 @@ use lemmy_utils::{error::LemmyError, ConnectionId};
 impl Perform for GetToken {
   type Response = GetTokenResponse;
 
-  #[tracing::instrument(skip(context, _websocket_id))]
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<Self::Response, LemmyError> {
+  #[tracing::instrument(skip(context))]
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<Self::Response, LemmyError> {
     // let captcha_settings = &context.settings().captcha;
 
     // if !captcha_settings.enabled {
@@ -31,7 +27,7 @@ impl Perform for GetToken {
     //   "hard" => Difficulty::Hard,
     //   _ => Difficulty::Medium,
     // });
-    
+
     let captcha = gen(Difficulty::Easy);
 
     let answer = captcha.chars_as_string();

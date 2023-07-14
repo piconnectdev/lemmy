@@ -65,7 +65,9 @@ pub(crate) mod tests {
   use reqwest::{Client, Request, Response};
   use reqwest_middleware::{ClientBuilder, Middleware, Next};
   use task_local_extensions::Extensions;
-
+  use std::sync::Arc;
+  use lemmy_api_common::websocket::chat_server::ChatServer;
+  
   struct BlockedMiddleware;
 
   /// A reqwest middleware which blocks all requests
@@ -101,7 +103,8 @@ pub(crate) mod tests {
     let rate_limit_config = RateLimitConfig::builder().build();
     let rate_limit_cell = RateLimitCell::new(rate_limit_config).await;
 
-    let context = LemmyContext::create(pool, client, secret, rate_limit_cell.clone());
+    let chat_server = Arc::new(ChatServer::startup());
+    let context = LemmyContext::create(pool, client, secret, rate_limit_cell.clone(), chat_server.clone());
     let config = FederationConfig::builder()
       .domain("example.com")
       .app_data(context)

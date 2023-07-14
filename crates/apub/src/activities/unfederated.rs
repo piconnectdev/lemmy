@@ -93,10 +93,6 @@ impl SendActivity for GetCaptcha {
   type Response = GetCaptchaResponse;
 }
 
-impl SendActivity for GetToken {
-  type Response = GetTokenResponse;
-}
-
 impl SendActivity for GetReplies {
   type Response = GetRepliesResponse;
 }
@@ -318,6 +314,10 @@ impl SendActivity for SendPayment {
   type Response = SendPaymentResponse;
 }
 
-impl SendActivity for GetMyUserInfo {
-  type Response = GetMyUserInfoResponse;
-}
+// impl SendActivity for GetToken {
+//   type Response = GetTokenResponse;
+// }
+
+// impl SendActivity for GetMyUserInfo {
+//   type Response = GetMyUserInfoResponse;
+// }

@@ -2,40 +2,24 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 
 use lemmy_api_common::{
-  person::*,
-  sensitive::Sensitive,
-  utils::{password_length_check},
-  context::LemmyContext,
-  web3::*,
+  context::LemmyContext, person::*, sensitive::Sensitive, utils::password_length_check, web3::*,
 };
 use lemmy_db_schema::{
   newtypes::PersonId,
-  source::{
-    local_user::{LocalUser, },
-    person::*,
-  },
+  source::{local_user::LocalUser, person::*},
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 //use lemmy_db_views_actor::structs::PersonViewSafe;
 
 use lemmy_utils::{
-  claims::Claims,
-  error::LemmyError,
-  settings::SETTINGS,
-  utils::web3::{eth_verify, },
-  ConnectionId,
+  claims::Claims, error::LemmyError, settings::SETTINGS, utils::web3::eth_verify, ConnectionId,
 };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for Web3Login {
   type Response = LoginResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<LoginResponse, LemmyError> {
-
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<LoginResponse, LemmyError> {
     let data: &Web3Login = &self;
     let settings = SETTINGS.to_owned();
 
@@ -110,23 +94,21 @@ impl PerformCrud for Web3Login {
     // If its not the admin, check the token
     if local_site.site_setup {
       let check = context
-        .chat_server().check_token(data.token.clone(), "".to_string())?;
+        .chat_server()
+        .check_token(data.token.clone(), "".to_string())?;
       if !check {
         return Err(LemmyError::from_message("token_incorrect"));
       }
     }
 
     // Find user exist ?
-    let exist_person = match Person::find_by_extra_name(context.pool(), &_alias).await
-    {
+    let exist_person = match Person::find_by_extra_name(context.pool(), &_alias).await {
       Ok(c) => {
         _exist = true;
         //person_id = c.id.clone();
         Some(c)
-      },
-      Err(_e) => {
-        None
-      },
+      }
+      Err(_e) => None,
     };
 
     // let mut external_id = None;
@@ -144,10 +126,9 @@ impl PerformCrud for Web3Login {
     //   }
     // }
 
-    if _exist && exist_person.is_some(){
+    if _exist && exist_person.is_some() {
       let person_id = exist_person.unwrap().id;
-      let _local_user = match LocalUserView::read_person(context.pool(), person_id.clone()).await
-      {
+      let _local_user = match LocalUserView::read_person(context.pool(), person_id.clone()).await {
         Ok(lcu) => lcu.local_user,
         Err(_e) => {
           let err_type = format!(
@@ -165,18 +146,20 @@ impl PerformCrud for Web3Login {
 
       if _change_password {
         password_length_check(&_new_password)?;
-        let updated_local_user = match LocalUser::update_password(context.pool(), local_user_id.clone(), &_new_password).await
-        {
-          Ok(lcu) => lcu,
-          Err(_e) => {
-            let err_type = format!(
-              "Update user password error {} {}",
-              &username.clone(),
-              _e.to_string()
-            );
-            return Err(LemmyError::from_message(&err_type));
-          }
-        };
+        let updated_local_user =
+          match LocalUser::update_password(context.pool(), local_user_id.clone(), &_new_password)
+            .await
+          {
+            Ok(lcu) => lcu,
+            Err(_e) => {
+              let err_type = format!(
+                "Update user password error {} {}",
+                &username.clone(),
+                _e.to_string()
+              );
+              return Err(LemmyError::from_message(&err_type));
+            }
+          };
       }
 
       return Ok(LoginResponse {
@@ -195,13 +178,12 @@ impl PerformCrud for Web3Login {
 
     // We have to create both a person, and local_user
     //if !create_new {
-      let err_type = format!(
-        "Auto create new account for web3 is disabled {} {}, please register first",
-        &_new_user.to_string().clone(),
-        &_address.clone()
-      );
-      //return LemmyError::from_error_message(e, &err_type)?;
-      return Err(LemmyError::from_message(&err_type).into());
-
+    let err_type = format!(
+      "Auto create new account for web3 is disabled {} {}, please register first",
+      &_new_user.to_string().clone(),
+      &_address.clone()
+    );
+    //return LemmyError::from_error_message(e, &err_type)?;
+    return Err(LemmyError::from_message(&err_type).into());
   }
 }

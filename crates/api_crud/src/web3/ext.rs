@@ -16,12 +16,13 @@ use lemmy_api_common::{
 use lemmy_db_schema::{
   newtypes::PersonId,
   source::{
-    local_site::{LocalSite, RegistrationMode},
+    local_site::{LocalSite, },
     local_user::{LocalUser, LocalUserInsertForm},
     person::*, registration_application::RegistrationApplicationInsertForm,
     registration_application::RegistrationApplication, community::Community, person_balance::{PersonBalanceInsertForm, PersonBalance}
   },
   traits::{Crud, ApubActor}, aggregates::structs::PersonAggregates,
+  RegistrationMode,
 };
 use lemmy_db_views::structs::{LocalUserView, SiteView};
 
@@ -29,7 +30,7 @@ use lemmy_utils::{
   apub::generate_actor_keypair,
   claims::Claims,
   error::LemmyError,
-  ConnectionId, utils::{web3::eth_verify, slurs::check_slurs, validation::is_valid_actor_name},
+  utils::{web3::eth_verify, slurs::check_slurs, validation::is_valid_actor_name},
 };
 
 
@@ -110,9 +111,11 @@ pub async fn create_external_account(context: &Data<LemmyContext>, ext_name: &st
   
   let actor_keypair = generate_actor_keypair()?;
   if !_exist {
-    if !is_valid_actor_name(&_new_user.clone(), local_site.actor_name_max_length as usize) {      
-      return Err(LemmyError::from_message("register:invalid_username"));
-    }
+    // TODO: Check valid
+    is_valid_actor_name(&_new_user.clone(), local_site.actor_name_max_length as usize)?;
+    // if !is_valid_actor_name(&_new_user.clone(), local_site.actor_name_max_length as usize) {      
+    //   return Err(LemmyError::from_message("register:invalid_username"));
+    // }
   }
 
   let actor_id = generate_local_apub_endpoint(

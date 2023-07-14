@@ -1,21 +1,18 @@
-use crate::pipayment::payment::{PiPaymentInfo, pi_payment_create};
-use crate::pipayment::{client::*};
+use crate::pipayment::client::*;
+use crate::pipayment::payment::{pi_payment_create, PiPaymentInfo};
 use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{context::LemmyContext, pipayment::*, utils::get_local_user_view_from_jwt};
+use lemmy_api_common::utils::{check_community_ban, is_mod_or_admin, local_user_view_from_jwt};
+use lemmy_api_common::{context::LemmyContext, pipayment::*};
 use lemmy_db_schema::source::person::Person;
 use lemmy_db_schema::source::pipayment::PiPayment;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::{error::LemmyError, };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiApprove {
   type Response = PiApproveResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<PiApproveResponse, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PiApproveResponse, LemmyError> {
     let data = self;
 
     if data.pi_token.is_none() {
@@ -41,19 +38,22 @@ impl PerformCrud for PiApprove {
         Some(dto)
       }
       Err(_e) => {
-        let err_type = format!("Pi Network Server Error {}, : {}", &_pi_token, _e.to_string());
+        let err_type = format!(
+          "Pi Network Server Error {}, : {}",
+          &_pi_token,
+          _e.to_string()
+        );
         return Err(LemmyError::from_message(&err_type));
       }
     };
 
-    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
-    {
+    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await {
       Ok(c) => {
         return Err(LemmyError::from_message("The payment was approved"));
       }
       Err(_e) => {
         //return Err(LemmyError::from_message("Not approved payment"));
-      },
+      }
     };
 
     let mut info = PiPaymentInfo {
@@ -69,27 +69,31 @@ impl PerformCrud for PiApprove {
       auth: None,
     };
 
-    let paytype ;
-    if info.obj_cat.is_some()
-    {
+    let paytype;
+    if info.obj_cat.is_some() {
       paytype = info.obj_cat.clone().unwrap_or_default();
-      if paytype == "reward"
-      {
+      if paytype == "reward" {
         match Person::find_by_name(context.pool(), &info.comment.clone().unwrap_or_default()).await
         {
-          Ok(p) =>{
+          Ok(p) => {
             if p.external_id.is_none() {
-              return Err(LemmyError::from_message("Cannot approve reward to this user")); 
+              return Err(LemmyError::from_message(
+                "Cannot approve reward to this user",
+              ));
             }
             if !p.verified {
-              return Err(LemmyError::from_message("Cannot approve reward the not verified user")); 
+              return Err(LemmyError::from_message(
+                "Cannot approve reward the not verified user",
+              ));
             }
             info.ref_id = Some(p.id.0);
-          },
+          }
           Err(_e) => {
-            return Err(LemmyError::from_message("Cannot approve reward non-exist user")); 
-          },
-        };    
+            return Err(LemmyError::from_message(
+              "Cannot approve reward non-exist user",
+            ));
+          }
+        };
       }
     }
     let _payment = match pi_payment_create(context, &info, None, None).await {

@@ -39,9 +39,7 @@ pub async fn list_posts(
   */
 
   let community_id = if let Some(name) = &data.community_name {
-    resolve_actor_identifier::<ApubCommunity, Community>(name, &context, &None, true)
-      .await
-      .ok()
+    Some(resolve_actor_identifier::<ApubCommunity, Community>(name, &context, &None, true).await?)
       .map(|c| c.id)
   } else {
     data.community_id
@@ -80,7 +78,6 @@ impl PerformCrud for GetPosts {
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
   ) -> Result<GetPostsResponse, LemmyError> {
     let data: &GetPosts = self;
     let local_user_view = get_local_user_view_from_jwt_opt(&data.auth, context.pool()).await?;

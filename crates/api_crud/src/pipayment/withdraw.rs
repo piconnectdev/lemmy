@@ -3,27 +3,22 @@ use crate::PerformCrud;
 use actix_web::web::Data;
 use lemmy_api_common::context::LemmyContext;
 use lemmy_api_common::pipayment::*;
-use lemmy_api_common::utils::get_local_user_view_from_jwt;
+use lemmy_api_common::utils::local_user_view_from_jwt;
 
 use lemmy_db_schema::newtypes::{PersonId, PiUserId};
 use lemmy_db_schema::source::person::Person;
 use lemmy_db_schema::source::person_balance::PersonBalance;
 use lemmy_db_schema::source::pipayment::{PiPayment, PiPaymentInsertForm};
 use lemmy_db_schema::traits::Crud;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::{error::LemmyError, };
 use uuid::Uuid;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiWithdraw {
   type Response = PiWithdrawResponse;
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
-  ) -> Result<PiWithdrawResponse, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PiWithdrawResponse, LemmyError> {
     let data: &PiWithdraw = self;
-    let local_user_view =
-      get_local_user_view_from_jwt(&data.auth, context.pool(), context.secret()).await?;
+    let local_user_view = local_user_view_from_jwt(&data.auth, context).await?;
     let person_id = local_user_view.person.id;
     let person = Person::read(context.pool(), person_id.clone()).await?;
     let uuid = Uuid::parse_str(&person.external_id.clone().unwrap());

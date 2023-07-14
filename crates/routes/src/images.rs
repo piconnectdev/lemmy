@@ -157,7 +157,7 @@ async fn full_res(
     //   .cookie("jwt")
     //   .expect("No auth header for picture access");
 
-    if local_user_view_from_jwt(jwt, &context).await.is_err() {
+    if local_user_view_from_jwt(&jwt, &context).await.is_err() {
       return Ok(HttpResponse::Unauthorized().finish());
     };
   }

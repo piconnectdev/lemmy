@@ -1,12 +1,12 @@
 use crate::pipayment::client::*;
-use crate::PerformCrud;
 use crate::pipayment::payment::{pi_payment_update, PiPaymentInfo};
+use crate::PerformCrud;
 use actix_web::web::Data;
-use lemmy_api_common::{context::LemmyContext};
+use lemmy_api_common::context::LemmyContext;
 use lemmy_api_common::pipayment::*;
 
 use lemmy_db_schema::source::pipayment::PiPayment;
-use lemmy_utils::{error::LemmyError, ConnectionId};
+use lemmy_utils::{error::LemmyError, };
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for PiPaymentComplete {
@@ -14,13 +14,12 @@ impl PerformCrud for PiPaymentComplete {
   async fn perform(
     &self,
     context: &Data<LemmyContext>,
-    websocket_id: Option<ConnectionId>,
   ) -> Result<PiPaymentCompleteResponse, LemmyError> {
     let data: &PiPaymentComplete = self;
     if data.pi_token.is_none() {
       return Err(LemmyError::from_message("Pi token is missing!"));
     }
-    
+
     let _pi_token = data.pi_token.clone().unwrap();
     let mut _pi_username;
     let mut _pi_uid = None;
@@ -36,7 +35,11 @@ impl PerformCrud for PiPaymentComplete {
       }
       Err(_e) => {
         // Pi Server error
-        let err_str = format!("Pi Network Server Error: User not found: {}, error: {}", &_pi_token, _e.to_string());
+        let err_str = format!(
+          "Pi Network Server Error: User not found: {}, error: {}",
+          &_pi_token,
+          _e.to_string()
+        );
         return Err(LemmyError::from_message(&err_str));
       }
     };
@@ -56,8 +59,7 @@ impl PerformCrud for PiPaymentComplete {
     };
 
     let mut finished = false;
-    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await
-    {
+    let _payment = match PiPayment::find_by_pipayment_id(context.pool(), &_payment_id).await {
       Ok(p) => {
         info.obj_cat = p.obj_cat.clone();
         info.obj_id = p.obj_id.clone();
@@ -71,7 +73,7 @@ impl PerformCrud for PiPaymentComplete {
       }
       Err(_e) => {
         return Err(LemmyError::from_message("Completed a payment not approved"));
-      },
+      }
     };
     let _payment = match pi_payment_update(context, &info, _payment, _tx).await {
       Ok(c) => c,
@@ -91,11 +93,7 @@ impl PerformCrud for PiPaymentComplete {
 impl PerformCrud for PiKey {
   type Response = PiKeyResponse;
 
-  async fn perform(
-    &self,
-    context: &Data<LemmyContext>,
-    _websocket_id: Option<ConnectionId>,
-  ) -> Result<PiKeyResponse, LemmyError> {
+  async fn perform(&self, context: &Data<LemmyContext>) -> Result<PiKeyResponse, LemmyError> {
     let data: &PiKey = self;
 
     let res = PiKeyResponse {
@@ -105,4 +103,3 @@ impl PerformCrud for PiKey {
     Ok(res)
   }
 }
-

@@ -48,6 +48,11 @@ pub struct Settings {
   #[default(0)]
   pub retry_count: usize,
 
+  // Prometheus configuration.
+  #[default(None)]
+  #[doku(example = "Some(Default::default())")]
+  pub prometheus: Option<PrometheusConfig>,
+
   #[default(PiNetworkConfig::default())]
   pub pinetwork: PiNetworkConfig,
 
@@ -187,6 +192,19 @@ pub struct SetupConfig {
   #[doku(example = "user@example.com")]
   #[default(None)]
   pub admin_email: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]
+#[serde(deny_unknown_fields)]
+pub struct PrometheusConfig {
+  // Address that the Prometheus metrics will be served on.
+  #[default(Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))))]
+  #[doku(example = "127.0.0.1")]
+  pub bind: Option<IpAddr>,
+  // Port that the Prometheus metrics will be served on.
+  #[default(Some(10002))]
+  #[doku(example = "10002")]
+  pub port: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, SmartDefault, Document)]

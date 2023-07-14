@@ -31,6 +31,7 @@ use lemmy_utils::{
     validation::{is_valid_actor_name, is_valid_body_field},
   },
 };
+use lemmy_db_views_actor::structs::CommunityView;
 
 #[async_trait::async_trait(?Send)]
 impl PerformCrud for CreateCommunity {
@@ -86,9 +87,11 @@ impl PerformCrud for CreateCommunity {
     check_slurs(&data.title, &slur_regex)?;
     check_slurs_opt(&data.description, &slur_regex)?;
 
-    if !is_valid_actor_name(&community_name, local_site.actor_name_max_length as usize) {
-      return Err(LemmyError::from_message("invalid_community_name"));
-    }
+    // TODO: Check valid
+    // if !is_valid_actor_name(&community_name, local_site.actor_name_max_length as usize) {
+    //   return Err(LemmyError::from_message("invalid_community_name"));
+    // }
+    is_valid_actor_name(&community_name, local_site.actor_name_max_length as usize)?;
     is_valid_actor_name(&data.name, local_site.actor_name_max_length as usize)?;
     is_valid_body_field(&data.description, false)?;
 
@@ -102,8 +105,13 @@ impl PerformCrud for CreateCommunity {
     if community_dupe.is_some() {
       if is_home {
         let community_id = community_dupe.unwrap().id;
+        // TODO: Check valid
         let community_view =
-          CommunityView::read(context.pool(), community_id, person_id.clone()).await?;
+          CommunityView::read(context.pool(), community_id, person_id.clone(), None).await?;
+
+        //let community_view =
+        //  CommunityView::read(context.pool(), community_id, Some(person_id), None).await?;
+
         let discussion_languages = CommunityLanguage::read(context.pool(), community_id).await?;
         return Ok(CommunityResponse {
           community_view,
@@ -190,6 +198,7 @@ impl PerformCrud for CreateCommunity {
       context.pool(),
       inserted_community.id,
       Some(person_id.clone()),
+      None,
     )
     .await?;
     let discussion_languages =

@@ -1,3 +1,4 @@
+/*
 use clokwerk::{Scheduler, TimeUnits};
 // Import week days and WeekDay
 use diesel::{sql_query, PgConnection, RunQueryDsl};
@@ -22,6 +23,7 @@ use lemmy_api_crud::pipayment::client::*;
 use lemmy_api_common::pipayment::PiPaymentDto;
 use lemmy_api_common::pipayment::PiPaymentTransaction;
 use lemmy_api_common::pipayment::IncompleteServerPayments;
+
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
 use futures::{executor};
@@ -167,4 +169,4 @@ pub async fn pi_incompleted_payments_async () -> Result<Vec<PiPaymentDto>, Lemmy
     };
     info!("Done.");
   }
-  
+  */

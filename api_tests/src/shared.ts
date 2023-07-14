@@ -220,7 +220,7 @@ export async function editPost(api: API, post: Post): Promise<PostResponse> {
 export async function deletePost(
   api: API,
   deleted: boolean,
-  post: Post
+  post: Post,
 ): Promise<PostResponse> {
   let form: DeletePost = {
     post_id: post.id,
@@ -233,7 +233,7 @@ export async function deletePost(
 export async function removePost(
   api: API,
   removed: boolean,
-  post: Post
+  post: Post,
 ): Promise<PostResponse> {
   let form: RemovePost = {
     post_id: post.id,
@@ -246,7 +246,7 @@ export async function removePost(
 export async function featurePost(
   api: API,
   featured: boolean,
-  post: Post
+  post: Post,
 ): Promise<PostResponse> {
   let form: FeaturePost = {
     post_id: post.id,
@@ -260,7 +260,7 @@ export async function featurePost(
 export async function lockPost(
   api: API,
   locked: boolean,
-  post: Post
+  post: Post,
 ): Promise<PostResponse> {
   let form: LockPost = {
     post_id: post.id,
@@ -272,7 +272,7 @@ export async function lockPost(
 
 export async function resolvePost(
   api: API,
-  post: Post
+  post: Post,
 ): Promise<ResolveObjectResponse> {
   let form: ResolveObject = {
     q: post.ap_id,
@@ -283,7 +283,7 @@ export async function resolvePost(
 
 export async function searchPostLocal(
   api: API,
-  post: Post
+  post: Post,
 ): Promise<SearchResponse> {
   let form: Search = {
     q: post.name,
@@ -307,7 +307,7 @@ export async function getPost(
 
 export async function getComments(
   api: API,
-  post_id: number
+  post_id: string,
 ): Promise<GetCommentsResponse> {
   let form: GetComments = {
     post_id: post_id,
@@ -320,7 +320,7 @@ export async function getComments(
 
 export async function resolveComment(
   api: API,
-  comment: Comment
+  comment: Comment,
 ): Promise<ResolveObjectResponse> {
   let form: ResolveObject = {
     q: comment.ap_id,
@@ -330,7 +330,7 @@ export async function resolveComment(
 }
 
 export async function resolveBetaCommunity(
-  api: API
+  api: API,
 ): Promise<ResolveObjectResponse> {
   // Use short-hand search url
   let form: ResolveObject = {
@@ -342,7 +342,7 @@ export async function resolveBetaCommunity(
 
 export async function resolveCommunity(
   api: API,
-  q: string
+  q: string,
 ): Promise<ResolveObjectResponse> {
   let form: ResolveObject = {
     q,
@@ -353,7 +353,7 @@ export async function resolveCommunity(
 
 export async function resolvePerson(
   api: API,
-  apShortname: string
+  apShortname: string,
 ): Promise<ResolveObjectResponse> {
   let form: ResolveObject = {
     q: apShortname,
@@ -366,7 +366,7 @@ export async function banPersonFromSite(
   api: API,
   person_id: string,
   ban: boolean,
-  remove_data: boolean
+  remove_data: boolean,
 ): Promise<BanPersonResponse> {
   // Make sure lemmy-beta/c/main is cached on lemmy_alpha
   let form: BanPerson = {
@@ -383,7 +383,7 @@ export async function banPersonFromCommunity(
   person_id: string,
   community_id: string,
   remove_data: boolean,
-  ban: boolean
+  ban: boolean,
 ): Promise<BanFromCommunityResponse> {
   let form: BanFromCommunity = {
     person_id,
@@ -410,8 +410,8 @@ export async function followCommunity(
 
 export async function likePost(
   api: API,
-  score: string,
-  post: Post
+  score: number,
+  post: Post,
 ): Promise<PostResponse> {
   let form: CreatePostLike = {
     post_id: post.id,
@@ -440,7 +440,7 @@ export async function createComment(
 export async function editComment(
   api: API,
   comment_id: string,
-  content = Some("A jest test federated comment update")
+  content = "A jest test federated comment update"
 ): Promise<CommentResponse> {
   let form: EditComment = {
     content,
@@ -477,7 +477,7 @@ export async function removeComment(
 }
 
 export async function getMentions(
-  api: API
+  api: API,
 ): Promise<GetPersonMentionsResponse> {
   let form: GetPersonMentions = {
     sort: "New",
@@ -490,7 +490,7 @@ export async function getMentions(
 export async function likeComment(
   api: API,
   score: number,
-  comment: Comment
+  comment: Comment,
 ): Promise<CommentResponse> {
   let form: CreateCommentLike = {
     comment_id: comment.id,
@@ -502,7 +502,7 @@ export async function likeComment(
 
 export async function createCommunity(
   api: API,
-  name_: string = randomString(5)
+  name_: string = randomString(5),
 ): Promise<CommunityResponse> {
   let description = "a sample description";
   let form: CreateCommunity = {
@@ -592,7 +592,7 @@ export async function deletePrivateMessage(
 
 export async function registerUser(
   api: API,
-  username: string = randomString(5)
+  username: string = randomString(5),
 ): Promise<LoginResponse> {
   let form: Register = {
     username,
@@ -619,7 +619,7 @@ export async function saveUserSettingsBio(api: API): Promise<LoginResponse> {
 }
 
 export async function saveUserSettingsFederated(
-  api: API
+  api: API,
 ): Promise<LoginResponse> {
   let avatar = "https://image.flaticon.com/icons/png/512/35/35896.png";
   let banner = "https://image.flaticon.com/icons/png/512/36/35896.png";
@@ -642,7 +642,7 @@ export async function saveUserSettingsFederated(
 
 export async function saveUserSettings(
   api: API,
-  form: SaveUserSettings
+  form: SaveUserSettings,
 ): Promise<LoginResponse> {
   return api.client.saveUserSettings(form);
 }
@@ -663,7 +663,7 @@ export async function getSite(api: API): Promise<GetSiteResponse> {
 }
 
 export async function listPrivateMessages(
-  api: API
+  api: API,
 ): Promise<PrivateMessagesResponse> {
   let form: GetPrivateMessages = {
     auth: api.auth,
@@ -696,8 +696,8 @@ export async function followBeta(api: API): Promise<CommunityResponse> {
 
 export async function reportPost(
   api: API,
-  post_id: number,
-  reason: string
+  post_id: string,
+  reason: string,
 ): Promise<PostReportResponse> {
   let form: CreatePostReport = {
     post_id,
@@ -708,7 +708,7 @@ export async function reportPost(
 }
 
 export async function listPostReports(
-  api: API
+  api: API,
 ): Promise<ListPostReportsResponse> {
   let form: ListPostReports = {
     auth: api.auth,
@@ -718,8 +718,8 @@ export async function listPostReports(
 
 export async function reportComment(
   api: API,
-  comment_id: number,
-  reason: string
+  comment_id: string,
+  reason: string,
 ): Promise<CommentReportResponse> {
   let form: CreateCommentReport = {
     comment_id,
@@ -730,7 +730,7 @@ export async function reportComment(
 }
 
 export async function listCommentReports(
-  api: API
+  api: API,
 ): Promise<ListCommentReportsResponse> {
   let form: ListCommentReports = {
     auth: api.auth,

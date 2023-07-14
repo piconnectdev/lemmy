@@ -9,8 +9,10 @@ use lemmy_api_common::{
 use lemmy_db_schema::source::{
   actor_language::CommunityLanguage, community::Community, local_site::LocalSite, site::Site,
 };
+use lemmy_db_schema::{newtypes::*, traits::ApubActor};
 use lemmy_db_views_actor::structs::{CommunityModeratorView, CommunityView};
 use lemmy_utils::error::LemmyError;
+use uuid::Uuid;
 
 #[tracing::instrument(skip(context))]
 pub async fn read_community(
@@ -28,7 +30,7 @@ pub async fn read_community(
 
   let person_id = local_user_view.as_ref().map(|u| u.person.id);
 
-  let community_id = match data.id {
+  let community_id = match &data.id {
     //Some(id) => id,
     Some(id) => {
       let uuid = Uuid::parse_str(&id.clone());
@@ -36,12 +38,16 @@ pub async fn read_community(
         Ok(u) => CommunityId(u),
         Err(_e) => {
           let name = data.id.to_owned().unwrap_or_else(|| "main".to_string());
-          blocking(context.pool(), move |conn| {
-            Community::read_from_name(conn, &name, false)
-          })
-          .await?
-          .map_err(|_| LemmyError::from_message("couldnt_find_community"))?
-          .id
+          let community: ApubCommunity = Community::read_from_name(context.pool(), &name, false)
+            .await?
+            .into();
+          community.id
+          // blocking(context.pool(), move |conn| {
+          //   Community::read_from_name(conn, &name, false)
+          // })
+          // .await?
+          // .map_err(|_| LemmyError::from_message("couldnt_find_community"))?
+          // .id
         }
       }
     }

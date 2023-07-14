@@ -1,14 +1,11 @@
-use crate::{newtypes::{PersonId, PiPaymentId, PiUserId, InstanceId}};
+use crate::newtypes::*;
 #[cfg(feature = "full")]
 use crate::schema::pipayment;
-//use diesel::sql_types::Jsonb;
 use serde::{Deserialize, Serialize};
-use typed_builder::TypedBuilder;
 use serde_json::Value;
-use uuid::Uuid;
 use std::fmt::Debug;
-
-//#[changeset_options(treat_none_as_null = "true")]
+use typed_builder::TypedBuilder;
+use uuid::Uuid;
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TypedBuilder)]
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
@@ -28,7 +25,7 @@ pub struct PiPayment {
   pub finished: bool,
   pub published: chrono::NaiveDateTime,
   pub updated: Option<chrono::NaiveDateTime>,
-  pub ref_id: Option<Uuid>, //Receiptor id
+  pub ref_id: Option<Uuid>,    //Receiptor id
   pub comment: Option<String>, // username, post_id, comment_id
   pub stat: Option<String>,
 
@@ -57,6 +54,7 @@ pub struct PiPayment {
   pub extras: Option<Value>,
 }
 
+/*
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, TypedBuilder)]
 #[cfg_attr(feature = "full", derive(Queryable, Identifiable))]
 #[cfg_attr(feature = "full", diesel(table_name = pipayment))]
@@ -75,12 +73,11 @@ pub struct PiPaymentSafe {
   pub finished: bool,
   pub published: chrono::NaiveDateTime,
   pub updated: Option<chrono::NaiveDateTime>,
-  pub ref_id: Option<Uuid>, //Receiptor id
+  pub ref_id: Option<Uuid>,    //Receiptor id
   pub comment: Option<String>, // username, post_id, comment_id
   pub stat: Option<String>,
   //pub pi_uid: Option<PiUserId>,
   //pub pi_username: String,
-
   pub identifier: Option<String>,
   pub user_uid: Option<String>,
   pub amount: f64,
@@ -102,8 +99,9 @@ pub struct PiPaymentSafe {
   pub metadata: Option<Value>,
   pub extras: Option<Value>,
 }
+*/
 
-#[derive(Debug, Clone, TypedBuilder)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypedBuilder)]
 #[builder(field_defaults(default))]
 #[cfg_attr(feature = "full", derive(Insertable, AsChangeset))]
 #[cfg_attr(feature = "full", diesel(table_name = pipayment))]
@@ -225,7 +223,6 @@ pub struct PiPaymentUpdatePending {
   //pub extras: Option<Value>,
 }
 
-
 #[derive(Debug, Clone, TypedBuilder)]
 #[builder(field_defaults(default))]
 #[cfg_attr(feature = "full", derive(AsChangeset))]
@@ -239,7 +236,6 @@ pub struct PiPaymentUpdateA2UForm {
   pub updated: Option<chrono::NaiveDateTime>,
   //pub comment: Option<String>,
   //pub ref_id: Option<Uuid>,
-
   pub pi_uid: Option<PiUserId>,
   //pub pi_username: String,
   pub identifier: String,

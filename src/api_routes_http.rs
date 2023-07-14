@@ -229,7 +229,7 @@ pub fn config(cfg: &mut web::ServiceConfig, rate_limit: &RateLimitCell) {
           .wrap(rate_limit.message())
           .route("", web::get().to(read_person))
           .route("/mention", web::get().to(route_get::<GetPersonMentions>))
-          .route("/myinfo", web::get().to(route_get_crud::<GetMyUserInfo>))
+          //.route("/myinfo", web::get().to(route_get_crud::<GetMyUserInfo>))
           .route(
             "/mention/mark_as_read",
             web::post().to(route_post::<MarkPersonMentionAsRead>),

@@ -70,11 +70,9 @@ diesel::table! {
 }
 
 diesel::table! {
-  use diesel::sql_types::{Bool, Int4, Nullable, Text, Timestamp, Varchar};
-  use diesel_ltree::sql_types::Ltree;
   use diesel::sql_types::*;
     captcha_answer (id) {
-        id -> Int4,
+        id -> Int8,
         uuid -> Uuid,
         answer -> Text,
         published -> Timestamp,

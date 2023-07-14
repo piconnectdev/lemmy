@@ -20,7 +20,7 @@ use lemmy_utils::{
   error::LemmyError,
   utils::{
     slurs::check_slurs_opt,
-    validation::{clean_url_params, is_valid_body_field, is_valid_post_title},
+    validation::{check_url_scheme, clean_url_params, is_valid_body_field, is_valid_post_title},
   },
 };
 
@@ -51,6 +51,7 @@ impl PerformCrud for EditPost {
     }
 
     is_valid_body_field(&data.body, true)?;
+    check_url_scheme(&data.url)?;
 
     let post_id = data.post_id;
     let orig_post = Post::read(context.pool(), post_id).await?;
@@ -101,12 +102,12 @@ impl PerformCrud for EditPost {
       .build();
 
     let post_id = data.post_id;
-    Post::update(context.pool(), post_id, &post_form)
+    let res = Post::update(context.pool(), post_id, &post_form)
       .await
       .map_err(|e| LemmyError::from_error_message(e, "couldnt_create_post"))?;
 
     if context.settings().sign_enabled {
-      let updated_post = res.unwrap();
+      let updated_post = res.clone();
       let (signature, _meta, _content) = Post::sign_data(&updated_post.clone()).await;
       let updated_post = Post::update_srv_sign(
         context.pool(),

@@ -1,14 +1,12 @@
 use crate::{
-  check_apub_id_valid_with_strictness,
-  fetch_local_site_data,
+  check_apub_id_valid_with_strictness, local_site_data_cached,
   objects::{instance::fetch_instance_actor_for_object, read_from_string_or_source_opt},
   protocol::{
     objects::{
       person::{Person, UserTypes},
       Endpoints,
     },
-    ImageObject,
-    Source,
+    ImageObject, Source,
   },
 };
 use activitypub_federation::{
@@ -118,19 +116,13 @@ impl Object for ApubPerson {
     expected_domain: &Url,
     context: &Data<Self::DataType>,
   ) -> Result<(), LemmyError> {
-    let local_site_data = fetch_local_site_data(context.pool()).await?;
+    let local_site_data = local_site_data_cached(context.pool()).await?;
     let slur_regex = &local_site_opt_to_slur_regex(&local_site_data.local_site);
-
     check_slurs(&person.preferred_username, slur_regex)?;
     check_slurs_opt(&person.name, slur_regex)?;
 
     verify_domains_match(person.id.inner(), expected_domain)?;
-    check_apub_id_valid_with_strictness(
-      person.id.inner(),
-      false,
-      &local_site_data,
-      context.settings(),
-    )?;
+    check_apub_id_valid_with_strictness(person.id.inner(), false, context).await?;
 
     let bio = read_from_string_or_source_opt(&person.summary, &None, &person.source);
     check_slurs_opt(&bio, slur_regex)?;
@@ -169,7 +161,7 @@ impl Object for ApubPerson {
       inbox_url: Some(person.inbox.into()),
       shared_inbox_url: person.endpoints.map(|e| e.shared_inbox.into()),
       matrix_user_id: person.matrix_user_id,
-      instance_id: instance.id,
+      instance_id: instance_id,
       home: None,
       external_id: None,
       external_name: None,
@@ -180,9 +172,9 @@ impl Object for ApubPerson {
       dap_address: None,
       cosmos_address: None,
       sui_address: None,
-      auth_sign: None, 
+      auth_sign: None,
       srv_sign: None,
-      tx : None,
+      tx: None,
     };
     let person = DbPerson::upsert(context.pool(), &person_form).await?;
 
